@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L1 你好 Hello - 汉语学习课件</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #e74c3c;
+            --accent-color: #3498db;
+            --light-color: #f8f9fa;
+            --dark-color: #2c3e50;
+            --gray-color: #7f8c8d;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --hover-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+            --border-radius: 8px;
+            --transition: all 0.3s ease;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fb;
+            color: var(--dark-color);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .lesson-title {
+            font-size: 1.8rem;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .tab-container {
+            margin-bottom: 30px;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            border-bottom: 2px solid var(--accent-color);
+            margin-bottom: 0;
+        }
+        
+        .tab-button {
+            padding: 15px 30px;
+            background-color: #ecf0f1;
+            border: none;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--dark-color);
+            cursor: pointer;
+            transition: var(--transition);
+            margin-right: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .tab-button:hover {
+            background-color: #d5dbdb;
+        }
+        
+        .tab-button.active {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+            background-color: white;
+            border-radius: 0 var(--border-radius) var(--border-radius) var(--border-radius);
+            padding: 30px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+            font-size: 1.8rem;
+        }
+        
+        .vocab-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .vocab-card {
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            border-left: 4px solid var(--secondary-color);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .vocab-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--hover-shadow);
+        }
+        
+        .chinese-char {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--dark-color);
+            margin-bottom: 5px;
+        }
+        
+        .pinyin {
+            font-size: 1.2rem;
+            color: var(--secondary-color);
+            margin-bottom: 10px;
+        }
+        
+        .translation {
+            color: var(--gray-color);
+            font-size: 0.95rem;
+            margin-top: auto;
+        }
+        
+        .highlight {
+            background-color: rgba(231, 76, 60, 0.1);
+            padding: 2px 4px;
+            border-radius: 4px;
+            color: var(--secondary-color);
+            font-weight: 500;
+        }
+        
+        .tooltip {
+            position: relative;
+            cursor: help;
+            border-bottom: 1px dotted var(--accent-color);
+        }
+        
+        .tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--dark-color);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            z-index: 100;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        .dialogue-container {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        
+        .dialogue-block {
+            padding: 20px;
+            border-radius: var(--border-radius);
+            background-color: #f8f9fa;
+            border-left: 4px solid var(--accent-color);
+        }
+        
+        .dialogue-number {
+            display: inline-block;
+            background-color: var(--accent-color);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+        
+        .dialogue-line {
+            margin-bottom: 15px;
+        }
+        
+        .chinese-line {
+            font-size: 1.4rem;
+            margin-bottom: 5px;
+        }
+        
+        .pinyin-line {
+            color: var(--secondary-color);
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+        
+        .translation-line {
+            color: var(--gray-color);
+            font-style: italic;
+        }
+        
+        .es-translation {
+            color: #27ae60;
+        }
+        
+        .exercise-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .exercise {
+            padding: 20px;
+            border-radius: var(--border-radius);
+            background-color: #f0f8ff;
+            border: 1px solid #d0e6ff;
+        }
+        
+        .exercise h3 {
+            color: var(--secondary-color);
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        
+        .question {
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        
+        .options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .option {
+            padding: 10px 15px;
+            background-color: white;
+            border: 2px solid #dee2e6;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .option:hover {
+            border-color: var(--accent-color);
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+        
+        .option.selected {
+            border-color: var(--accent-color);
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+        
+        .feedback {
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .correct {
+            background-color: rgba(46, 204, 113, 0.1);
+            color: #27ae60;
+            border-left: 3px solid #27ae60;
+        }
+        
+        .incorrect {
+            background-color: rgba(231, 76, 60, 0.1);
+            color: #c0392b;
+            border-left: 3px solid #c0392b;
+        }
+        
+        .check-button, .reset-button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+            margin-top: 10px;
+        }
+        
+        .check-button:hover, .reset-button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .reset-button {
+            background-color: var(--gray-color);
+        }
+        
+        .reset-button:hover {
+            background-color: #6c757d;
+        }
+        
+        .button-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: var(--gray-color);
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .tab-content {
+                padding: 20px;
+            }
+            
+            .tab-button {
+                padding: 12px 20px;
+                font-size: 1rem;
+            }
+            
+            .vocab-container {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+            
+            .chinese-char {
+                font-size: 1.6rem;
+            }
+            
+            .chinese-line {
+                font-size: 1.2rem;
+            }
+            
+            .pinyin-line {
+                font-size: 1rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .vocab-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .tab-buttons {
+                flex-direction: column;
+            }
+            
+            .tab-button {
+                border-radius: 0;
+                margin-right: 0;
+                margin-bottom: 2px;
+                justify-content: center;
+            }
+            
+            .options {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>汉语学习课件</h1>
+        <p class="subtitle">无纸化中文学习 - 响应式设计</p>
+        <div class="lesson-title">L1 你好 Hello</div>
+    </header>
+    
+    <main>
+        <div class="tab-container">
+            <div class="tab-buttons">
+                <button class="tab-button active" data-tab="vocabulary">
+                    <i class="fas fa-book"></i> 生词 / Vocabulary
+                </button>
+                <button class="tab-button" data-tab="dialogues">
+                    <i class="fas fa-comments"></i> 对话 / Dialogues
+                </button>
+                <button class="tab-button" data-tab="exercises">
+                    <i class="fas fa-pencil-alt"></i> 练习题 / Exercises
+                </button>
+            </div>
+            
+            <div class="tab-content active" id="vocabulary">
+                <h2><i class="fas fa-book"></i> 生词 / Vocabulary</h2>
+                <p>点击或悬停在拼音上查看英文翻译</p>
+                <div class="vocab-container" id="vocabContainer">
+                    <!-- 词汇卡片将通过JavaScript动态生成 -->
+                </div>
+            </div>
+            
+            <div class="tab-content" id="dialogues">
+                <h2><i class="fas fa-comments"></i> 对话 / Dialogues</h2>
+                <div class="dialogue-container">
+                    <div class="dialogue-block">
+                        <div class="dialogue-number">对话一 / Dialogue 1</div>
+                        <div class="dialogue-line">
+                            <div class="chinese-line">你好！</div>
+                            <div class="pinyin-line">Nǐ hǎo!</div>
+                            <div class="translation-line">Hello! / ¡Hola!</div>
+                        </div>
+                        <div class="dialogue-line">
+                            <div class="chinese-line">你好！</div>
+                            <div class="pinyin-line">Nǐ hǎo!</div>
+                            <div class="translation-line">Hello! / ¡Hola!</div>
+                        </div>
+                    </div>
+                    
+                    <div class="dialogue-block">
+                        <div class="dialogue-number">对话二 / Dialogue 2</div>
+                        <div class="dialogue-line">
+                            <div class="chinese-line">早上好！</div>
+                            <div class="pinyin-line">Zǎoshang hǎo!</div>
+                            <div class="translation-line">Good morning! / ¡Buenos días!</div>
+                        </div>
+                        <div class="dialogue-line">
+                            <div class="chinese-line">晚上好！</div>
+                            <div class="pinyin-line">Wǎnshang hǎo!</div>
+                            <div class="translation-line">Good evening! / ¡Buenas noches!</div>
+                        </div>
+                    </div>
+                    
+                    <div class="dialogue-block">
+                        <div class="dialogue-number">对话三 / Dialogue 3</div>
+                        <div class="dialogue-line">
+                            <div class="chinese-line">李先生，您好！</div>
+                            <div class="pinyin-line">Lǐ xiānsheng, nín hǎo!</div>
+                            <div class="translation-line">Hello! Mr. Li / ¡Hola! Sr. Li</div>
+                        </div>
+                        <div class="dialogue-line">
+                            <div class="chinese-line">王小姐，您好！</div>
+                            <div class="pinyin-line">Wáng xiǎojiě, nín hǎo!</div>
+                            <div class="translation-line">Hello! Miss Wang / ¡Hola! Srta. Wang</div>
+                        </div>
+                    </div>
+                    
+                    <div class="dialogue-block">
+                        <div class="dialogue-number">对话四 / Dialogue 4</div>
+                        <div class="dialogue-line">
+                            <div class="chinese-line">下午好！</div>
+                            <div class="pinyin-line">Xiàwǔ hǎo!</div>
+                            <div class="translation-line">Good afternoon! / ¡Buenas tardes!</div>
+                        </div>
+                        <div class="dialogue-line">
+                            <div class="chinese-line">下午好！</div>
+                            <div class="pinyin-line">Xiàwǔ hǎo!</div>
+                            <div class="translation-line">Good afternoon! / ¡Buenas tardes!</div>
+                        </div>
+                    </div>
+                    
+                    <div class="dialogue-block">
+                        <div class="dialogue-number">对话五 / Dialogue 5</div>
+                        <div class="dialogue-line">
+                            <div class="chinese-line">女士们，先生们，朋友们，晚上好！</div>
+                            <div class="pinyin-line">Nǚshìmen, xiānshengmen, péngyoumen, wǎnshang hǎo!</div>
+                            <div class="translation-line">Ladies and gentlemen, friends, good evening! / Damas y caballeros, amigos, ¡buenas noches!</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="exercises">
+                <h2><i class="fas fa-pencil-alt"></i> 练习题 / Exercises</h2>
+                <div class="exercise-container">
+                    <div class="exercise">
+                        <h3>练习一：选择正确的翻译</h3>
+                        <p class="question">1. "欢迎" 的正确英文翻译是什么？</p>
+                        <div class="options">
+                            <div class="option" data-answer="welcome">welcome</div>
+                            <div class="option" data-answer="thank">thank</div>
+                            <div class="option" data-answer="please">please</div>
+                            <div class="option" data-answer="enter">enter</div>
+                        </div>
+                        <div class="feedback"></div>
+                        
+                        <p class="question">2. "认识" 的正确西班牙文翻译是什么？</p>
+                        <div class="options">
+                            <div class="option" data-answer="conocer">conocer</div>
+                            <div class="option" data-answer="entrar">entrar</div>
+                            <div class="option" data-answer="sentarse">sentarse</div>
+                            <div class="option" data-answer="compañía">compañía</div>
+                        </div>
+                        <div class="feedback"></div>
+                        
+                        <div class="button-container">
+                            <button class="check-button">检查答案</button>
+                            <button class="reset-button">重置</button>
+                        </div>
+                    </div>
+                    
+                    <div class="exercise">
+                        <h3>练习二：匹配拼音和汉字</h3>
+                        <p class="question">将拼音与正确的汉字匹配：</p>
+                        <div class="options">
+                            <div class="option" data-match="hěn">hěn</div>
+                            <div class="option" data-match="公司">gōngsī</div>
+                            <div class="option" data-match="请">qǐng</div>
+                            <div class="option" data-match="高兴">gāoxìng</div>
+                        </div>
+                        <div class="options" id="character-options">
+                            <div class="option" data-match="hěn">很</div>
+                            <div class="option" data-match="公司">公司</div>
+                            <div class="option" data-match="请">请</div>
+                            <div class="option" data-match="高兴">高兴</div>
+                        </div>
+                        <div class="feedback"></div>
+                        
+                        <div class="button-container">
+                            <button class="check-button">检查匹配</button>
+                            <button class="reset-button">重置</button>
+                        </div>
+                    </div>
+                    
+                    <div class="exercise">
+                        <h3>练习三：填空完成对话</h3>
+                        <p class="question">用适当的词填空：</p>
+                        <p>李先生：<span class="blank" id="blank1" contenteditable="true">______</span> (please) 进！</p>
+                        <p>王小姐：<span class="blank" id="blank2" contenteditable="true">______</span> (thank you)！</p>
+                        <p>李先生：<span class="blank" id="blank3" contenteditable="true">______</span> (very) 高兴认识你！</p>
+                        
+                        <div class="feedback"></div>
+                        
+                        <div class="button-container">
+                            <button class="check-button">检查填空</button>
+                            <button class="reset-button">重置</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>汉语学习课件 &copy; 2023 - 无纸化中文教学</p>
+        <p>本课件适用于手机和网站浏览，响应式设计</p>
+    </footer>
+
+    <script>
+        // 词汇数据
+        const vocabulary = [
+            { chinese: "欢迎", pinyin: "huānyíng", english: "welcome", spanish: "bienvenido/a" },
+            { chinese: "谢谢", pinyin: "xièxiè", english: "thank", spanish: "gracias" },
+            { chinese: "请", pinyin: "qǐng", english: "please", spanish: "por favor" },
+            { chinese: "进", pinyin: "jìn", english: "enter", spanish: "entrar" },
+            { chinese: "坐", pinyin: "zuò", english: "sit", spanish: "sentarse" },
+            { chinese: "很", pinyin: "hěn", english: "very", spanish: "muy" },
+            { chinese: "高兴", pinyin: "gāoxìng", english: "happy; glad; cheerful; pleased", spanish: "contento/a; alegre" },
+            { chinese: "认识", pinyin: "rènshi", english: "get to know; get acquainted with", spanish: "conocer" },
+            { chinese: "来", pinyin: "lái", english: "come", spanish: "venir" },
+            { chinese: "我们", pinyin: "wǒmen", english: "we; us", spanish: "nosotros/as" },
+            { chinese: "公司", pinyin: "gōngsī", english: "company; firm", spanish: "compañía; empresa" },
+            { chinese: "你", pinyin: "nǐ", english: "you", spanish: "tú" },
+            { chinese: "好", pinyin: "hǎo", english: "good; nice; well; fine", spanish: "bueno/a; bien" },
+            { chinese: "女士", pinyin: "nǚshì", english: "Ms; lady", spanish: "señora; dama" },
+            { chinese: "们", pinyin: "men", english: "used to form a plural number", spanish: "sufijo para formar plural" },
+            { chinese: "朋友", pinyin: "péngyou", english: "friend", spanish: "amigo/a" }
+        ];
+        
+        // 标签页切换功能
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                
+                // 移除所有标签按钮的active类
+                document.querySelectorAll('.tab-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                // 隐藏所有标签内容
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                // 激活当前标签按钮和内容
+                this.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+        
+        // 生成词汇卡片
+        const vocabContainer = document.getElementById('vocabContainer');
+        
+        vocabulary.forEach(word => {
+            const card = document.createElement('div');
+            card.className = 'vocab-card';
+            
+            card.innerHTML = `
+                <div class="chinese-char">${word.chinese}</div>
+                <div class="pinyin tooltip" data-tooltip="${word.english}">${word.pinyin}</div>
+                <div class="translation">
+                    <div><strong>English:</strong> ${word.english}</div>
+                    <div class="es-translation"><strong>Español:</strong> ${word.spanish}</div>
+                </div>
+            `;
+            
+            vocabContainer.appendChild(card);
+        });
+        
+        // 高亮对话中的生词
+        const dialogueBlocks = document.querySelectorAll('.dialogue-block');
+        const highlightWords = vocabulary.map(word => word.chinese);
+        
+        dialogueBlocks.forEach(block => {
+            const chineseLines = block.querySelectorAll('.chinese-line');
+            
+            chineseLines.forEach(line => {
+                let text = line.innerHTML;
+                
+                highlightWords.forEach(word => {
+                    if (text.includes(word)) {
+                        const regex = new RegExp(word, 'g');
+                        text = text.replace(regex, `<span class="highlight">${word}</span>`);
+                    }
+                });
+                
+                line.innerHTML = text;
+            });
+            
+            // 为高亮词汇添加拼音提示
+            const highlights = block.querySelectorAll('.highlight');
+            highlights.forEach(highlight => {
+                const word = highlight.textContent;
+                const vocab = vocabulary.find(v => v.chinese === word);
+                
+                if (vocab) {
+                    highlight.classList.add('tooltip');
+                    highlight.setAttribute('data-tooltip', vocab.english);
+                }
+            });
+        });
+        
+        // 练习功能
+        document.querySelectorAll('.check-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const exercise = this.closest('.exercise');
+                
+                if (exercise.querySelector('h3').textContent.includes('选择正确的翻译')) {
+                    checkTranslationExercise(exercise);
+                } else if (exercise.querySelector('h3').textContent.includes('匹配拼音和汉字')) {
+                    checkMatchingExercise(exercise);
+                } else if (exercise.querySelector('h3').textContent.includes('填空完成对话')) {
+                    checkFillBlankExercise(exercise);
+                }
+            });
+        });
+        
+        document.querySelectorAll('.reset-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const exercise = this.closest('.exercise');
+                resetExercise(exercise);
+            });
+        });
+        
+        // 选择题检查
+        function checkTranslationExercise(exercise) {
+            const questions = exercise.querySelectorAll('.question');
+            const feedbacks = exercise.querySelectorAll('.feedback');
+            let allCorrect = true;
+            
+            // 第一题
+            const selectedOption1 = exercise.querySelector('.options:first-child .option.selected');
+            const correctAnswer1 = 'welcome';
+            
+            if (selectedOption1 && selectedOption1.dataset.answer === correctAnswer1) {
+                feedbacks[0].textContent = "正确！'欢迎' 翻译为 'welcome'。";
+                feedbacks[0].className = "feedback correct";
+                feedbacks[0].style.display = 'block';
+            } else {
+                feedbacks[0].textContent = "不正确。正确答案是 'welcome'。";
+                feedbacks[0].className = "feedback incorrect";
+                feedbacks[0].style.display = 'block';
+                allCorrect = false;
+            }
+            
+            // 第二题
+            const selectedOption2 = exercise.querySelectorAll('.options')[1].querySelector('.option.selected');
+            const correctAnswer2 = 'conocer';
+            
+            if (selectedOption2 && selectedOption2.dataset.answer === correctAnswer2) {
+                feedbacks[1].textContent = "正确！'认识' 翻译为 'conocer'。";
+                feedbacks[1].className = "feedback correct";
+                feedbacks[1].style.display = 'block';
+            } else {
+                feedbacks[1].textContent = "不正确。正确答案是 'conocer'。";
+                feedbacks[1].className = "feedback incorrect";
+                feedbacks[1].style.display = 'block';
+                allCorrect = false;
+            }
+            
+            if (allCorrect) {
+                setTimeout(() => alert("太棒了！所有答案都正确！"), 300);
+            }
+        }
+        
+        // 匹配题检查
+        function checkMatchingExercise(exercise) {
+            const selectedPinyin = exercise.querySelector('.options:first-child .option.selected');
+            const selectedCharacter = exercise.querySelector('#character-options .option.selected');
+            const feedback = exercise.querySelector('.feedback');
+            
+            if (!selectedPinyin || !selectedCharacter) {
+                feedback.textContent = "请选择拼音和汉字进行匹配。";
+                feedback.className = "feedback incorrect";
+                feedback.style.display = 'block';
+                return;
+            }
+            
+            if (selectedPinyin.dataset.match === selectedCharacter.dataset.match) {
+                feedback.textContent = "正确！匹配成功！";
+                feedback.className = "feedback correct";
+                feedback.style.display = 'block';
+            } else {
+                feedback.textContent = "不匹配。请再试一次。";
+                feedback.className = "feedback incorrect";
+                feedback.style.display = 'block';
+            }
+        }
+        
+        // 填空题检查
+        function checkFillBlankExercise(exercise) {
+            const blank1 = document.getElementById('blank1').textContent.trim();
+            const blank2 = document.getElementById('blank2').textContent.trim();
+            const blank3 = document.getElementById('blank3').textContent.trim();
+            const feedback = exercise.querySelector('.feedback');
+            
+            let correctCount = 0;
+            
+            if (blank1 === '请' || blank1 === 'qǐng' || blank1.toLowerCase() === 'please') {
+                correctCount++;
+            }
+            
+            if (blank2 === '谢谢' || blank2 === 'xièxiè' || blank2.toLowerCase().includes('thank')) {
+                correctCount++;
+            }
+            
+            if (blank3 === '很' || blank3 === 'hěn' || blank3.toLowerCase() === 'very') {
+                correctCount++;
+            }
+            
+            if (correctCount === 3) {
+                feedback.textContent = "完美！所有填空都正确！";
+                feedback.className = "feedback correct";
+                feedback.style.display = 'block';
+            } else {
+                feedback.textContent = `你答对了 ${correctCount}/3 个空。正确答案：1. 请 (qǐng) 2. 谢谢 (xièxiè) 3. 很 (hěn)`;
+                feedback.className = "feedback incorrect";
+                feedback.style.display = 'block';
+            }
+        }
+        
+        // 重置练习
+        function resetExercise(exercise) {
+            // 清除所有选择
+            exercise.querySelectorAll('.option.selected').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // 清除反馈
+            exercise.querySelectorAll('.feedback').forEach(feedback => {
+                feedback.style.display = 'none';
+                feedback.textContent = '';
+            });
+            
+            // 清除填空
+            exercise.querySelectorAll('.blank').forEach(blank => {
+                blank.textContent = '';
+            });
+        }
+        
+        // 选择题选项点击事件
+        document.querySelectorAll('.option').forEach(option => {
+            option.addEventListener('click', function() {
+                const optionsContainer = this.closest('.options');
+                
+                // 清除同一容器中其他选项的选择状态
+                optionsContainer.querySelectorAll('.option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                
+                // 选中当前选项
+                this.classList.add('selected');
+            });
+        });
+    </script>
+</body>
+</html>
