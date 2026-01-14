@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lesson 3 - Elisa's Chinese Class</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="lesson-page">
+    <header>
+        <h1>Lesson 3: 我來介紹一下</h1>
+    </header>
+
+    <div class="mode-switcher">
+        <button class="tab-btn active" onclick="switchMode('pinyin')">拼音模式 (Pinyin)</button>
+        <button class="tab-btn" onclick="switchMode('bilingual')">中英模式 (Bilingual)</button>
+    </div>
+
+    <main id="content-area" class="mode-pinyin">
+        <div class="sentence-block">
+            <div class="speaker">👨‍💼 Mr. Wang:</div>
+            <div class="text-content">
+                <div class="zh">您好，您貴姓？</div>
+                <div class="py">Nín hǎo, nín guìxìng?</div>
+                <div class="en">Hello, what is your surname?</div>
+            </div>
+        </div>
+
+        <div class="sentence-block">
+            <div class="speaker">👩‍💼 Ms. Li:</div>
+            <div class="text-content">
+                <div class="zh">我姓李，您貴姓？</div>
+                <div class="py">Wǒ xìng Lǐ, nín guìxìng?</div>
+                <div class="en">My surname is Li, and you?</div>
+            </div>
+        </div>
+
+        <details class="exercise-section">
+            <summary>Practice / 自我介紹練習 (Click to expand)</summary>
+            <div class="exercise-content">
+                <p>Try to say: "My surname is [Your Name], nice to meet you."</p>
+                <div class="zh">我姓____，很高興認識您。</div>
+                <div class="py">Wǒ xìng ____, hěn gāoxìng rènshi nín.</div>
+            </div>
+        </details>
+    </main>
+</div>
+
+<script>
+    function switchMode(mode) {
+        const container = document.getElementById('content-area');
+        const buttons = document.querySelectorAll('.tab-btn');
+        
+        // 切換內容顯示邏輯
+        container.className = 'mode-' + mode;
+        
+        // 切換按鈕樣式
+        buttons.forEach(btn => btn.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+    }
+</script>
+
+</body>
+</html>

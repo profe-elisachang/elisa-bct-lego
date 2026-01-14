@@ -1,0 +1,45 @@
+/* Global Navigation Bar */
+.top-nav {
+  background: var(--color-accent, #FF8C42);
+  padding: 1rem 2rem;
+  display: flex;
+  gap: 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.top-nav a {
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: background 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.top-nav a:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.top-nav a.active {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .top-nav {
+    padding: 0.75rem 1rem;
+    gap: 1rem;
+  }
+
+  .top-nav a {
+    font-size: 0.9rem;
+    padding: 0.4rem 0.8rem;
+  }
+}

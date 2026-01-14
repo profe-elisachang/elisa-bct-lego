@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BCT Lesson</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 頂部控制區 -->
+        <header class="lesson-header">
+            <h1 id="lesson-title">Loading...</h1>
+            <div class="toggle-controls">
+                <button id="toggle-en" class="toggle-btn active">English</button>
+                <button id="toggle-es" class="toggle-btn active">Español</button>
+            </div>
+        </header>
+
+        <!-- 主要內容區 -->
+        <main class="lesson-content">
+            <!-- Tab 系統 -->
+            <nav class="tabs">
+                <button class="tab-btn active" data-tab="dialogue">Dialogue</button>
+                <button class="tab-btn" data-tab="reading">Reading</button>
+                <button class="tab-btn" data-tab="vocabulary">Vocabulary</button>
+                <button class="tab-btn" data-tab="practice">Practice</button>
+            </nav>
+
+            <!-- Tab 內容容器 -->
+            <div class="tab-content">
+                <!-- Dialogue Tab -->
+                <div id="dialogue" class="tab-pane active">
+                    <div id="dialogue-content" class="content-group">
+                        <!-- 動態注入句子 -->
+                    </div>
+                </div>
+
+                <!-- Reading Tab -->
+                <div id="reading" class="tab-pane">
+                    <div id="reading-content" class="content-group">
+                        <!-- 動態注入閱讀內容 -->
+                    </div>
+                </div>
+
+                <!-- Vocabulary Tab -->
+                <div id="vocabulary" class="tab-pane">
+                    <div id="vocabulary-content" class="content-group">
+                        <!-- 動態注入單字卡片 -->
+                    </div>
+                </div>
+
+                <!-- Practice Tab -->
+                <div id="practice" class="tab-pane">
+                    <div id="practice-content" class="content-group">
+                        <!-- 互動練習區（未來實作） -->
+                        <p class="placeholder">練習功能開發中...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Timeline 補充區 -->
+        <aside class="timeline-section">
+            <h2>課堂補充 (Timeline)</h2>
+            <div id="timeline-content">
+                <!-- 動態注入時間軸內容 -->
+                <p class="placeholder">尚無課堂補充</p>
+            </div>
+        </aside>
+    </div>
+
+    <!-- 載入 JavaScript -->
+    <script src="../assets/js/loader.js"></script>
+    <script src="../assets/js/toggle.js"></script>
+</body>
+</html>

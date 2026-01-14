@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BCT Review - 商務漢語複習</title>
+    <link rel="stylesheet" href="assets/css/nav-global.css">
+    <link rel="stylesheet" href="assets/css/review.css">
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+    <!-- Marked.js for Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="top-nav">
+        <a href="index.html">🏠 Home</a>
+        <a href="bct-review.html" class="active">🧠 BCT Review</a>
+    </nav>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="review-header">
+            <h1>🧠 BCT Review System</h1>
+            <p class="subtitle">Spaced Repetition • Smart Review</p>
+        </header>
+
+        <!-- Loading -->
+        <div id="loadingContainer">
+            <div class="loader"></div>
+            <p>Loading vocabulary data...</p>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" class="hidden">
+            <!-- Layer 1: Components vs Characters Tab -->
+            <div class="segmented-tabs" id="typeTabSystem">
+                <button class="tab-btn active" data-tab="components">Components 部件</button>
+                <button class="tab-btn" data-tab="characters">Characters 字</button>
+                <button class="tab-btn" data-tab="vocab">Vocab 詞組</button>
+            </div>
+
+            <!-- Layer 2: Lesson Selection -->
+            <div class="lesson-selector">
+                <div class="selector-header">
+                    <h3>📚 Select Lessons</h3>
+                    <span class="selector-count" id="selectedCount">(0/25)</span>
+                </div>
+                <p class="selector-hint">Click lessons to select • Multiple selection supported</p>
+
+                <div class="selector-content" id="selectorContent">
+                    <div id="lessonGrid" class="lesson-grid"></div>
+                </div>
+
+                <div class="selector-actions">
+                    <button class="btn btn-primary" onclick="selectAllLessons()">Select All</button>
+                    <button class="btn btn-secondary" onclick="clearAllLessons()">Clear All</button>
+                </div>
+            </div>
+
+            <!-- Layer 3: Review Mode Selector (shown after lesson selection) -->
+            <div id="reviewModeSection" class="review-mode-section hidden">
+                <h3>🎯 Choose Review Mode</h3>
+                <div class="mode-options">
+                    <label class="mode-option">
+                        <input type="radio" name="reviewMode" value="character">
+                        <div class="mode-card">
+                            <h4>漢字模式</h4>
+                            <p>Front: Character only</p>
+                        </div>
+                    </label>
+                    <label class="mode-option">
+                        <input type="radio" name="reviewMode" value="pinyin-hint" checked>
+                        <div class="mode-card recommended">
+                            <h4>拼音提示模式</h4>
+                            <p>Front: Character + optional pinyin</p>
+                            <span class="recommended-badge">Recommended</span>
+                        </div>
+                    </label>
+                    <label class="mode-option">
+                        <input type="radio" name="reviewMode" value="pinyin">
+                        <div class="mode-card">
+                            <h4>拼音模式</h4>
+                            <p>Front: Pinyin only</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Layer 4: Smart Review Section -->
+            <div id="smartReviewSection" class="smart-review-section hidden">
+                <h3>🎯 Smart Review (SRS)</h3>
+
+                <div class="due-info">
+                    Due Today: <span id="dueCount">0</span> items
+                </div>
+
+                <div class="srs-breakdown">
+                    <div class="srs-box forgot">
+                        <span class="box-count" id="forgotCount">0</span>
+                        <span class="box-label">Forgotten</span>
+                    </div>
+                    <div class="srs-box hard">
+                        <span class="box-count" id="hardCount">0</span>
+                        <span class="box-label">Hard</span>
+                    </div>
+                    <div class="srs-box good">
+                        <span class="box-count" id="goodCount">0</span>
+                        <span class="box-label">Good</span>
+                    </div>
+                    <div class="srs-box easy">
+                        <span class="box-count" id="easyCount">0</span>
+                        <span class="box-label">Easy</span>
+                    </div>
+                </div>
+
+                <div class="amount-selector">
+                    <label>Review Amount:
+                        <select id="reviewAmount">
+                            <option value="10">10 (Quick)</option>
+                            <option value="20" selected>20 (Standard)</option>
+                            <option value="30">30 (Extended)</option>
+                            <option value="50">50 (Intensive)</option>
+                            <option value="all">All Due Items</option>
+                        </select>
+                    </label>
+                </div>
+
+                <button class="btn-start" onclick="startReview()">🧠 Start Smart Review</button>
+            </div>
+
+            <!-- Review Area (hidden until review starts) -->
+            <div id="reviewArea" class="review-area hidden">
+                <div class="review-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">0/0</div>
+                </div>
+
+                <div class="flashcard" id="flashcard" onclick="flipCard()">
+                    <div class="card-inner" id="cardInner">
+                        <div class="card-front" id="cardFront">
+                            <div class="front-character" id="frontCharacter">字</div>
+                            <button class="pinyin-toggle" id="pinyinToggle" onclick="togglePinyin(event)">
+                                👁️ Show Pinyin
+                            </button>
+                            <div class="front-pinyin hidden" id="frontPinyin">zì</div>
+                            <p class="flip-hint">Click to flip</p>
+                        </div>
+                        <div class="card-back" id="cardBack">
+                            <div class="source-tag" id="sourceTag">Lesson 1</div>
+                            <div class="back-character" id="backCharacter">字</div>
+                            <div class="back-pinyin" id="backPinyin">zì</div>
+                            <div class="back-meaning" id="backMeaning">character | carácter</div>
+                            <div class="back-notes" id="backNotes"></div>
+                            <button class="speak-btn" onclick="speakCharacter(event)">🔊 Speak</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="review-buttons">
+                    <button class="btn-forgot" onclick="rateCard('forgot')">
+                        Forgotten<br><span class="zh">忘記</span>
+                    </button>
+                    <button class="btn-hard" onclick="rateCard('hard')">
+                        Hard<br><span class="zh">困難</span>
+                    </button>
+                    <button class="btn-good" onclick="rateCard('good')">
+                        Good<br><span class="zh">良好</span>
+                    </button>
+                    <button class="btn-easy" onclick="rateCard('easy')">
+                        Easy<br><span class="zh">簡單</span>
+                    </button>
+                </div>
+
+                <button class="btn-end" onclick="endReview()">End Review</button>
+            </div>
+
+            <!-- Completion Message -->
+            <div id="completionMessage" class="completion-message hidden">
+                <div class="completion-icon">🎉</div>
+                <h2>Great job!</h2>
+                <p id="completionText">You've reviewed 0 items</p>
+                <button class="btn btn-primary" onclick="returnToHome()">← Back to Review Home</button>
+            </div>
+
+            <!-- Data Management -->
+            <div class="data-section">
+                <h3>📁 Data Management</h3>
+                <div class="data-info">
+                    <div>Device Code: <strong id="deviceCode">------</strong></div>
+                </div>
+                <div class="data-actions">
+                    <button class="btn btn-secondary" onclick="refreshData()">🔄 Refresh Data</button>
+                    <button class="btn btn-secondary" onclick="exportProgress()">📥 Export Progress</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/bct-review.js"></script>
+</body>
+</html>

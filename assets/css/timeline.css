@@ -1,0 +1,349 @@
+/* Timeline Input Interface Styles */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+    background: linear-gradient(135deg, #FF8C42 0%, #E67A30 100%);
+    min-height: 100vh;
+    padding: 2rem;
+}
+
+/* Loading Message */
+.loading {
+    text-align: center;
+    color: white;
+    font-size: 1.5rem;
+    margin-top: 10rem;
+}
+
+/* Container */
+.timeline-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2.5rem;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* Header */
+.timeline-container header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 3px solid #e2e8f0;
+}
+
+.timeline-container h1 {
+    font-size: 2rem;
+    color: #1e293b;
+    font-weight: 700;
+}
+
+.btn-logout {
+    padding: 0.75rem 1.5rem;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+    font-size: 1rem;
+}
+
+.btn-logout:hover {
+    background: #dc2626;
+}
+
+/* Form Meta */
+.form-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: #f8fafc;
+    border-radius: 12px;
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.meta-item label {
+    font-weight: 600;
+    color: #475569;
+    font-size: 0.95rem;
+}
+
+.date-display {
+    font-size: 1.2rem;
+    color: #FF8C42;
+    font-weight: 700;
+}
+
+#lessonSelect {
+    padding: 0.75rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.3s;
+}
+
+#lessonSelect:hover {
+    border-color: #FF8C42;
+}
+
+#lessonSelect:focus {
+    outline: none;
+    border-color: #FF8C42;
+    box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
+}
+
+/* Form Type */
+.form-type {
+    display: flex;
+    gap: 1rem;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 12px;
+}
+
+.type-label {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.type-label:hover {
+    border-color: #FF8C42;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.type-label input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #FF8C42;
+}
+
+.type-label:has(input[type="radio"]:checked) {
+    background: #FF8C42;
+    color: white;
+    border-color: #FF8C42;
+}
+
+/* Form Fields */
+.form-fields {
+    margin: 2rem 0;
+}
+
+.form-fields.hidden {
+    display: none;
+}
+
+.field-group {
+    margin-bottom: 1.5rem;
+}
+
+.field-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 1rem;
+}
+
+.field-group input,
+.field-group textarea {
+    width: 100%;
+    padding: 0.875rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.3s;
+}
+
+.field-group input:focus,
+.field-group textarea:focus {
+    outline: none;
+    border-color: #FF8C42;
+    box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
+}
+
+.field-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.btn-primary,
+.btn-secondary {
+    flex: 1;
+    padding: 1.25rem;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: #FF8C42;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #E67A30;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(8, 145, 178, 0.3);
+}
+
+.btn-secondary {
+    background: #64748b;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #475569;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(71, 85, 105, 0.3);
+}
+
+/* Recent Entries */
+#recentEntries {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 3px solid #e2e8f0;
+}
+
+#recentEntries h3 {
+    color: #1e293b;
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+}
+
+#recentEntries h3 span {
+    color: #FF8C42;
+    font-weight: 700;
+}
+
+#entryList {
+    list-style: none;
+    padding: 0;
+}
+
+.entry-item {
+    padding: 1rem 1.25rem;
+    background: #f8fafc;
+    border-left: 4px solid #FF8C42;
+    margin-bottom: 0.75rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: background 0.3s;
+}
+
+.entry-item:hover {
+    background: #e0f2fe;
+}
+
+/* Messages */
+.message {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    padding: 1rem 2rem;
+    border-radius: 10px;
+    font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    animation: slideIn 0.3s ease-out;
+}
+
+.message-success {
+    background: #10b981;
+    color: white;
+}
+
+.message-error {
+    background: #ef4444;
+    color: white;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    body {
+        padding: 1rem;
+    }
+
+    .timeline-container {
+        padding: 1.5rem;
+    }
+
+    .timeline-container h1 {
+        font-size: 1.5rem;
+    }
+
+    .form-meta {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .form-type {
+        flex-direction: column;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .message {
+        top: 1rem;
+        right: 1rem;
+        left: 1rem;
+        max-width: calc(100% - 2rem);
+    }
+}

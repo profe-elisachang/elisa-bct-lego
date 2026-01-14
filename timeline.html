@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>課堂補充 Timeline - Teacher Only</title>
+    <link rel="stylesheet" href="assets/css/timeline.css">
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+    <div class="timeline-container" id="mainContainer" style="display: none;">
+        <header>
+            <h1>📝 課堂即時補充</h1>
+            <button class="btn-logout" onclick="teacherLogout()">🚪 登出</button>
+        </header>
+
+        <form id="timelineForm" onsubmit="handleTimelineSubmit(event)">
+            <div class="form-meta">
+                <div class="meta-item">
+                    <label>日期：</label>
+                    <span id="currentDate" class="date-display">2026-01-14</span>
+                </div>
+                <div class="meta-item">
+                    <label>課次：</label>
+                    <select id="lessonSelect" required>
+                        <option value="">選擇課次...</option>
+                        <option value="lesson1">Lesson 1</option>
+                        <option value="lesson2">Lesson 2</option>
+                        <option value="lesson3">Lesson 3</option>
+                        <option value="lesson4">Lesson 4</option>
+                        <option value="lesson5">Lesson 5</option>
+                        <option value="lesson6">Lesson 6</option>
+                        <option value="lesson7">Lesson 7</option>
+                        <option value="lesson8">Lesson 8</option>
+                        <option value="lesson9">Lesson 9</option>
+                        <option value="lesson10">Lesson 10</option>
+                        <option value="lesson11">Lesson 11</option>
+                        <option value="lesson12">Lesson 12</option>
+                        <option value="lesson13">Lesson 13</option>
+                        <option value="lesson14">Lesson 14</option>
+                        <option value="lesson15">Lesson 15</option>
+                        <option value="lesson16">Lesson 16</option>
+                        <option value="lesson17">Lesson 17</option>
+                        <option value="lesson18">Lesson 18</option>
+                        <option value="lesson19">Lesson 19</option>
+                        <option value="lesson20">Lesson 20</option>
+                        <option value="lesson21">Lesson 21</option>
+                        <option value="lesson22">Lesson 22</option>
+                        <option value="lesson23">Lesson 23</option>
+                        <option value="lesson24">Lesson 24</option>
+                        <option value="lesson25">Lesson 25</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-type">
+                <label class="type-label">
+                    <input type="radio" name="type" value="component" checked>
+                    <span>部件</span>
+                </label>
+                <label class="type-label">
+                    <input type="radio" name="type" value="vocab">
+                    <span>生詞</span>
+                </label>
+                <label class="type-label">
+                    <input type="radio" name="type" value="note">
+                    <span>筆記</span>
+                </label>
+            </div>
+
+            <!-- Vocabulary/Component Fields -->
+            <div id="vocabFields" class="form-fields">
+                <div class="field-group">
+                    <label>漢字：</label>
+                    <input type="text" id="character" placeholder="例如：氵">
+                </div>
+                <div class="field-group">
+                    <label>拼音：</label>
+                    <input type="text" id="pinyin" placeholder="例如：shuǐ">
+                </div>
+                <div class="field-group">
+                    <label>意思：</label>
+                    <input type="text" id="meaning" placeholder="English | Español">
+                </div>
+                <div class="field-group">
+                    <label>補充 (Markdown - 可選)：</label>
+                    <textarea id="notes" rows="4" placeholder="記憶故事、例句等..."></textarea>
+                </div>
+            </div>
+
+            <!-- Note Fields -->
+            <div id="noteFields" class="form-fields hidden">
+                <div class="field-group">
+                    <label>標題：</label>
+                    <input type="text" id="noteTitle" placeholder="例如：課堂討論重點">
+                </div>
+                <div class="field-group">
+                    <label>內容 (Markdown)：</label>
+                    <textarea id="noteContent" rows="8" placeholder="輸入筆記內容..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">💾 儲存並繼續</button>
+                <button type="button" class="btn-secondary" onclick="saveAndExit()">✓ 儲存並結束</button>
+            </div>
+        </form>
+
+        <!-- Recent Entries -->
+        <div id="recentEntries">
+            <h3>今日已新增：<span id="entryCount">0</span> 項</h3>
+            <ul id="entryList"></ul>
+        </div>
+    </div>
+
+    <!-- Loading Message -->
+    <div id="loadingMessage" class="loading">
+        <p>正在載入...</p>
+    </div>
+
+    <script src="assets/js/timeline-input.js"></script>
+</body>
+</html>

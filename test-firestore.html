@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firestore 連接測試</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #FF8C42;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #E67A31;
+        }
+        .result {
+            background: #f9f9f9;
+            padding: 15px;
+            margin-top: 15px;
+            border-left: 4px solid #FF8C42;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .success {
+            border-left-color: #28A745;
+            color: #28A745;
+        }
+        .error {
+            border-left-color: #DC3545;
+            color: #DC3545;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔥 Firestore 連接測試</h1>
+
+    <div class="test-section">
+        <h2>1. 初始化測試</h2>
+        <button onclick="testInit()">測試 Firebase 初始化</button>
+        <div id="init-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. 讀取課程資料</h2>
+        <button onclick="testGetLesson()">讀取 Lesson1 基本資訊</button>
+        <button onclick="testGetVocabulary()">讀取 Lesson1 單字</button>
+        <div id="lesson-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. 讀取完整課程</h2>
+        <button onclick="testGetFullLesson()">讀取完整 Lesson1</button>
+        <div id="full-lesson-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. 讀取所有課程列表</h2>
+        <button onclick="testGetAllLessons()">讀取所有課程</button>
+        <div id="all-lessons-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. 讀取 Timeline（課堂補充）</h2>
+        <button onclick="testGetTimeline()">讀取 Timeline</button>
+        <div id="timeline-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>6. 讀取複習項目</h2>
+        <button onclick="testGetReviewItems()">讀取所有 review:true 項目</button>
+        <div id="review-result" class="result" style="display: none;"></div>
+    </div>
+
+    <!-- 載入 Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+    <!-- 載入 Firestore 服務 -->
+    <script src="assets/js/firestore.js"></script>
+
+    <script>
+        // 測試函數
+        async function testInit() {
+            const resultDiv = document.getElementById('init-result');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '正在初始化...';
+
+            const success = await firestoreService.init();
+
+            if (success) {
+                resultDiv.className = 'result success';
+                resultDiv.textContent = '✅ Firebase 初始化成功！\n連接到專案：bct-lego';
+            } else {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ Firebase 初始化失敗，請檢查 Console';
+            }
+        }
+
+        async function testGetLesson() {
+            const resultDiv = document.getElementById('lesson-result');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '正在讀取...';
+
+            const lesson = await firestoreService.getLesson('lesson1');
+
+            if (lesson) {
+                resultDiv.className = 'result success';
+                resultDiv.textContent = '✅ 讀取成功！\n\n' + JSON.stringify(lesson, null, 2);
+            } else {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ 讀取失敗';
+            }
+        }
+
+        async function testGetVocabulary() {
+            const resultDiv = document.getElementById('lesson-result');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '正在讀取...';
+
+            const vocabulary = await firestoreService.getVocabulary('lesson1');
+
+            resultDiv.className = 'result success';
+            resultDiv.textContent = `✅ 讀取到 ${vocabulary.length} 個單字！\n\n` + JSON.stringify(vocabulary, null, 2);
+        }
+
+        async function testGetFullLesson() {
+            const resultDiv = document.getElementById('full-lesson-result');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '正在讀取...';
+
+            const fullLesson = await firestoreService.getFullLesson('lesson1');
+
+            if (fullLesson) {
+                resultDiv.className = 'result success';
+
+                // 顯示統計資訊
+                const stats = `
+📊 課程統計：
+- 標題: ${fullLesson.title}
+- Vocabulary: ${fullLesson.vocabulary.length} 個單字
+- Dialogue: ${fullLesson.dialogue.length} 句對話
+- Reading: ${fullLesson.reading.length} 個閱讀項目
+
+完整資料：
+${JSON.stringify(fullLesson, null, 2)}`;
+
+                resultDiv.textContent = stats;
+            } else {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ 讀取失敗';
+            }
+        }
+
+        async function testGetAllLessons() {
+            const resultDiv = document.getElementById('all-lessons-result');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '正在讀取...';
+
+            const lessons = await firestoreService.getAllLessons();
+
+            resultDiv.className = 'result success';
+            resultDiv.textContent = `✅ 讀取到 ${lessons.length} 個課程！\n\n` + JSON.stringify(lessons, null, 2);
+        }
+
+        async function testGetTimeline() {
+            const resultDiv = document.getElementById('timeline-result');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '正在讀取...';
+
+            const timeline = await firestoreService.getTimeline();
+
+            resultDiv.className = 'result success';
+            resultDiv.textContent = `✅ 讀取到 ${timeline.length} 個 Timeline 項目！\n\n` + JSON.stringify(timeline, null, 2);
+        }
+
+        async function testGetReviewItems() {
+            const resultDiv = document.getElementById('review-result');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '正在讀取...';
+
+            const reviewItems = await firestoreService.getReviewItems();
+
+            resultDiv.className = 'result success';
+            resultDiv.textContent = `✅ 讀取到 ${reviewItems.length} 個複習項目！\n\n` + JSON.stringify(reviewItems, null, 2);
+        }
+
+        // 頁面載入時自動初始化
+        window.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 開始自動初始化 Firebase...');
+            await testInit();
+        });
+    </script>
+</body>
+</html>

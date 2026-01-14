@@ -741,19 +741,42 @@
         }
 
         function speak(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'zh-CN';
-                utterance.rate = speechRate;
-                utterance.pitch = 1.0;
-                
-                window.speechSynthesis.speak(utterance);
-            } else {
-                alert('抱歉,您的浏览器不支持语音功能 Sorry, your browser does not support speech synthesis');
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        
+        // 等待语音列表加载
+        const speakText = () => {
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // 获取可用的中文语音
+            const voices = window.speechSynthesis.getVoices();
+            const chineseVoice = voices.find(voice => 
+                voice.lang.includes('zh') || 
+                voice.lang.includes('CN') ||
+                voice.name.includes('Chinese')
+            );
+            
+            if (chineseVoice) {
+                utterance.voice = chineseVoice;
             }
+            
+            utterance.lang = 'zh-CN';
+            utterance.rate = speechRate;
+            utterance.pitch = 1.0;
+            
+            window.speechSynthesis.speak(utterance);
+        };
+        
+        // 确保语音列表已加载
+        if (window.speechSynthesis.getVoices().length > 0) {
+            speakText();
+        } else {
+            window.speechSynthesis.onvoiceschanged = speakText;
         }
+    } else {
+        alert('抱歉,您的浏览器不支持语音功能');
+    }
+}
 
         function checkAnswer(practiceNum, correctAnswer, element) {
             const feedbackDiv = document.getElementById('feedback' + practiceNum);

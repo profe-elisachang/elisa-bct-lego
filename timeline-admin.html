@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>課堂即時補充 Admin</title>
+    <link rel="stylesheet" href="assets/css/nav-global.css">
+    <link rel="stylesheet" href="assets/css/timeline.css">
+    <link rel="stylesheet" href="assets/css/timeline-admin.css">
+</head>
+<body>
+    <nav class="top-nav">
+        <a href="index.html">🏠 Home</a>
+        <a href="timeline-admin.html" class="active">🛠️ Timeline Admin</a>
+    </nav>
+
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>🛠️ 課堂補充管理</h1>
+            <div class="header-actions">
+                <span id="adminStatus" class="status-badge">Loading...</span>
+                <button id="logoutBtn" class="btn btn-secondary">登出</button>
+            </div>
+        </header>
+
+        <section class="panel">
+            <h2>新增補充</h2>
+            <div class="form-grid">
+                <div class="form-row">
+                    <label>日期</label>
+                    <input type="date" id="dateInput">
+                </div>
+                <div class="form-row">
+                    <label>課次</label>
+                    <select id="lessonInput">
+                        <option value="">選擇課次...</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label>類型</label>
+                    <div class="type-group">
+                        <label><input type="radio" name="type" value="component" checked> 部件</label>
+                        <label><input type="radio" name="type" value="vocab"> 生詞</label>
+                        <label><input type="radio" name="type" value="note"> 筆記</label>
+                    </div>
+                </div>
+                <div class="form-row type-vocab">
+                    <label>漢字</label>
+                    <input type="text" id="characterInput" placeholder="例如：氵">
+                </div>
+                <div class="form-row type-vocab">
+                    <label>拼音</label>
+                    <input type="text" id="pinyinInput" placeholder="例如：shuǐ">
+                </div>
+                <div class="form-row type-vocab">
+                    <label>意思</label>
+                    <input type="text" id="meaningInput" placeholder="English | Español">
+                </div>
+                <div class="form-row type-vocab">
+                    <label>補充</label>
+                    <textarea id="notesInput" rows="2" placeholder="記憶故事、例句等..."></textarea>
+                </div>
+                <div class="form-row type-note hidden">
+                    <label>筆記標題</label>
+                    <input type="text" id="noteTitleInput" placeholder="課堂討論重點">
+                </div>
+                <div class="form-row type-note hidden">
+                    <label>筆記內容</label>
+                    <textarea id="noteContentInput" rows="4" placeholder="輸入筆記內容..."></textarea>
+                </div>
+                <div class="form-row">
+                    <button id="submitBtn" class="btn btn-primary">💾 儲存</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>篩選 / 搜尋</h2>
+            <div class="filter-grid">
+                <div class="form-row">
+                    <label>課次</label>
+                    <select id="filterLesson">
+                        <option value="">全部課次</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label>類型</label>
+                    <div class="type-group">
+                        <label><input type="checkbox" name="filterType" value="component" checked> 部件</label>
+                        <label><input type="checkbox" name="filterType" value="vocab" checked> 生詞</label>
+                        <label><input type="checkbox" name="filterType" value="note" checked> 筆記</label>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label>關鍵字</label>
+                    <input type="text" id="keywordInput" placeholder="字/拼音/意思/標題...">
+                </div>
+                <div class="form-row date-range">
+                    <label>日期範圍</label>
+                    <input type="date" id="startDate"> —
+                    <input type="date" id="endDate">
+                </div>
+                <div class="form-row">
+                    <button id="searchBtn" class="btn btn-secondary">🔍 查詢</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>補充列表</h2>
+            <div id="listStats" class="list-stats">共 0 筆</div>
+            <div id="entryList" class="entry-list">載入中...</div>
+            <div class="pagination">
+                <button id="prevPage" class="btn btn-secondary" disabled>上一頁</button>
+                <span id="pageInfo">1 / 1</span>
+                <button id="nextPage" class="btn btn-secondary" disabled>下一頁</button>
+            </div>
+        </section>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="assets/js/firestore.js"></script>
+    <script src="assets/js/timeline-admin.js"></script>
+</body>
+</html>
+

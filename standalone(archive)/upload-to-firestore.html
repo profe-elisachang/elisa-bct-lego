@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown → Firestore 上傳工具</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        .upload-section {
+            background: white;
+            padding: 30px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #FF8C42;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #E67A31;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f9f9f9;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #FF8C42;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { color: #28A745; }
+        .error { color: #DC3545; }
+        .warning { color: #FFC107; }
+        .info { color: #17A2B8; }
+
+        .file-selector {
+            margin: 20px 0;
+        }
+        .file-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #f0f0f0;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .file-item input[type="checkbox"] {
+            margin-right: 10px;
+        }
+
+        .progress {
+            width: 100%;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+            display: none;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #FF8C42, #FFA500);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>📤 Markdown → Firestore 上傳工具</h1>
+
+    <div class="upload-section">
+        <h2>步驟 1：準備上傳</h2>
+        <p>這個工具會讀取 <code>data/lessons/</code> 資料夾的 Markdown 檔案，並上傳到 Firestore。</p>
+
+        <div class="file-selector">
+            <h3>選擇要上傳的課程：</h3>
+            <div class="file-item">
+                <label>
+                    <input type="checkbox" id="upload-l1" checked>
+                    <strong>L1 - 你好</strong> (vocabulary, dialogue, reading)
+                </label>
+                <span id="l1-status">等待上傳</span>
+            </div>
+        </div>
+
+        <button onclick="uploadAllLessons()" id="upload-btn">
+            🚀 開始上傳到 Firestore
+        </button>
+
+        <button onclick="clearFirestore()" style="background: #DC3545;">
+            🗑️ 清空 Firestore（慎用！）
+        </button>
+    </div>
+
+    <div class="upload-section">
+        <h2>步驟 2：上傳進度</h2>
+        <div class="progress" id="progress-container">
+            <div class="progress-bar" id="progress-bar">0%</div>
+        </div>
+        <div class="log" id="upload-log">
+            等待開始上傳...
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <!-- Firestore Service -->
+    <script src="assets/js/firestore.js"></script>
+
+    <script>
+        // 日誌工具
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('upload-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type;
+            logDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateProgress(current, total) {
+            const percent = Math.round((current / total) * 100);
+            const progressBar = document.getElementById('progress-bar');
+            const progressContainer = document.getElementById('progress-container');
+            progressContainer.style.display = 'block';
+            progressBar.style.width = percent + '%';
+            progressBar.textContent = `${current}/${total} (${percent}%)`;
+        }
+
+        // Markdown Parser (重用你之前的 parser 邏輯)
+        function parseVocabularyMarkdown(markdown) {
+            const vocabulary = [];
+            let currentItem = {};
+            let order = 1;
+
+            markdown.split('\n').forEach(line => {
+                const trimmed = line.trim();
+
+                if (trimmed.startsWith('## ')) {
+                    if (currentItem.pinyin) {
+                        currentItem.order = order++;
+                        currentItem.type = 'vocab';
+                        currentItem.review = true; // 預設所有單字都可複習
+                        vocabulary.push({...currentItem});
+                    }
+                    currentItem = { id: trimmed.slice(3) };
+                } else if (trimmed.includes(':')) {
+                    const [key, ...rest] = trimmed.split(':');
+                    const value = rest.join(':').trim();
+                    if (key && value) {
+                        currentItem[key.trim()] = key.trim() === 'hsk' ? parseInt(value) : value;
+                    }
+                }
+            });
+
+            if (currentItem.pinyin) {
+                currentItem.order = order++;
+                currentItem.type = 'vocab';
+                currentItem.review = true;
+                vocabulary.push({...currentItem});
+            }
+
+            return vocabulary;
+        }
+
+        function parseDialogueMarkdown(markdown) {
+            const dialogue = [];
+            let currentSentence = {};
+            let order = 1;
+
+            markdown.split('\n').forEach(line => {
+                const trimmed = line.trim();
+
+                if (trimmed.startsWith('###')) {
+                    if (currentSentence.pinyin) {
+                        currentSentence.order = order++;
+                        currentSentence.type = 'sentence';
+                        currentSentence.review = false; // 對話預設不加入複習
+                        dialogue.push({...currentSentence});
+                    }
+                    currentSentence = {};
+                } else if (trimmed.includes(':')) {
+                    const [key, ...rest] = trimmed.split(':');
+                    const value = rest.join(':').trim();
+                    if (key && value) {
+                        currentSentence[key.trim()] = value;
+                    }
+                }
+            });
+
+            if (currentSentence.pinyin) {
+                currentSentence.order = order++;
+                currentSentence.type = 'sentence';
+                currentSentence.review = false;
+                dialogue.push({...currentSentence});
+            }
+
+            return dialogue;
+        }
+
+        function parseReadingMarkdown(markdown) {
+            const reading = [];
+            let currentItem = {};
+            let order = 1;
+
+            markdown.split('\n').forEach(line => {
+                const trimmed = line.trim();
+
+                if (trimmed.startsWith('##')) {
+                    if (currentItem.pinyin) {
+                        currentItem.order = order++;
+                        currentItem.type = 'reading';
+                        currentItem.review = false;
+                        reading.push({...currentItem});
+                    }
+                    currentItem = {};
+                } else if (trimmed.includes(':')) {
+                    const [key, ...rest] = trimmed.split(':');
+                    const value = rest.join(':').trim();
+                    if (key && value) {
+                        currentItem[key.trim()] = value;
+                    }
+                }
+            });
+
+            if (currentItem.pinyin) {
+                currentItem.order = order++;
+                currentItem.type = 'reading';
+                currentItem.review = false;
+                reading.push({...currentItem});
+            }
+
+            return reading;
+        }
+
+        // 讀取本地 Markdown 檔案
+        async function fetchMarkdownFile(filename) {
+            try {
+                const response = await fetch(`data/lessons/${filename}`);
+                if (!response.ok) throw new Error(`File not found: ${filename}`);
+                return await response.text();
+            } catch (error) {
+                log(`⚠️ 無法讀取檔案 ${filename}: ${error.message}`, 'warning');
+                return null;
+            }
+        }
+
+        // 上傳 L1 課程
+        async function uploadLesson1() {
+            log('📚 開始上傳 L1 課程...', 'info');
+
+            try {
+                // 1. 創建 lesson1 文件
+                const lessonRef = firestoreService.db.collection('lessons').doc('lesson1');
+                await lessonRef.set({
+                    title: '你好',
+                    scope: 'lesson',
+                    date: '2024-01-01',
+                    order: 1
+                });
+                log('✅ 創建 lesson1 文件', 'success');
+
+                // 2. 上傳 Vocabulary
+                const vocabMd = await fetchMarkdownFile('L1-vocabulary.md');
+                if (vocabMd) {
+                    const vocabulary = parseVocabularyMarkdown(vocabMd);
+                    log(`📖 解析到 ${vocabulary.length} 個單字`, 'info');
+
+                    const vocabRef = lessonRef.collection('vocabulary');
+                    for (let i = 0; i < vocabulary.length; i++) {
+                        const vocab = vocabulary[i];
+                        const docId = `vocab_${String(i + 1).padStart(3, '0')}`;
+                        await vocabRef.doc(docId).set(vocab);
+                        updateProgress(i + 1, vocabulary.length);
+                    }
+                    log(`✅ 上傳 ${vocabulary.length} 個單字`, 'success');
+                }
+
+                // 3. 上傳 Dialogue
+                const dialogueMd = await fetchMarkdownFile('L1-dialogue.md');
+                if (dialogueMd) {
+                    const dialogue = parseDialogueMarkdown(dialogueMd);
+                    log(`💬 解析到 ${dialogue.length} 句對話`, 'info');
+
+                    const dialogueRef = lessonRef.collection('dialogue');
+                    for (let i = 0; i < dialogue.length; i++) {
+                        const sentence = dialogue[i];
+                        const docId = `sentence_${String(i + 1).padStart(3, '0')}`;
+                        await dialogueRef.doc(docId).set(sentence);
+                    }
+                    log(`✅ 上傳 ${dialogue.length} 句對話`, 'success');
+                }
+
+                // 4. 上傳 Reading
+                const readingMd = await fetchMarkdownFile('L1-reading.md');
+                if (readingMd) {
+                    const reading = parseReadingMarkdown(readingMd);
+                    log(`📄 解析到 ${reading.length} 個閱讀項目`, 'info');
+
+                    const readingRef = lessonRef.collection('reading');
+                    for (let i = 0; i < reading.length; i++) {
+                        const item = reading[i];
+                        const docId = `reading_${String(i + 1).padStart(3, '0')}`;
+                        await readingRef.doc(docId).set(item);
+                    }
+                    log(`✅ 上傳 ${reading.length} 個閱讀項目`, 'success');
+                }
+
+                document.getElementById('l1-status').innerHTML = '<span class="success">✅ 上傳完成</span>';
+                log('🎉 L1 課程上傳完成！', 'success');
+
+            } catch (error) {
+                log(`❌ 上傳失敗: ${error.message}`, 'error');
+                document.getElementById('l1-status').innerHTML = '<span class="error">❌ 上傳失敗</span>';
+            }
+        }
+
+        // 上傳所有課程
+        async function uploadAllLessons() {
+            const btn = document.getElementById('upload-btn');
+            btn.disabled = true;
+            btn.textContent = '上傳中...';
+
+            document.getElementById('upload-log').innerHTML = '';
+            log('🚀 開始初始化 Firebase...', 'info');
+
+            // 初始化 Firestore
+            if (!firestoreService.isConnected()) {
+                await firestoreService.init();
+            }
+
+            // 上傳 L1
+            if (document.getElementById('upload-l1').checked) {
+                await uploadLesson1();
+            }
+
+            btn.disabled = false;
+            btn.textContent = '✅ 上傳完成！';
+            log('🎊 所有課程上傳完成！', 'success');
+        }
+
+        // 清空 Firestore（危險操作）
+        async function clearFirestore() {
+            if (!confirm('⚠️ 確定要清空 Firestore 的所有資料嗎？此操作無法復原！')) {
+                return;
+            }
+
+            if (!confirm('⚠️⚠️ 最後確認：真的要刪除所有資料嗎？')) {
+                return;
+            }
+
+            log('🗑️ 開始清空 Firestore...', 'warning');
+
+            try {
+                // 刪除 lesson1 及其所有子集合
+                const lessonRef = firestoreService.db.collection('lessons').doc('lesson1');
+
+                // 刪除子集合
+                const collections = ['vocabulary', 'dialogue', 'reading'];
+                for (const collectionName of collections) {
+                    const snapshot = await lessonRef.collection(collectionName).get();
+                    for (const doc of snapshot.docs) {
+                        await doc.ref.delete();
+                    }
+                    log(`✅ 清空 ${collectionName}`, 'success');
+                }
+
+                // 刪除 lesson1 文件
+                await lessonRef.delete();
+                log('✅ 清空完成', 'success');
+
+            } catch (error) {
+                log(`❌ 清空失敗: ${error.message}`, 'error');
+            }
+        }
+
+        // 頁面載入時初始化
+        window.addEventListener('DOMContentLoaded', async () => {
+            log('💡 準備就緒！點擊「開始上傳」按鈕來上傳課程資料。', 'info');
+        });
+    </script>
+</body>
+</html>

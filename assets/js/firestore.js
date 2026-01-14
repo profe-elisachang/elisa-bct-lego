@@ -1,0 +1,543 @@
+// Firebase & Firestore 初始化與資料存取
+// 遵循 Lego Method：從 Firestore 載入 Lesson、Timeline、Review 資料
+
+class FirestoreService {
+    constructor() {
+        this.db = null;
+        this.auth = null;
+        this.initialized = false;
+    }
+
+    // 初始化 Firebase
+    async init() {
+        try {
+            // Firebase 配置（從 Firebase Console 取得）
+            const firebaseConfig = {
+                apiKey: "AIzaSyBIJ0YDcX438Tq0G05qpvIANiolTrNM8Ds",
+                authDomain: "bct-lego.firebaseapp.com",
+                projectId: "bct-lego",
+                storageBucket: "bct-lego.firebasestorage.app",
+                messagingSenderId: "205694748282",
+                appId: "1:205694748282:web:9a8e9a196b2d1829bdddc3",
+                measurementId: "G-1CBF9H64WN"
+            };
+
+            // 初始化 Firebase
+            const app = firebase.initializeApp(firebaseConfig);
+            this.db = firebase.firestore();
+            this.auth = firebase.auth();
+
+            this.initialized = true;
+            console.log('✅ Firebase initialized successfully');
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({
+                    sessionId:'debug-session',
+                    runId:'baseline',
+                    hypothesisId:'H1',
+                    location:'assets/js/firestore.js:init',
+                    message:'Firebase initialized',
+                    data:{projectId:firebaseConfig.projectId, storageBucket:firebaseConfig.storageBucket, initialized:this.initialized},
+                    timestamp:Date.now()
+                })
+            }).catch(()=>{});
+            // #endregion
+            return true;
+        } catch (error) {
+            console.error('❌ Firebase initialization failed:', error);
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({
+                    sessionId:'debug-session',
+                    runId:'baseline',
+                    hypothesisId:'H1',
+                    location:'assets/js/firestore.js:init',
+                    message:'Firebase init failed',
+                    data:{message:error?.message || 'unknown', stack: (error?.stack||'').slice(0,200)},
+                    timestamp:Date.now()
+                })
+            }).catch(()=>{});
+            // #endregion
+            return false;
+        }
+    }
+
+    // ==================== LESSON 資料存取 ====================
+
+    /**
+     * 取得單一課程的基本資訊
+     * @param {string} lessonId - 課程 ID（例如："lesson1"）
+     * @returns {Object} 課程資料
+     */
+    async getLesson(lessonId) {
+        try {
+            const doc = await this.db.collection('lessons').doc(lessonId).get();
+
+            if (!doc.exists) {
+                console.warn(`Lesson ${lessonId} not found`);
+                return null;
+            }
+
+            return {
+                id: doc.id,
+                ...doc.data()
+            };
+        } catch (error) {
+            console.error('Error getting lesson:', error);
+            return null;
+        }
+    }
+
+    /**
+     * 取得課程的 Vocabulary 子集合
+     * @param {string} lessonId - 課程 ID
+     * @returns {Array} 單字陣列，按 order 排序
+     */
+    async getVocabulary(lessonId) {
+        try {
+            const snapshot = await this.db
+                .collection('lessons')
+                .doc(lessonId)
+                .collection('vocabulary')
+                .orderBy('order', 'asc')
+                .get();
+
+            const vocabulary = [];
+            snapshot.forEach(doc => {
+                vocabulary.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+
+            return vocabulary;
+        } catch (error) {
+            console.error('Error getting vocabulary:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 取得課程的 Dialogue 子集合
+     * @param {string} lessonId - 課程 ID
+     * @returns {Array} 對話陣列
+     */
+    async getDialogue(lessonId) {
+        try {
+            const snapshot = await this.db
+                .collection('lessons')
+                .doc(lessonId)
+                .collection('dialogue')
+                .orderBy('order', 'asc')
+                .get();
+
+            const dialogue = [];
+            snapshot.forEach(doc => {
+                dialogue.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+
+            return dialogue;
+        } catch (error) {
+            console.error('Error getting dialogue:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 取得課程的 Reading 子集合
+     * @param {string} lessonId - 課程 ID
+     * @returns {Array} 閱讀內容陣列
+     */
+    async getReading(lessonId) {
+        try {
+            const snapshot = await this.db
+                .collection('lessons')
+                .doc(lessonId)
+                .collection('reading')
+                .orderBy('order', 'asc')
+                .get();
+
+            const reading = [];
+            snapshot.forEach(doc => {
+                reading.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+
+            return reading;
+        } catch (error) {
+            console.error('Error getting reading:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 取得完整課程資料（包含所有子集合）
+     * @param {string} lessonId - 課程 ID
+     * @returns {Object} 完整課程資料
+     */
+    async getFullLesson(lessonId) {
+        try {
+            const [lesson, vocabulary, dialogue, reading] = await Promise.all([
+                this.getLesson(lessonId),
+                this.getVocabulary(lessonId),
+                this.getDialogue(lessonId),
+                this.getReading(lessonId)
+            ]);
+
+            return {
+                ...lesson,
+                vocabulary,
+                dialogue,
+                reading
+            };
+        } catch (error) {
+            console.error('Error getting full lesson:', error);
+            return null;
+        }
+    }
+
+    // ==================== TIMELINE 資料存取 ====================
+
+    /**
+     * 取得所有 Timeline 項目（課堂補充）
+     * @param {string} lessonRef - 可選：過濾特定課程的補充內容
+     * @returns {Array} Timeline 項目陣列
+     */
+    async getTimeline(lessonRef = null) {
+        try {
+            let query = this.db.collection('timeline').orderBy('date', 'desc');
+
+            // 如果指定課程，只取該課的補充
+            if (lessonRef) {
+                query = query.where('lessonRef', '==', lessonRef);
+            }
+
+            const snapshot = await query.get();
+            const timeline = [];
+
+            snapshot.forEach(doc => {
+                timeline.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+
+            return timeline;
+        } catch (error) {
+            console.error('Error getting timeline:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 新增 Timeline 項目（老師用）
+     * @param {Object} data - Timeline 資料
+     * @returns {string} 新文件的 ID
+     */
+    async addTimelineItem(data) {
+        try {
+            const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const docId = `${timestamp}_${Date.now()}`;
+
+            const timelineData = {
+                scope: 'timeline',
+                date: timestamp,
+                createdBy: 'teacher',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                ...data
+            };
+
+            await this.db.collection('timeline').doc(docId).set(timelineData);
+            console.log('✅ Timeline item added:', docId);
+            return docId;
+        } catch (error) {
+            console.error('Error adding timeline item:', error);
+            return null;
+        }
+    }
+
+    /**
+     * 取得特定日期 Timeline 的所有 Components
+     * @param {string} timelineDocId - Timeline 文件 ID (例如: "timeline-2026-01-14")
+     * @returns {Array} Components 陣列
+     */
+    async getTimelineComponents(timelineDocId) {
+        try {
+            const snapshot = await this.db
+                .collection('timeline')
+                .doc(timelineDocId)
+                .collection('components')
+                .get();
+
+            const components = [];
+            snapshot.forEach(doc => {
+                components.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+
+            return components;
+        } catch (error) {
+            console.error('Error getting timeline components:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 取得特定日期 Timeline 的所有 Vocabulary
+     * @param {string} timelineDocId - Timeline 文件 ID
+     * @returns {Array} Vocabulary 陣列
+     */
+    async getTimelineVocabulary(timelineDocId) {
+        try {
+            const snapshot = await this.db
+                .collection('timeline')
+                .doc(timelineDocId)
+                .collection('vocabulary')
+                .get();
+
+            const vocabulary = [];
+            snapshot.forEach(doc => {
+                vocabulary.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+
+            return vocabulary;
+        } catch (error) {
+            console.error('Error getting timeline vocabulary:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 取得所有 Timeline 文件 IDs
+     * @returns {Array} Timeline document IDs 陣列
+     */
+    async getAllTimelineDocIds() {
+        try {
+            const snapshot = await this.db.collection('timeline').get();
+            const docIds = [];
+
+            snapshot.forEach(doc => {
+                docIds.push(doc.id);
+            });
+
+            return docIds;
+        } catch (error) {
+            console.error('Error getting timeline doc IDs:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 取得特定課程的所有 Timeline 補充內容（從所有 timeline 文檔的子集合中過濾）
+     * @param {string} lessonId - 課程 ID（例如："lesson1"）
+     * @returns {Array} Timeline 項目陣列，包含 components、vocabulary、notes
+     */
+    async getTimelineForLesson(lessonId) {
+        try {
+            // 若缺索引，改以全取再前端過濾
+            const fetchGroup = async (collName) => {
+                try {
+                    return await this.db.collectionGroup(collName).where('lesson', '==', lessonId).get();
+                } catch (err) {
+                    if (err?.message?.includes(`collection ${collName}`)) {
+                        console.warn(`Missing index for ${collName}.lesson, fallback to client filter`);
+                        const snapAll = await this.db.collectionGroup(collName).get();
+                        const filtered = [];
+                        snapAll.forEach(doc => {
+                            const d = doc.data();
+                            if (d.lesson === lessonId) filtered.push(doc);
+                        });
+                        return {
+                            forEach: (fn) => filtered.forEach(fn)
+                        };
+                    }
+                    throw err;
+                }
+            };
+
+            const [compSnapshot, vocabSnapshot, notesSnapshot] = await Promise.all([
+                fetchGroup('components'),
+                fetchGroup('vocabulary'),
+                fetchGroup('notes')
+            ]);
+
+            const timelineItems = [];
+
+            compSnapshot.forEach(doc => {
+                timelineItems.push({
+                    id: doc.id,
+                    type: 'component',
+                    ...doc.data()
+                });
+            });
+
+            vocabSnapshot.forEach(doc => {
+                timelineItems.push({
+                    id: doc.id,
+                    type: 'vocab',
+                    ...doc.data()
+                });
+            });
+
+            notesSnapshot.forEach(doc => {
+                timelineItems.push({
+                    id: doc.id,
+                    type: 'note',
+                    ...doc.data()
+                });
+            });
+
+            timelineItems.sort((a, b) => {
+                const dateA = a.date || a.timestamp || '';
+                const dateB = b.date || b.timestamp || '';
+                return dateB.localeCompare(dateA);
+            });
+
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({
+                    sessionId:'debug-session',
+                    runId:'timeline-read',
+                    hypothesisId:'T-read',
+                    location:'assets/js/firestore.js:getTimelineForLesson',
+                    message:'Timeline query result',
+                    data:{lessonId, count: timelineItems.length},
+                    timestamp:Date.now()
+                })
+            }).catch(()=>{});
+            // #endregion
+
+            return timelineItems;
+        } catch (error) {
+            console.error('Error getting timeline for lesson:', error);
+            fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({
+                    sessionId:'debug-session',
+                    runId:'timeline-read',
+                    hypothesisId:'T-read',
+                    location:'assets/js/firestore.js:getTimelineForLesson',
+                    message:'Timeline query error',
+                    data:{lessonId, message:error?.message||'unknown'},
+                    timestamp:Date.now()
+                })
+            }).catch(()=>{});
+            return [];
+        }
+    }
+
+    // ==================== REVIEW 資料存取 ====================
+
+    /**
+     * 取得所有可複習的項目（從 Lesson + Timeline 抓取 review: true 的項目）
+     * @param {string} lessonId - 可選：只抓取特定課程的複習項目
+     * @returns {Array} 複習項目陣列
+     */
+    async getReviewItems(lessonId = null) {
+        try {
+            const reviewItems = [];
+
+            // 1. 從 Lessons 抓取 vocabulary（review: true）
+            let lessonsQuery = this.db.collection('lessons');
+            if (lessonId) {
+                lessonsQuery = lessonsQuery.where(firebase.firestore.FieldPath.documentId(), '==', lessonId);
+            }
+
+            const lessons = await lessonsQuery.get();
+
+            for (const lessonDoc of lessons.docs) {
+                const vocabSnapshot = await lessonDoc.ref
+                    .collection('vocabulary')
+                    .where('review', '==', true)
+                    .get();
+
+                vocabSnapshot.forEach(vocabDoc => {
+                    reviewItems.push({
+                        id: vocabDoc.id,
+                        sourceType: 'lesson',
+                        sourceRef: `lessons/${lessonDoc.id}/vocabulary/${vocabDoc.id}`,
+                        lessonId: lessonDoc.id,
+                        ...vocabDoc.data()
+                    });
+                });
+            }
+
+            // 2. 從 Timeline 抓取 review: true 的項目
+            const timelineSnapshot = await this.db
+                .collection('timeline')
+                .where('review', '==', true)
+                .get();
+
+            timelineSnapshot.forEach(doc => {
+                reviewItems.push({
+                    id: doc.id,
+                    sourceType: 'timeline',
+                    sourceRef: `timeline/${doc.id}`,
+                    ...doc.data()
+                });
+            });
+
+            console.log(`📚 Found ${reviewItems.length} review items`);
+            return reviewItems;
+        } catch (error) {
+            console.error('Error getting review items:', error);
+            return [];
+        }
+    }
+
+    // ==================== 輔助方法 ====================
+
+    /**
+     * 取得所有課程列表
+     * @returns {Array} 課程列表
+     */
+    async getAllLessons() {
+        try {
+            const snapshot = await this.db
+                .collection('lessons')
+                .orderBy('order', 'asc')
+                .get();
+
+            const lessons = [];
+            snapshot.forEach(doc => {
+                lessons.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+
+            return lessons;
+        } catch (error) {
+            console.error('Error getting all lessons:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 檢查 Firestore 連接狀態
+     * @returns {boolean} 是否已連接
+     */
+    isConnected() {
+        return this.initialized && this.db !== null;
+    }
+}
+
+// 創建全域 Firestore 服務實例
+const firestoreService = new FirestoreService();
