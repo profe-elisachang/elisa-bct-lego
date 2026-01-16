@@ -1,6 +1,24 @@
 // Firebase & Firestore 初始化與資料存取
 // 遵循 Lego Method：從 Firestore 載入 Lesson、Timeline、Review 資料
 
+const FIRESTORE_JS_VERSION = 'debug-8';
+// #region agent log
+fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+        sessionId:'debug-session',
+        runId:'baseline',
+        hypothesisId:'H14',
+        location:'assets/js/firestore.js:module',
+        message:'Firestore module loaded',
+        data:{version:FIRESTORE_JS_VERSION},
+        timestamp:Date.now()
+    })
+}).catch(()=>{});
+// #endregion
+window.__firestoreVersion = FIRESTORE_JS_VERSION;
+
 class FirestoreService {
     constructor() {
         this.db = null;
@@ -39,7 +57,7 @@ class FirestoreService {
                     hypothesisId:'H1',
                     location:'assets/js/firestore.js:init',
                     message:'Firebase initialized',
-                    data:{projectId:firebaseConfig.projectId, storageBucket:firebaseConfig.storageBucket, initialized:this.initialized},
+                    data:{projectId:firebaseConfig.projectId, storageBucket:firebaseConfig.storageBucket, initialized:this.initialized, version:FIRESTORE_JS_VERSION},
                     timestamp:Date.now()
                 })
             }).catch(()=>{});
@@ -73,9 +91,25 @@ class FirestoreService {
      * @param {string} lessonId - 課程 ID（例如："lesson1"）
      * @returns {Object} 課程資料
      */
-    async getLesson(lessonId) {
+    async getLesson(lessonId, classId = null) {
         try {
-            const doc = await this.db.collection('lessons').doc(lessonId).get();
+            const resolved = await this.getLessonRef(lessonId, classId);
+            const doc = resolved.doc;
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({
+                    sessionId:'debug-session',
+                    runId:'baseline',
+                    hypothesisId:'H5',
+                    location:'assets/js/firestore.js:getLesson',
+                    message:'Lesson doc resolved',
+                    data:{lessonId, classId, source:resolved.source, exists:doc.exists},
+                    timestamp:Date.now()
+                })
+            }).catch(()=>{});
+            // #endregion
 
             if (!doc.exists) {
                 console.warn(`Lesson ${lessonId} not found`);
@@ -97,11 +131,10 @@ class FirestoreService {
      * @param {string} lessonId - 課程 ID
      * @returns {Array} 單字陣列，按 order 排序
      */
-    async getVocabulary(lessonId) {
+    async getVocabulary(lessonId, classId = null) {
         try {
-            const snapshot = await this.db
-                .collection('lessons')
-                .doc(lessonId)
+            const resolved = await this.getLessonRef(lessonId, classId);
+            const snapshot = await resolved.ref
                 .collection('vocabulary')
                 .orderBy('order', 'asc')
                 .get();
@@ -126,11 +159,10 @@ class FirestoreService {
      * @param {string} lessonId - 課程 ID
      * @returns {Array} 對話陣列
      */
-    async getDialogue(lessonId) {
+    async getDialogue(lessonId, classId = null) {
         try {
-            const snapshot = await this.db
-                .collection('lessons')
-                .doc(lessonId)
+            const resolved = await this.getLessonRef(lessonId, classId);
+            const snapshot = await resolved.ref
                 .collection('dialogue')
                 .orderBy('order', 'asc')
                 .get();
@@ -155,11 +187,10 @@ class FirestoreService {
      * @param {string} lessonId - 課程 ID
      * @returns {Array} 閱讀內容陣列
      */
-    async getReading(lessonId) {
+    async getReading(lessonId, classId = null) {
         try {
-            const snapshot = await this.db
-                .collection('lessons')
-                .doc(lessonId)
+            const resolved = await this.getLessonRef(lessonId, classId);
+            const snapshot = await resolved.ref
                 .collection('reading')
                 .orderBy('order', 'asc')
                 .get();
@@ -184,25 +215,235 @@ class FirestoreService {
      * @param {string} lessonId - 課程 ID
      * @returns {Object} 完整課程資料
      */
-    async getFullLesson(lessonId) {
+    async getFullLesson(lessonId, classId = null) {
         try {
-            const [lesson, vocabulary, dialogue, reading] = await Promise.all([
-                this.getLesson(lessonId),
-                this.getVocabulary(lessonId),
-                this.getDialogue(lessonId),
-                this.getReading(lessonId)
+            const defaultClassId = window?.BCT_COURSE_CONFIG?.defaultClassId;
+            const resolved = await this.getLessonRef(lessonId, classId);
+            const doc = resolved.doc;
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({
+                    sessionId:'debug-session',
+                    runId:'baseline',
+                    hypothesisId:'H6',
+                    location:'assets/js/firestore.js:getFullLesson',
+                    message:'Resolve lesson ref',
+                    data:{lessonId, classId, source:resolved.source, exists:doc.exists, version:FIRESTORE_JS_VERSION},
+                    timestamp:Date.now()
+                })
+            }).catch(()=>{});
+            // #endregion
+            if (!doc.exists) {
+                return null;
+            }
+
+            const [vocabulary, dialogue, reading] = await Promise.all([
+                resolved.ref.collection('vocabulary').orderBy('order', 'asc').get(),
+                resolved.ref.collection('dialogue').orderBy('order', 'asc').get(),
+                resolved.ref.collection('reading').orderBy('order', 'asc').get()
             ]);
 
+            const vocabArr = [];
+            vocabulary.forEach(doc => vocabArr.push({ id: doc.id, ...doc.data() }));
+            const dialogueArr = [];
+            dialogue.forEach(doc => dialogueArr.push({ id: doc.id, ...doc.data() }));
+            const readingArr = [];
+            reading.forEach(doc => readingArr.push({ id: doc.id, ...doc.data() }));
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({
+                    sessionId:'debug-session',
+                    runId:'baseline',
+                    hypothesisId:'H12',
+                    location:'assets/js/firestore.js:getFullLesson',
+                    message:'Collections counts',
+                    data:{
+                        lessonId,
+                        classId,
+                        source:resolved.source,
+                        vocabCount:vocabArr.length,
+                        dialogueCount:dialogueArr.length,
+                        readingCount:readingArr.length
+                    },
+                    timestamp:Date.now()
+                })
+            }).catch(()=>{});
+            // #endregion
+            if (classId && classId === defaultClassId && resolved.source === 'courses') {
+                const legacyRef = this.db.collection('lessons').doc(lessonId);
+                const [legacyVocabSnap, legacyDialogueSnap, legacyReadingSnap] = await Promise.all([
+                    legacyRef.collection('vocabulary').orderBy('order', 'asc').get(),
+                    legacyRef.collection('dialogue').orderBy('order', 'asc').get(),
+                    legacyRef.collection('reading').orderBy('order', 'asc').get()
+                ]);
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({
+                        sessionId:'debug-session',
+                        runId:'baseline',
+                        hypothesisId:'H12',
+                        location:'assets/js/firestore.js:getFullLesson',
+                        message:'Legacy collections counts',
+                        data:{
+                            lessonId,
+                            classId,
+                            legacyVocab:legacyVocabSnap.size,
+                            legacyDialogue:legacyDialogueSnap.size,
+                            legacyReading:legacyReadingSnap.size
+                        },
+                        timestamp:Date.now()
+                    })
+                }).catch(()=>{});
+                // #endregion
+
+                const legacyVocabArr = [];
+                legacyVocabSnap.forEach(doc => legacyVocabArr.push({ id: doc.id, ...doc.data() }));
+                const legacyDialogueArr = [];
+                legacyDialogueSnap.forEach(doc => legacyDialogueArr.push({ id: doc.id, ...doc.data() }));
+                const legacyReadingArr = [];
+                legacyReadingSnap.forEach(doc => legacyReadingArr.push({ id: doc.id, ...doc.data() }));
+
+                const useLegacyVocab = vocabArr.length === 0 && legacyVocabArr.length > 0;
+                const useLegacyDialogue = dialogueArr.length === 0 && legacyDialogueArr.length > 0;
+                const useLegacyReading = readingArr.length === 0 && legacyReadingArr.length > 0;
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({
+                        sessionId:'debug-session',
+                        runId:'baseline',
+                        hypothesisId:'H13',
+                        location:'assets/js/firestore.js:getFullLesson',
+                        message:'Fallback evaluation',
+                        data:{
+                            lessonId,
+                            classId,
+                            vocabCount:vocabArr.length,
+                            dialogueCount:dialogueArr.length,
+                            readingCount:readingArr.length,
+                            legacyVocab:legacyVocabArr.length,
+                            legacyDialogue:legacyDialogueArr.length,
+                            legacyReading:legacyReadingArr.length,
+                            useLegacyVocab,
+                            useLegacyDialogue,
+                            useLegacyReading
+                        },
+                        timestamp:Date.now()
+                    })
+                }).catch(()=>{});
+                // #endregion
+
+                if (useLegacyVocab) {
+                    vocabArr.splice(0, vocabArr.length, ...legacyVocabArr);
+                }
+                if (useLegacyDialogue) {
+                    dialogueArr.splice(0, dialogueArr.length, ...legacyDialogueArr);
+                }
+                if (useLegacyReading) {
+                    readingArr.splice(0, readingArr.length, ...legacyReadingArr);
+                }
+            }
+
             return {
-                ...lesson,
-                vocabulary,
-                dialogue,
-                reading
+                id: doc.id,
+                ...doc.data(),
+                vocabulary: vocabArr,
+                dialogue: dialogueArr,
+                reading: readingArr
             };
         } catch (error) {
             console.error('Error getting full lesson:', error);
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({
+                    sessionId:'debug-session',
+                    runId:'baseline',
+                    hypothesisId:'H12',
+                    location:'assets/js/firestore.js:getFullLesson',
+                    message:'getFullLesson error',
+                    data:{message:error?.message || 'unknown', stack:(error?.stack||'').slice(0,200)},
+                    timestamp:Date.now()
+                })
+            }).catch(()=>{});
+            // #endregion
             return null;
         }
+    }
+
+    async getLessonRef(lessonId, classId = null) {
+        const defaultClassId = window?.BCT_COURSE_CONFIG?.defaultClassId;
+        if (classId) {
+            const courseRef = this.db
+                .collection('courses')
+                .doc(classId)
+                .collection('lessons')
+                .doc(lessonId);
+            const courseDoc = await courseRef.get();
+            if (courseDoc.exists) {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({
+                        sessionId:'debug-session',
+                        runId:'baseline',
+                        hypothesisId:'H5',
+                        location:'assets/js/firestore.js:getLessonRef',
+                        message:'Resolved to courses path',
+                        data:{lessonId, classId, defaultClassId, exists:true},
+                        timestamp:Date.now()
+                    })
+                }).catch(()=>{});
+                // #endregion
+                return { ref: courseRef, doc: courseDoc, source: 'courses' };
+            }
+            if (classId !== defaultClassId) {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({
+                        sessionId:'debug-session',
+                        runId:'baseline',
+                        hypothesisId:'H5',
+                        location:'assets/js/firestore.js:getLessonRef',
+                        message:'Courses path empty for non-default class',
+                        data:{lessonId, classId, defaultClassId, exists:false},
+                        timestamp:Date.now()
+                    })
+                }).catch(()=>{});
+                // #endregion
+                return { ref: courseRef, doc: courseDoc, source: 'courses' };
+            }
+        }
+
+        const legacyRef = this.db.collection('lessons').doc(lessonId);
+        const legacyDoc = await legacyRef.get();
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                sessionId:'debug-session',
+                runId:'baseline',
+                hypothesisId:'H5',
+                location:'assets/js/firestore.js:getLessonRef',
+                message:'Resolved to legacy lessons path',
+                data:{lessonId, classId, defaultClassId, exists:legacyDoc.exists},
+                timestamp:Date.now()
+            })
+        }).catch(()=>{});
+        // #endregion
+        return { ref: legacyRef, doc: legacyDoc, source: 'lessons' };
     }
 
     // ==================== TIMELINE 資料存取 ====================

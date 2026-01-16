@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>课程编辑器 - BCT Lego</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Microsoft JhengHei', sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .controls label {
+            font-weight: bold;
+        }
+
+        .controls select {
+            padding: 12px 20px;
+            border: 2px solid #FF8C42;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #FF8C42;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #E67A31;
+        }
+
+        .btn-success {
+            background: #28A745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #DC3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #C82333;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        /* 两栏布局 */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+
+        /* 左侧课程列表 */
+        .lesson-list {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        .lesson-list h3 {
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+
+        .lesson-item {
+            padding: 12px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 8px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+
+        .lesson-item:hover {
+            border-color: #FF8C42;
+            background: #fff8f4;
+        }
+
+        .lesson-item.active {
+            border-color: #FF8C42;
+            background: #FF8C42;
+            color: white;
+        }
+
+        .lesson-item .lesson-num {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .lesson-item .lesson-title {
+            font-size: 13px;
+            opacity: 0.8;
+            margin-top: 4px;
+        }
+
+        /* 右侧编辑区 */
+        .editor-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .editor-header h2 {
+            color: #FF8C42;
+        }
+
+        .editor-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .editor-tab {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .editor-tab.active {
+            background: #FF8C42;
+            color: white;
+        }
+
+        .editor-tab .count {
+            background: rgba(0,0,0,0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+
+        .editor-tab.active .count {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* 编辑内容区 */
+        .editor-content {
+            display: none;
+        }
+
+        .editor-content.active {
+            display: block;
+        }
+
+        /* 单字/对话项目 */
+        .item-card {
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .item-card:hover {
+            border-color: #FF8C42;
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .item-order {
+            background: #FF8C42;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .item-fields {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .item-fields.single-col {
+            grid-template-columns: 1fr;
+        }
+
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .field-group label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .field-group input,
+        .field-group textarea {
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .field-group input:focus,
+        .field-group textarea:focus {
+            outline: none;
+            border-color: #FF8C42;
+        }
+
+        .field-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        /* 新增按钮 */
+        .add-item-btn {
+            width: 100%;
+            padding: 15px;
+            background: #f0f0f0;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .add-item-btn:hover {
+            border-color: #FF8C42;
+            color: #FF8C42;
+            background: #fff8f4;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state .icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        /* 加载中 */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        /* 日志 */
+        .log-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .log-content {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .success { color: #28A745; }
+        .error { color: #DC3545; }
+        .warning { color: #FFC107; }
+        .info { color: #17A2B8; }
+
+        /* 课程基本信息 */
+        .lesson-info {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📝 课程编辑器</h1>
+            <p class="subtitle">从 Firestore 载入课程数据进行编辑</p>
+        </header>
+
+        <div class="controls">
+            <label>选择课程：</label>
+            <select id="course-select" onchange="loadLessonList()">
+                <option value="btc1">BTC1 - 初级</option>
+                <option value="btc2">BTC2 - 中级</option>
+                <option value="btc3">BTC3 - 高级</option>
+            </select>
+            <button class="btn-primary" onclick="loadLessonList()">🔄 刷新列表</button>
+            <a href="batch-upload.html" style="margin-left: auto;">
+                <button class="btn-secondary">📤 前往批次上传</button>
+            </a>
+        </div>
+
+        <div class="main-layout">
+            <!-- 左侧课程列表 -->
+            <div class="lesson-list">
+                <h3>📚 课程列表</h3>
+                <div id="lesson-list-content">
+                    <div class="loading">载入中...</div>
+                </div>
+            </div>
+
+            <!-- 右侧编辑区 -->
+            <div class="editor-panel">
+                <div id="editor-placeholder" class="empty-state">
+                    <div class="icon">👈</div>
+                    <h2>选择课程开始编辑</h2>
+                    <p>从左侧列表选择一个课程</p>
+                </div>
+
+                <div id="editor-area" style="display: none;">
+                    <div class="editor-header">
+                        <h2 id="editor-title">Lesson 1</h2>
+                        <div>
+                            <button class="btn-success" onclick="saveAllChanges()">💾 保存全部修改</button>
+                        </div>
+                    </div>
+
+                    <!-- 课程基本信息 -->
+                    <div class="lesson-info">
+                        <div class="field-group">
+                            <label>课程标题</label>
+                            <input type="text" id="lesson-title-input" placeholder="输入标题">
+                        </div>
+                        <div class="field-group">
+                            <label>排序 (Order)</label>
+                            <input type="number" id="lesson-order-input">
+                        </div>
+                        <div class="field-group">
+                            <label>日期</label>
+                            <input type="text" id="lesson-date-input" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Tab 切换 -->
+                    <div class="editor-tabs">
+                        <button class="editor-tab active" data-tab="vocabulary" onclick="switchTab('vocabulary')">
+                            📖 单字 <span class="count" id="vocab-count">0</span>
+                        </button>
+                        <button class="editor-tab" data-tab="dialogue" onclick="switchTab('dialogue')">
+                            💬 对话 <span class="count" id="dialogue-count">0</span>
+                        </button>
+                        <button class="editor-tab" data-tab="reading" onclick="switchTab('reading')">
+                            📄 阅读 <span class="count" id="reading-count">0</span>
+                        </button>
+                    </div>
+
+                    <!-- 单字编辑区 -->
+                    <div id="vocabulary-editor" class="editor-content active">
+                        <div id="vocabulary-items"></div>
+                        <button class="add-item-btn" onclick="addVocabItem()">➕ 新增单字</button>
+                    </div>
+
+                    <!-- 对话编辑区 -->
+                    <div id="dialogue-editor" class="editor-content">
+                        <div id="dialogue-items"></div>
+                        <button class="add-item-btn" onclick="addDialogueItem()">➕ 新增对话句</button>
+                    </div>
+
+                    <!-- 阅读编辑区 -->
+                    <div id="reading-editor" class="editor-content">
+                        <div id="reading-items"></div>
+                        <button class="add-item-btn" onclick="addReadingItem()">➕ 新增阅读项</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="log-container">
+            <h3>📋 操作日志</h3>
+            <div id="log-content" class="log-content">等待操作...</div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="assets/js/firestore.js"></script>
+
+    <script>
+        // 全域变量
+        let currentCourse = 'btc1';
+        let currentLessonId = null;
+        let currentLessonData = null;
+        let vocabularyData = [];
+        let dialogueData = [];
+        let readingData = [];
+
+        // 簡易老師自動登入
+        async function ensureSignedIn() {
+            // 確保 Firebase 已初始化
+            if (!firestoreService.isConnected()) {
+                await firestoreService.init();
+            }
+            if (!firestoreService.isConnected()) {
+                log('❌ Firestore 未連線，無法登入', 'error');
+                return;
+            }
+            if (firebase.auth().currentUser) return;
+            try {
+                await firebase.auth().signInWithEmailAndPassword('elisachangn@gmail.com', 'wo3ai4PAco');
+                log('✅ 老師帳號登入成功', 'success');
+            } catch (err) {
+                console.error('signin failed', err);
+                log(`❌ 登入失敗：${err.message || err}`, 'error');
+                alert('登入失敗，請確認帳號密碼或稍後再試');
+            }
+        }
+
+        // 初始化
+        async function init() {
+            log('🚀 初始化课程编辑器...', 'info');
+
+            if (!firestoreService.isConnected()) {
+                await firestoreService.init();
+            }
+
+            // 確保已登入（防止未登入寫入）
+            await ensureSignedIn();
+
+            if (!firestoreService.isConnected()) {
+                log('❌ Firestore 未初始化成功，請稍後重試', 'error');
+                alert('Firestore 連線失敗，請檢查網路或重新整理');
+                return;
+            }
+
+            loadLessonList();
+        }
+
+        // 载入课程列表
+        async function loadLessonList() {
+            if (!firestoreService.isConnected() || !firestoreService.db) {
+                log('❌ Firestore 尚未連線，無法載入課程列表', 'error');
+                alert('Firestore 尚未連線，請重新整理或稍後再試');
+                return;
+            }
+            currentCourse = document.getElementById('course-select').value;
+            const container = document.getElementById('lesson-list-content');
+            container.innerHTML = '<div class="loading">载入中...</div>';
+
+            log(`📚 载入 ${currentCourse.toUpperCase()} 课程列表...`, 'info');
+
+            try {
+                const courseRef = firestoreService.db
+                    .collection('courses')
+                    .doc(currentCourse)
+                    .collection('lessons');
+
+                // 先嘗試新結構（courses/{course}/lessons）
+                let snapshot = await courseRef.orderBy('order', 'asc').get();
+                let fromFallback = false;
+                let fromAllLessons = false;
+
+                // 若無資料，改查舊結構（根層 lessons, 以 course 欄位過濾）
+                if (snapshot.empty) {
+                    log('⚠️ 新结构无资料，尝试读取旧结构 lessons/*', 'warning');
+                    snapshot = await firestoreService.db
+                        .collection('lessons')
+                        .where('course', '==', currentCourse)
+                        .get(); // 不加 orderBy 以避免複合索引需求
+                    fromFallback = true;
+                }
+
+                // 若仍無資料，再嘗試無過濾讀取全部 lessons（避免 course 欄位缺漏）
+                if (snapshot.empty) {
+                    log('⚠️ 旧结构过滤后无资料，尝试读取全部 lessons/*（未过滤）', 'warning');
+                    snapshot = await firestoreService.db
+                        .collection('lessons')
+                        .get();
+                    fromAllLessons = true;
+                }
+
+                if (snapshot.empty) {
+                    // 最後嘗試 fallback：直接從舊根層取 lesson1 ~ lesson20 看有沒有
+                    log('⚠️ 全部查询为空，尝试按 lesson1~lesson20 扫描旧结构', 'warning');
+                    const fallbackIds = [];
+                    for (let i = 1; i <= 20; i++) {
+                        fallbackIds.push(`lesson${i}`);
+                    }
+                    const manualHits = [];
+                    for (const lid of fallbackIds) {
+                        const doc = await firestoreService.db.collection('lessons').doc(lid).get();
+                        if (doc.exists) {
+                            manualHits.push({ id: doc.id, data: doc.data() });
+                        }
+                    }
+                    if (manualHits.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <p>尚无课程</p>
+                                <p style="font-size: 12px; margin-top: 10px;">
+                                    <a href="batch-upload.html">前往批次上传</a>
+                                </p>
+                            </div>
+                        `;
+                        log(`⚠️ ${currentCourse.toUpperCase()} 没有课程数据`, 'warning');
+                        return;
+                    }
+                    // 如果掃描有找到，直接用 manualHits
+                    const lessonsArr = manualHits.sort((a, b) => (a.data.order || 0) - (b.data.order || 0));
+                    let htmlManual = '';
+                    lessonsArr.forEach(({ id, data }) => {
+                        htmlManual += `
+                            <div class="lesson-item" onclick="loadLesson('${id}')" id="lesson-item-${id}">
+                                <div class="lesson-num">${id}</div>
+                                <div class="lesson-title">${data.title || '未命名'}${data.course ? ` · ${data.course}` : ''}</div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = htmlManual;
+                    log(`✅ 载入 ${lessonsArr.length} 个课程（旧结构扫描）`, 'success');
+                    return;
+                }
+
+                // 收集並在 fallback 時於前端排序，避免索引需求
+                const lessonsArr = [];
+                snapshot.forEach(doc => lessonsArr.push({ id: doc.id, data: doc.data() }));
+                if (fromFallback || fromAllLessons) {
+                    lessonsArr.sort((a, b) => (a.data.order || 0) - (b.data.order || 0));
+                }
+
+                let html = '';
+                lessonsArr.forEach(({ id, data }) => {
+                    html += `
+                        <div class="lesson-item" onclick="loadLesson('${id}')" id="lesson-item-${id}">
+                            <div class="lesson-num">${id}</div>
+                            <div class="lesson-title">${data.title || '未命名'}${data.course ? ` · ${data.course}` : ''}</div>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+                log(`✅ 载入 ${lessonsArr.length} 个课程`, 'success');
+
+            } catch (error) {
+                container.innerHTML = `<div class="empty-state"><p>载入失败: ${error.message}</p></div>`;
+                log(`❌ 载入失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 载入单个课程
+        async function loadLesson(lessonId) {
+            currentLessonId = lessonId;
+            log(`📖 载入 ${lessonId}...`, 'info');
+
+            // 更新左侧选中状态
+            document.querySelectorAll('.lesson-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(`lesson-item-${lessonId}`)?.classList.add('active');
+
+            // 显示编辑区
+            document.getElementById('editor-placeholder').style.display = 'none';
+            document.getElementById('editor-area').style.display = 'block';
+            document.getElementById('editor-title').textContent = `${currentCourse.toUpperCase()} - ${lessonId}`;
+
+            try {
+                // 先以新結構為主
+                let lessonRef = firestoreService.db
+                    .collection('courses')
+                    .doc(currentCourse)
+                    .collection('lessons')
+                    .doc(lessonId);
+
+                let lessonDoc = await lessonRef.get();
+
+                // 若新結構不存在，嘗試舊結構（根層 lessons/{lessonId}）
+                if (!lessonDoc.exists) {
+                    log('⚠️ 新结构无此课，尝试旧结构 lessons/*', 'warning');
+                    lessonRef = firestoreService.db.collection('lessons').doc(lessonId);
+                    lessonDoc = await lessonRef.get();
+                }
+
+                // 并行载入所有数据
+                const [vocabSnap, dialogueSnap, readingSnap] = await Promise.all([
+                    lessonRef.collection('vocabulary').orderBy('order', 'asc').get(),
+                    lessonRef.collection('dialogue').orderBy('order', 'asc').get(),
+                    lessonRef.collection('reading').orderBy('order', 'asc').get()
+                ]);
+
+                // 课程基本信息
+                currentLessonData = lessonDoc.data() || {};
+                document.getElementById('lesson-title-input').value = currentLessonData.title || '';
+                document.getElementById('lesson-order-input').value = currentLessonData.order || 1;
+                document.getElementById('lesson-date-input').value = currentLessonData.date || '';
+
+                // 单字数据
+                vocabularyData = [];
+                vocabSnap.forEach(doc => {
+                    vocabularyData.push({ id: doc.id, ...doc.data() });
+                });
+
+                // 对话数据
+                dialogueData = [];
+                dialogueSnap.forEach(doc => {
+                    dialogueData.push({ id: doc.id, ...doc.data() });
+                });
+
+                // 阅读数据
+                readingData = [];
+                readingSnap.forEach(doc => {
+                    readingData.push({ id: doc.id, ...doc.data() });
+                });
+
+                // 若新結構子集合為空，嘗試舊根層再抓一次
+                const isAllEmpty = vocabularyData.length === 0 && dialogueData.length === 0 && readingData.length === 0;
+                if (isAllEmpty) {
+                    const fallbackRootRef = firestoreService.db.collection('lessons').doc(lessonId);
+                    const [rootVocab, rootDialogue, rootReading] = await Promise.all([
+                        fallbackRootRef.collection('vocabulary').orderBy('order', 'asc').get(),
+                        fallbackRootRef.collection('dialogue').orderBy('order', 'asc').get(),
+                        fallbackRootRef.collection('reading').orderBy('order', 'asc').get()
+                    ]);
+                    const hasRootData = !rootVocab.empty || !rootDialogue.empty || !rootReading.empty;
+                    if (hasRootData) {
+                        vocabularyData = [];
+                        dialogueData = [];
+                        readingData = [];
+                        rootVocab.forEach(doc => vocabularyData.push({ id: doc.id, ...doc.data() }));
+                        rootDialogue.forEach(doc => dialogueData.push({ id: doc.id, ...doc.data() }));
+                        rootReading.forEach(doc => readingData.push({ id: doc.id, ...doc.data() }));
+                        log('ℹ️ 新结构为空，已改从旧结构 lessons/* 抓取', 'info');
+                    }
+                }
+
+                // 更新计数
+                document.getElementById('vocab-count').textContent = vocabularyData.length;
+                document.getElementById('dialogue-count').textContent = dialogueData.length;
+                document.getElementById('reading-count').textContent = readingData.length;
+
+                // 渲染
+                renderVocabulary();
+                renderDialogue();
+                renderReading();
+
+                log(`✅ 载入完成: ${vocabularyData.length} 单字, ${dialogueData.length} 对话, ${readingData.length} 阅读`, 'success');
+
+            } catch (error) {
+                log(`❌ 载入失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 切换 Tab
+        function switchTab(tab) {
+            document.querySelectorAll('.editor-tab').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.editor-content').forEach(el => el.classList.remove('active'));
+
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+            document.getElementById(`${tab}-editor`).classList.add('active');
+        }
+
+        // 渲染单字列表
+        function renderVocabulary() {
+            const container = document.getElementById('vocabulary-items');
+            if (vocabularyData.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>暂无单字</p></div>';
+                return;
+            }
+
+            container.innerHTML = vocabularyData.map((item, index) => `
+                <div class="item-card" data-index="${index}">
+                    <div class="item-header">
+                        <span class="item-order">#${item.order || index + 1}</span>
+                        <button class="btn-danger" onclick="deleteVocabItem(${index})" style="padding: 5px 10px; font-size: 12px;">🗑️</button>
+                    </div>
+                    <div class="item-fields">
+                        <div class="field-group">
+                            <label>汉字</label>
+                            <input type="text" value="${item.character || ''}" onchange="updateVocab(${index}, 'character', this.value)">
+                        </div>
+                        <div class="field-group">
+                            <label>拼音</label>
+                            <input type="text" value="${item.pinyin || ''}" onchange="updateVocab(${index}, 'pinyin', this.value)">
+                        </div>
+                        <div class="field-group">
+                            <label>English</label>
+                            <input type="text" value="${item.english || ''}" onchange="updateVocab(${index}, 'english', this.value)">
+                        </div>
+                        <div class="field-group">
+                            <label>Español</label>
+                            <input type="text" value="${item.spanish || ''}" onchange="updateVocab(${index}, 'spanish', this.value)">
+                        </div>
+                        <div class="field-group">
+                            <label>HSK</label>
+                            <input type="number" value="${item.hsk || ''}" onchange="updateVocab(${index}, 'hsk', parseInt(this.value))">
+                        </div>
+                        <div class="field-group">
+                            <label>Order</label>
+                            <input type="number" value="${item.order || ''}" onchange="updateVocab(${index}, 'order', parseInt(this.value))">
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 渲染对话列表
+        function renderDialogue() {
+            const container = document.getElementById('dialogue-items');
+            if (dialogueData.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>暂无对话</p></div>';
+                return;
+            }
+
+            container.innerHTML = dialogueData.map((item, index) => `
+                <div class="item-card" data-index="${index}">
+                    <div class="item-header">
+                        <span class="item-order">#${item.order || index + 1} ${item.group ? `(${item.group})` : ''}</span>
+                        <button class="btn-danger" onclick="deleteDialogueItem(${index})" style="padding: 5px 10px; font-size: 12px;">🗑️</button>
+                    </div>
+                    <div class="item-fields single-col">
+                        <div class="field-group">
+                            <label>汉字</label>
+                            <textarea onchange="updateDialogue(${index}, 'character', this.value)">${item.character || ''}</textarea>
+                        </div>
+                        <div class="field-group">
+                            <label>拼音</label>
+                            <textarea onchange="updateDialogue(${index}, 'pinyin', this.value)">${item.pinyin || ''}</textarea>
+                        </div>
+                        <div class="field-group">
+                            <label>English</label>
+                            <textarea onchange="updateDialogue(${index}, 'english', this.value)">${item.english || ''}</textarea>
+                        </div>
+                        <div class="field-group">
+                            <label>Español</label>
+                            <textarea onchange="updateDialogue(${index}, 'spanish', this.value)">${item.spanish || ''}</textarea>
+                        </div>
+                    </div>
+                    <div class="item-fields" style="margin-top: 10px;">
+                        <div class="field-group">
+                            <label>Group</label>
+                            <input type="text" value="${item.group || ''}" onchange="updateDialogue(${index}, 'group', this.value)">
+                        </div>
+                        <div class="field-group">
+                            <label>Order</label>
+                            <input type="number" value="${item.order || ''}" onchange="updateDialogue(${index}, 'order', parseInt(this.value))">
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 渲染阅读列表
+        function renderReading() {
+            const container = document.getElementById('reading-items');
+            if (readingData.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>暂无阅读内容</p></div>';
+                return;
+            }
+
+            container.innerHTML = readingData.map((item, index) => `
+                <div class="item-card" data-index="${index}">
+                    <div class="item-header">
+                        <span class="item-order">#${item.order || index + 1}</span>
+                        <button class="btn-danger" onclick="deleteReadingItem(${index})" style="padding: 5px 10px; font-size: 12px;">🗑️</button>
+                    </div>
+                    <div class="item-fields single-col">
+                        <div class="field-group">
+                            <label>汉字</label>
+                            <textarea onchange="updateReading(${index}, 'character', this.value)">${item.character || ''}</textarea>
+                        </div>
+                        <div class="field-group">
+                            <label>拼音</label>
+                            <textarea onchange="updateReading(${index}, 'pinyin', this.value)">${item.pinyin || ''}</textarea>
+                        </div>
+                        <div class="field-group">
+                            <label>English</label>
+                            <textarea onchange="updateReading(${index}, 'english', this.value)">${item.english || ''}</textarea>
+                        </div>
+                        <div class="field-group">
+                            <label>Español</label>
+                            <textarea onchange="updateReading(${index}, 'spanish', this.value)">${item.spanish || ''}</textarea>
+                        </div>
+                    </div>
+                    <div class="item-fields" style="margin-top: 10px;">
+                        <div class="field-group">
+                            <label>Order</label>
+                            <input type="number" value="${item.order || ''}" onchange="updateReading(${index}, 'order', parseInt(this.value))">
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 更新数据函数
+        function updateVocab(index, field, value) {
+            vocabularyData[index][field] = value;
+            vocabularyData[index]._modified = true;
+        }
+
+        function updateDialogue(index, field, value) {
+            dialogueData[index][field] = value;
+            dialogueData[index]._modified = true;
+        }
+
+        function updateReading(index, field, value) {
+            readingData[index][field] = value;
+            readingData[index]._modified = true;
+        }
+
+        // 新增项目
+        function addVocabItem() {
+            const newOrder = vocabularyData.length + 1;
+            vocabularyData.push({
+                id: `vocab_${String(newOrder).padStart(3, '0')}_new`,
+                character: '',
+                pinyin: '',
+                english: '',
+                spanish: '',
+                hsk: 1,
+                order: newOrder,
+                type: 'vocab',
+                review: true,
+                _new: true
+            });
+            document.getElementById('vocab-count').textContent = vocabularyData.length;
+            renderVocabulary();
+        }
+
+        function addDialogueItem() {
+            const newOrder = dialogueData.length + 1;
+            dialogueData.push({
+                id: `sentence_${String(newOrder).padStart(3, '0')}_new`,
+                character: '',
+                pinyin: '',
+                english: '',
+                spanish: '',
+                group: 'group-1',
+                order: newOrder,
+                type: 'sentence',
+                review: false,
+                _new: true
+            });
+            document.getElementById('dialogue-count').textContent = dialogueData.length;
+            renderDialogue();
+        }
+
+        function addReadingItem() {
+            const newOrder = readingData.length + 1;
+            readingData.push({
+                id: `reading_${String(newOrder).padStart(3, '0')}_new`,
+                character: '',
+                pinyin: '',
+                english: '',
+                spanish: '',
+                order: newOrder,
+                type: 'reading',
+                review: false,
+                _new: true
+            });
+            document.getElementById('reading-count').textContent = readingData.length;
+            renderReading();
+        }
+
+        // 删除项目
+        function deleteVocabItem(index) {
+            if (confirm('确定要删除这个单字吗？')) {
+                const item = vocabularyData[index];
+                if (!item._new) {
+                    item._deleted = true;
+                } else {
+                    vocabularyData.splice(index, 1);
+                }
+                document.getElementById('vocab-count').textContent = vocabularyData.filter(v => !v._deleted).length;
+                renderVocabulary();
+            }
+        }
+
+        function deleteDialogueItem(index) {
+            if (confirm('确定要删除这个对话吗？')) {
+                const item = dialogueData[index];
+                if (!item._new) {
+                    item._deleted = true;
+                } else {
+                    dialogueData.splice(index, 1);
+                }
+                document.getElementById('dialogue-count').textContent = dialogueData.filter(d => !d._deleted).length;
+                renderDialogue();
+            }
+        }
+
+        function deleteReadingItem(index) {
+            if (confirm('确定要删除这个阅读项吗？')) {
+                const item = readingData[index];
+                if (!item._new) {
+                    item._deleted = true;
+                } else {
+                    readingData.splice(index, 1);
+                }
+                document.getElementById('reading-count').textContent = readingData.filter(r => !r._deleted).length;
+                renderReading();
+            }
+        }
+
+        // 保存全部修改
+        async function saveAllChanges() {
+            if (!currentLessonId) {
+                alert('请先选择一个课程');
+                return;
+            }
+
+            log(`💾 开始保存 ${currentLessonId}...`, 'info');
+
+            try {
+                const lessonRef = firestoreService.db
+                    .collection('courses')
+                    .doc(currentCourse)
+                    .collection('lessons')
+                    .doc(currentLessonId);
+
+                // 確保課程文件存在：不存在就建立再更新
+                const baseData = {
+                    title: document.getElementById('lesson-title-input').value,
+                    order: parseInt(document.getElementById('lesson-order-input').value) || 1,
+                    date: currentLessonData?.date || new Date().toISOString().split('T')[0],
+                    course: currentCourse,
+                    scope: 'lesson'
+                };
+
+                const lessonDoc = await lessonRef.get();
+                if (!lessonDoc.exists) {
+                    await lessonRef.set(baseData);
+                    log('✅ 课程文件已创建并写入基本信息', 'success');
+                } else {
+                    await lessonRef.update(baseData);
+                    log('✅ 课程基本信息已更新', 'success');
+                }
+
+                // 保存单字
+                for (const item of vocabularyData) {
+                    if (item._deleted) {
+                        await lessonRef.collection('vocabulary').doc(item.id).delete();
+                        log(`🗑️ 删除单字: ${item.character}`, 'warning');
+                    } else if (item._new) {
+                        const docId = `vocab_${String(item.order).padStart(3, '0')}`;
+                        const { id, _new, _modified, ...data } = item;
+                        await lessonRef.collection('vocabulary').doc(docId).set(data);
+                        log(`➕ 新增单字: ${item.character}`, 'success');
+                    } else if (item._modified) {
+                        const { id, _new, _modified, ...data } = item;
+                        await lessonRef.collection('vocabulary').doc(item.id).set(data, { merge: true });
+                        log(`📝 更新单字(含自動建檔): ${item.character}`, 'info');
+                    }
+                }
+
+                // 保存对话
+                for (const item of dialogueData) {
+                    if (item._deleted) {
+                        await lessonRef.collection('dialogue').doc(item.id).delete();
+                        log(`🗑️ 删除对话: ${item.character?.substring(0, 10)}...`, 'warning');
+                    } else if (item._new) {
+                        const docId = `sentence_${String(item.order).padStart(3, '0')}`;
+                        const { id, _new, _modified, ...data } = item;
+                        await lessonRef.collection('dialogue').doc(docId).set(data);
+                        log(`➕ 新增对话`, 'success');
+                    } else if (item._modified) {
+                        const { id, _new, _modified, ...data } = item;
+                        await lessonRef.collection('dialogue').doc(item.id).set(data, { merge: true });
+                        log(`📝 更新对话(含自動建檔)`, 'info');
+                    }
+                }
+
+                // 保存阅读
+                for (const item of readingData) {
+                    if (item._deleted) {
+                        await lessonRef.collection('reading').doc(item.id).delete();
+                        log(`🗑️ 删除阅读项`, 'warning');
+                    } else if (item._new) {
+                        const docId = `reading_${String(item.order).padStart(3, '0')}`;
+                        const { id, _new, _modified, ...data } = item;
+                        await lessonRef.collection('reading').doc(docId).set(data);
+                        log(`➕ 新增阅读项`, 'success');
+                    } else if (item._modified) {
+                        const { id, _new, _modified, ...data } = item;
+                        await lessonRef.collection('reading').doc(item.id).set(data, { merge: true });
+                        log(`📝 更新阅读项(含自動建檔)`, 'info');
+                    }
+                }
+
+                log('🎉 全部保存完成！', 'success');
+                alert('保存成功！');
+
+                // 重新载入数据
+                await loadLesson(currentLessonId);
+
+            } catch (error) {
+                log(`❌ 保存失败: ${error.message}`, 'error');
+                alert('保存失败: ' + error.message);
+            }
+        }
+
+        // 日志函数
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log-content');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `<span class="${type}">[${timestamp}] ${message}</span>\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // 页面载入时初始化
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BCT Lesson - Template B</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/nav-global.css">
+  <link rel="stylesheet" href="styles/templates/lesson-b.css">
+</head>
+<body class="template-b">
+  <div class="container template-b-container">
+    <header class="b-topbar">
+      <div class="logo">Logo</div>
+      <div class="student">学生</div>
+    </header>
+
+    <div class="b-layout">
+      <aside class="b-sidebar">
+        <div class="nav-dropdown" id="sidebar-course-dropdown">
+          <button type="button" class="nav-dropdown-btn" id="sidebar-course-btn">课程选择 ▼</button>
+          <div class="nav-dropdown-menu" id="sidebar-course-menu"></div>
+        </div>
+
+        <div class="b-unit-list" id="sidebar-unit-list"></div>
+
+        <a class="b-review-btn" id="sidebar-review-link" href="#">⚡ 课程复习</a>
+      </aside>
+
+      <section class="b-main">
+        <header class="b-main-header">
+          <nav class="tabs">
+            <button class="tab-btn active" data-tab="dialogue">Dialogue</button>
+            <button class="tab-btn" data-tab="reading">Reading</button>
+            <button class="tab-btn" data-tab="vocabulary">Vocabulary</button>
+            <button class="tab-btn" data-tab="components">Components</button>
+            <button class="tab-btn" data-tab="vocab">Vocab</button>
+            <button class="tab-btn" data-tab="practice">Practice</button>
+          </nav>
+          <div class="toggle-controls">
+            <button id="toggle-en" class="toggle-btn active">English</button>
+            <button id="toggle-es" class="toggle-btn active">Español</button>
+          </div>
+        </header>
+
+        <div class="b-content">
+          <div class="b-center">
+            <h1 id="lesson-title" class="b-title">Loading...</h1>
+            <div class="tab-content">
+              <div id="dialogue" class="tab-pane active">
+                <div id="dialogue-content" class="content-group"></div>
+              </div>
+              <div id="reading" class="tab-pane">
+                <div id="reading-content" class="content-group"></div>
+              </div>
+              <div id="vocabulary" class="tab-pane">
+                <div id="vocabulary-content" class="content-group"></div>
+              </div>
+              <div id="components" class="tab-pane">
+                <div id="timeline-components-content" class="content-group">
+                  <p class="placeholder">暂无部件补充</p>
+                </div>
+              </div>
+              <div id="vocab" class="tab-pane">
+                <div id="timeline-vocab-content" class="content-group">
+                  <p class="placeholder">暂无字词补充</p>
+                </div>
+              </div>
+              <div id="practice" class="tab-pane">
+                <div id="practice-content" class="content-group">
+                  <p class="placeholder">练习开发中...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside class="b-notes">
+            <div class="tab-content b-notes-card">
+              <h3>Elisa 的笔记</h3>
+              <div id="teacher-notes"></div>
+              <p class="placeholder">暂无笔记</p>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+  <script src="assets/js/course-config.js"></script>
+  <script src="assets/js/nav.js?v=debug-3"></script>
+  <!-- #region agent log -->
+  <script>
+    (function () {
+      const firestoreSrc = Array.from(document.querySelectorAll('script[src]'))
+        .map(s => s.getAttribute('src'))
+        .find(src => src && src.includes('assets/js/firestore.js'));
+      fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'debug-session',
+          runId: 'baseline',
+          hypothesisId: 'H15',
+          location: 'lesson-template-b.html:inline',
+          message: 'HTML loaded',
+          data: {
+            href: window.location.href,
+            firestoreSrc,
+            hasServiceWorker: !!navigator.serviceWorker?.controller
+          },
+          timestamp: Date.now()
+        })
+      }).catch(() => {});
+    })();
+  </script>
+  <!-- #endregion -->
+  <script src="assets/js/firestore.js?v=debug-8"></script>
+  <script src="assets/js/audio.js"></script>
+  <script src="assets/js/loader.js?v=debug-4"></script>
+  <script src="assets/js/toggle.js"></script>
+</body>
+</html>
+

@@ -298,9 +298,22 @@
         </header>
 
         <div class="global-actions">
-            <button class="add-lesson-btn" onclick="addLesson()">
-                ➕ 新增課程
-            </button>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <label style="font-weight: bold;">選擇課程：</label>
+                <select id="course-select" onchange="changeCourse()" style="padding: 12px 20px; border: 2px solid #FF8C42; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">
+                    <option value="btc1">BTC1 - 初级</option>
+                    <option value="btc2">BTC2 - 中级</option>
+                    <option value="btc3">BTC3 - 高级</option>
+                </select>
+                <input id="lesson-number-input" type="number" min="1" placeholder="課次"
+                       style="width: 90px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
+                <button class="add-lesson-btn" onclick="addLessonWithNumber()">
+                    ➕ 新增/切換課次
+                </button>
+                <button class="add-lesson-btn" onclick="addLesson()">
+                    ➕ 新增課程
+                </button>
+            </div>
             <div class="batch-actions">
                 <button class="btn-success" onclick="batchUpload()">
                     🚀 批次上傳全部
@@ -329,24 +342,66 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="assets/js/firestore.js?v=debug-8"></script>
 
     <script>
         // 全域變數
+        let currentCourse = 'btc1';
+        let coursesData = {
+            btc1: { lessons: [], nextLessonNumber: 2 },
+            btc2: { lessons: [], nextLessonNumber: 1 },
+            btc3: { lessons: [], nextLessonNumber: 1 }
+        };
+
+        // 兼容舊版（指向當前課程）
         let lessons = [];
-        let nextLessonNumber = 2; // L1 已存在，從 L2 開始
+        let nextLessonNumber = 2;
+
+        // 簡易老師自動登入
+        async function ensureSignedIn() {
+            // 確保 Firebase 已初始化
+            if (!firestoreService.isConnected()) {
+                await firestoreService.init();
+            }
+            if (!firestoreService.isConnected()) {
+                log('❌ Firestore 未連線，無法登入', 'error');
+                return;
+            }
+            if (firebase.auth().currentUser) return;
+            try {
+                await firebase.auth().signInWithEmailAndPassword('elisachangn@gmail.com', 'wo3ai4PAco');
+                log('✅ 老師帳號登入成功', 'success');
+            } catch (err) {
+                console.error('signin failed', err);
+                log(`❌ 登入失敗：${err.message || err}`, 'error');
+                alert('登入失敗，請確認帳號密碼或稍後再試');
+            }
+        }
 
         // 初始化
         async function init() {
             log('🚀 初始化批次上傳工具...', 'info');
 
-            // 初始化 Firestore
+            // 先初始化 Firestore
             if (!firestoreService.isConnected()) {
                 await firestoreService.init();
             }
 
+            // 確保已登入（防止未登入寫入）
+            await ensureSignedIn();
+
+            if (!firestoreService.isConnected()) {
+                log('❌ Firestore 未初始化成功，請稍後重試', 'error');
+                alert('Firestore 連線失敗，請檢查網路或重新整理');
+                return;
+            }
+
             // 從 localStorage 載入草稿
             loadFromLocalStorage();
+
+            // 同步當前課程數據
+            syncCurrentCourse();
 
             // 如果沒有課程，加入第一個
             if (lessons.length === 0) {
@@ -356,13 +411,35 @@
             renderLessons();
         }
 
+        // 切換課程
+        function changeCourse() {
+            // 先保存當前課程數據
+            coursesData[currentCourse].lessons = lessons;
+            coursesData[currentCourse].nextLessonNumber = nextLessonNumber;
+
+            // 切換到新課程
+            currentCourse = document.getElementById('course-select').value;
+            syncCurrentCourse();
+
+            log(`📚 切換到 ${currentCourse.toUpperCase()}`, 'info');
+            renderLessons();
+            autoSave();
+        }
+
+        // 同步當前課程數據到全域變數
+        function syncCurrentCourse() {
+            lessons = coursesData[currentCourse].lessons;
+            nextLessonNumber = coursesData[currentCourse].nextLessonNumber;
+        }
+
         // 新增課程
         function addLesson() {
-            const lessonId = `lesson${nextLessonNumber}`;
+            const lessonId = `${currentCourse}_lesson${nextLessonNumber}`;
             lessons.push({
                 id: lessonId,
+                course: currentCourse,
                 number: nextLessonNumber,
-                title: `Lesson ${nextLessonNumber}`,
+                title: '',
                 order: nextLessonNumber,
                 vocabularyMd: '',
                 dialogueMd: '',
@@ -370,8 +447,49 @@
                 uploaded: false
             });
             nextLessonNumber++;
+            coursesData[currentCourse].nextLessonNumber = nextLessonNumber;
             renderLessons();
             autoSave();
+        }
+
+        function addLessonWithNumber() {
+            const input = document.getElementById('lesson-number-input');
+            const num = parseInt(input.value, 10);
+            if (!num || num < 1) {
+                alert('請輸入有效的課次');
+                return;
+            }
+
+            const existsIndex = lessons.findIndex(l => l.number === num);
+            if (existsIndex !== -1) {
+                const target = document.getElementById(`lesson-${lessons[existsIndex].id}`);
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                return;
+            }
+
+            const lessonId = `${currentCourse}_lesson${num}`;
+            lessons.push({
+                id: lessonId,
+                course: currentCourse,
+                number: num,
+                title: '',
+                order: num,
+                vocabularyMd: '',
+                dialogueMd: '',
+                readingMd: '',
+                uploaded: false
+            });
+
+            if (num >= nextLessonNumber) {
+                nextLessonNumber = num + 1;
+                coursesData[currentCourse].nextLessonNumber = nextLessonNumber;
+            }
+
+            renderLessons();
+            autoSave();
+
+            const target = document.getElementById(`lesson-${lessonId}`);
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         // 渲染課程列表
@@ -392,13 +510,13 @@
             container.innerHTML = lessons.map((lesson, index) => `
                 <div class="lesson-card ${lesson.uploaded ? 'uploaded' : ''}" id="lesson-${lesson.id}">
                     <div class="lesson-header">
-                        <div class="lesson-number">Lesson ${lesson.number}</div>
+                        <div class="lesson-number">${currentCourse.toUpperCase()} - Lesson ${lesson.number}</div>
                         <div class="lesson-title-input">
                             <label>標題：</label>
                             <input type="text"
                                    value="${lesson.title}"
                                    onchange="updateLessonTitle(${index}, this.value)"
-                                   placeholder="課程標題">
+                                   placeholder="輸入標題">
                             <label>Order：</label>
                             <input type="number"
                                    value="${lesson.order}"
@@ -407,8 +525,8 @@
                         </div>
                         <div class="lesson-actions">
                             <button class="btn-secondary" onclick="previewLesson(${index})">👁️ 預覽</button>
-                            <button class="btn-primary" onclick="uploadLesson(${index})" ${lesson.uploaded ? 'disabled' : ''}>
-                                ${lesson.uploaded ? '✅ 已上傳' : '📤 上傳'}
+                            <button class="btn-primary" onclick="uploadLesson(${index})">
+                                ${lesson.uploaded ? '♻️ 覆蓋上傳' : '📤 上傳'}
                             </button>
                             <button class="btn-danger" onclick="removeLesson(${index})">🗑️</button>
                         </div>
@@ -456,16 +574,19 @@
         // 更新課程資料
         function updateLessonTitle(index, value) {
             lessons[index].title = value;
+            lessons[index].uploaded = false;
             autoSave();
         }
 
         function updateLessonOrder(index, value) {
             lessons[index].order = parseInt(value);
+            lessons[index].uploaded = false;
             autoSave();
         }
 
         function updateMarkdown(index, field, value) {
             lessons[index][field] = value;
+            lessons[index].uploaded = false;
             autoSave();
         }
 
@@ -536,15 +657,28 @@
                 const dialogue = parseDialogueMarkdown(lesson.dialogueMd);
                 const reading = parseReadingMarkdown(lesson.readingMd);
 
-                // 創建 lesson 文件
-                const lessonRef = firestoreService.db.collection('lessons').doc(lesson.id);
+                const clearSubcollection = async (ref, name) => {
+                    const snap = await ref.collection(name).get();
+                    if (snap.empty) return 0;
+                    await Promise.all(snap.docs.map(doc => doc.ref.delete()));
+                    return snap.size;
+                };
+
+                // 創建 lesson 文件（路徑：courses/{course}/lessons/{lessonN}）
+                const firestoreLessonId = `lesson${lesson.number}`;
+                const lessonRef = firestoreService.db
+                    .collection('courses')
+                    .doc(lesson.course || currentCourse)
+                    .collection('lessons')
+                    .doc(firestoreLessonId);
                 await lessonRef.set({
                     title: lesson.title,
                     scope: 'lesson',
+                    course: lesson.course || currentCourse,
                     date: new Date().toISOString().split('T')[0],
                     order: lesson.order
                 });
-                log(`✅ 創建 ${lesson.id} 文件`, 'success');
+                log(`✅ 創建 ${lesson.course || currentCourse}/${firestoreLessonId} 文件`, 'success');
                 // #region agent log
                 fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
                     method:'POST',
@@ -556,6 +690,30 @@
                         location:'batch-upload.html:uploadLesson',
                         message:'Lesson doc created',
                         data:{lessonId:lesson.id, vocabCount:vocabulary.length, dialogueCount:dialogue.length, readingCount:reading.length},
+                        timestamp:Date.now()
+                    })
+                }).catch(()=>{});
+                // #endregion
+
+                // 清除舊子集合（覆蓋模式）
+                log('🧹 清空舊資料...', 'info');
+                const [clearedVocab, clearedDialogue, clearedReading] = await Promise.all([
+                    clearSubcollection(lessonRef, 'vocabulary'),
+                    clearSubcollection(lessonRef, 'dialogue'),
+                    clearSubcollection(lessonRef, 'reading')
+                ]);
+                log(`✅ 已清空：單字 ${clearedVocab}、對話 ${clearedDialogue}、閱讀 ${clearedReading}`, 'success');
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({
+                        sessionId:'debug-session',
+                        runId:'baseline',
+                        hypothesisId:'H16',
+                        location:'batch-upload.html:uploadLesson',
+                        message:'Cleared subcollections',
+                        data:{lessonId:lesson.id, clearedVocab, clearedDialogue, clearedReading},
                         timestamp:Date.now()
                     })
                 }).catch(()=>{});
@@ -752,28 +910,51 @@
 
         // LocalStorage 管理
         function saveToLocalStorage() {
-            localStorage.setItem('bct-batch-upload', JSON.stringify({
-                lessons,
-                nextLessonNumber
+            // 先同步當前課程數據
+            coursesData[currentCourse].lessons = lessons;
+            coursesData[currentCourse].nextLessonNumber = nextLessonNumber;
+
+            localStorage.setItem('bct-batch-upload-v2', JSON.stringify({
+                currentCourse,
+                coursesData
             }));
             log('💾 草稿已儲存到瀏覽器', 'success');
             alert('草稿已儲存！');
         }
 
         function loadFromLocalStorage() {
+            // 嘗試讀取新版格式
+            const savedV2 = localStorage.getItem('bct-batch-upload-v2');
+            if (savedV2) {
+                const data = JSON.parse(savedV2);
+                currentCourse = data.currentCourse || 'btc1';
+                coursesData = data.coursesData || {
+                    btc1: { lessons: [], nextLessonNumber: 2 },
+                    btc2: { lessons: [], nextLessonNumber: 1 },
+                    btc3: { lessons: [], nextLessonNumber: 1 }
+                };
+                document.getElementById('course-select').value = currentCourse;
+                log('📂 已載入草稿', 'info');
+                return;
+            }
+
+            // 兼容舊版格式
             const saved = localStorage.getItem('bct-batch-upload');
             if (saved) {
                 const data = JSON.parse(saved);
-                lessons = data.lessons || [];
-                nextLessonNumber = data.nextLessonNumber || 2;
-                log('📂 已載入草稿', 'info');
+                coursesData.btc1.lessons = data.lessons || [];
+                coursesData.btc1.nextLessonNumber = data.nextLessonNumber || 2;
+                log('📂 已載入舊版草稿（已遷移到 BTC1）', 'info');
             }
         }
 
         function autoSave() {
-            localStorage.setItem('bct-batch-upload', JSON.stringify({
-                lessons,
-                nextLessonNumber
+            coursesData[currentCourse].lessons = lessons;
+            coursesData[currentCourse].nextLessonNumber = nextLessonNumber;
+
+            localStorage.setItem('bct-batch-upload-v2', JSON.stringify({
+                currentCourse,
+                coursesData
             }));
         }
 

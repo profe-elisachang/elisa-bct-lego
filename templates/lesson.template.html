@@ -24,6 +24,8 @@
                 <button class="tab-btn active" data-tab="dialogue">Dialogue</button>
                 <button class="tab-btn" data-tab="reading">Reading</button>
                 <button class="tab-btn" data-tab="vocabulary">Vocabulary</button>
+                <button class="tab-btn" data-tab="components">Components</button>
+                <button class="tab-btn" data-tab="vocab">Vocab</button>
                 <button class="tab-btn" data-tab="practice">Practice</button>
             </nav>
 
@@ -50,6 +52,22 @@
                     </div>
                 </div>
 
+                <!-- Components Tab (Timeline: component) -->
+                <div id="components" class="tab-pane">
+                    <div id="timeline-components-content" class="content-group">
+                        <!-- 動態注入部件補充 -->
+                        <p class="placeholder">尚無部件補充</p>
+                    </div>
+                </div>
+
+                <!-- Vocab Tab (Timeline: vocab) -->
+                <div id="vocab" class="tab-pane">
+                    <div id="timeline-vocab-content" class="content-group">
+                        <!-- 動態注入字詞補充 -->
+                        <p class="placeholder">尚無字詞補充</p>
+                    </div>
+                </div>
+
                 <!-- Practice Tab -->
                 <div id="practice" class="tab-pane">
                     <div id="practice-content" class="content-group">
@@ -63,10 +81,7 @@
         <!-- Timeline 補充區 -->
         <aside class="timeline-section">
             <h2>課堂補充 (Timeline)</h2>
-            <div id="timeline-content">
-                <!-- 動態注入時間軸內容 -->
-                <p class="placeholder">尚無課堂補充</p>
-            </div>
+            <p class="placeholder">補充內容已整合到 Components / Vocab 分頁</p>
         </aside>
     </div>
 

@@ -20,12 +20,58 @@ class LessonLoader {
     // 初始化：從 URL 取得課次並載入
     async init() {
         const urlParams = new URLSearchParams(window.location.search);
+        const STORAGE_KEY = 'bct-active-class';
+        const rememberedClass = localStorage.getItem(STORAGE_KEY);
+        const classId = urlParams.get('class') || rememberedClass || window?.BCT_COURSE_CONFIG?.defaultClassId || null;
         let lessonId = urlParams.get('lesson') || 'L1';
+        this.currentClassId = classId;
+        // #region agent log
+        const firestoreSrc = Array.from(document.querySelectorAll('script[src]'))
+            .map((s) => s.getAttribute('src'))
+            .find((src) => src && src.includes('assets/js/firestore.js'));
+        fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                sessionId:'debug-session',
+                runId:'baseline',
+                hypothesisId:'H14',
+                location:'assets/js/loader.js:init',
+                message:'Firestore version seen',
+                data:{
+                    firestoreSrc,
+                    firestoreVersion:window.__firestoreVersion || null
+                },
+                timestamp:Date.now()
+            })
+        }).catch(()=>{});
+        // #endregion
 
         // 自動轉換 L1 → lesson1（相容舊版 URL）
         if (lessonId.match(/^L\d+$/)) {
             lessonId = 'lesson' + lessonId.substring(1);
         }
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                sessionId:'debug-session',
+                runId:'baseline',
+                hypothesisId:'H8',
+                location:'assets/js/loader.js:init',
+                message:'Init lesson params',
+                data:{
+                    qsClass:urlParams.get('class'),
+                    rememberedClass,
+                    resolvedClassId:classId,
+                    qsLesson:urlParams.get('lesson'),
+                    computedLessonId:lessonId
+                },
+                timestamp:Date.now()
+            })
+        }).catch(()=>{});
+        // #endregion
 
         await this.loadLesson(lessonId);
         this.setupTabSystem();
@@ -41,10 +87,54 @@ class LessonLoader {
             }
 
             // 從 Firestore 讀取完整課程資料
-            const fullLesson = await firestoreService.getFullLesson(lessonId);
+            const classId = this.currentClassId ||
+                new URLSearchParams(window.location.search).get('class') ||
+                localStorage.getItem('bct-active-class') ||
+                window?.BCT_COURSE_CONFIG?.defaultClassId || null;
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({
+                    sessionId:'debug-session',
+                    runId:'baseline',
+                    hypothesisId:'H8',
+                    location:'assets/js/loader.js:loadLesson',
+                    message:'Calling getFullLesson',
+                    data:{lessonId, classId},
+                    timestamp:Date.now()
+                })
+            }).catch(()=>{});
+            // #endregion
+            const fullLesson = await firestoreService.getFullLesson(lessonId, classId);
 
             if (!fullLesson) {
-                throw new Error(`Lesson ${lessonId} not found in Firestore`);
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({
+                        sessionId:'debug-session',
+                        runId:'baseline',
+                        hypothesisId:'H7',
+                        location:'assets/js/loader.js:loadLesson',
+                        message:'No lesson data for class',
+                        data:{lessonId, classId},
+                        timestamp:Date.now()
+                    })
+                }).catch(()=>{});
+                // #endregion
+                this.lessonData.dialogue = [];
+                this.lessonData.vocabulary = [];
+                this.lessonData.reading = [];
+                this.lessonData.practice = [];
+                this.lessonData.timeline = [];
+                this.lessonData.timelineComponents = [];
+                this.lessonData.timelineVocab = [];
+                this.lessonData.timelineNotes = [];
+                document.getElementById('lesson-title').textContent = '暂无课程';
+                this.render();
+                return;
             }
 
             // 填充 lessonData（直接使用 Firestore 的資料結構）
@@ -210,6 +300,25 @@ class LessonLoader {
     // 渲染內容到頁面
     render() {
         console.log('Lesson Data:', this.lessonData);
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                sessionId:'debug-session',
+                runId:'baseline',
+                hypothesisId:'H9',
+                location:'assets/js/loader.js:render',
+                message:'Render entry',
+                data:{
+                    dialogueCount:this.lessonData.dialogue.length,
+                    vocabularyCount:this.lessonData.vocabulary.length,
+                    readingCount:this.lessonData.reading.length
+                },
+                timestamp:Date.now()
+            })
+        }).catch(()=>{});
+        // #endregion
         this.renderDialogue();
         this.renderVocabulary();
         this.renderReading();
@@ -221,6 +330,21 @@ class LessonLoader {
     // 渲染 Dialogue（按 group 分組顯示）
     renderDialogue() {
         const container = document.getElementById('dialogue-content');
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                sessionId:'debug-session',
+                runId:'baseline',
+                hypothesisId:'H10',
+                location:'assets/js/loader.js:renderDialogue',
+                message:'Dialogue render',
+                data:{hasContainer:!!container, count:this.lessonData.dialogue.length},
+                timestamp:Date.now()
+            })
+        }).catch(()=>{});
+        // #endregion
         container.innerHTML = '';
 
         // 如果沒有對話內容，顯示提示
@@ -296,28 +420,106 @@ class LessonLoader {
 
             container.appendChild(groupCard);
         });
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                sessionId:'debug-session',
+                runId:'baseline',
+                hypothesisId:'H11',
+                location:'assets/js/loader.js:renderDialogue',
+                message:'Dialogue DOM after render',
+                data:{
+                    childCount:container.children.length,
+                    groups:Object.keys(groupedDialogue).length
+                },
+                timestamp:Date.now()
+            })
+        }).catch(()=>{});
+        // #endregion
     }
 
     // 渲染 Vocabulary
     renderVocabulary() {
         const container = document.getElementById('vocabulary-content');
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                sessionId:'debug-session',
+                runId:'baseline',
+                hypothesisId:'H10',
+                location:'assets/js/loader.js:renderVocabulary',
+                message:'Vocabulary render',
+                data:{hasContainer:!!container, count:this.lessonData.vocabulary.length},
+                timestamp:Date.now()
+            })
+        }).catch(()=>{});
+        // #endregion
         container.innerHTML = '';
 
         this.lessonData.vocabulary.forEach((item, index) => {
             const card = this.createVocabCard(item, index);
             container.appendChild(card);
         });
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                sessionId:'debug-session',
+                runId:'baseline',
+                hypothesisId:'H11',
+                location:'assets/js/loader.js:renderVocabulary',
+                message:'Vocabulary DOM after render',
+                data:{childCount:container.children.length},
+                timestamp:Date.now()
+            })
+        }).catch(()=>{});
+        // #endregion
     }
 
     // 渲染 Reading
     renderReading() {
         const container = document.getElementById('reading-content');
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                sessionId:'debug-session',
+                runId:'baseline',
+                hypothesisId:'H10',
+                location:'assets/js/loader.js:renderReading',
+                message:'Reading render',
+                data:{hasContainer:!!container, count:this.lessonData.reading.length},
+                timestamp:Date.now()
+            })
+        }).catch(()=>{});
+        // #endregion
         container.innerHTML = '';
 
         this.lessonData.reading.forEach((item, index) => {
             const card = this.createSentenceCard(item, index);
             container.appendChild(card);
         });
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                sessionId:'debug-session',
+                runId:'baseline',
+                hypothesisId:'H11',
+                location:'assets/js/loader.js:renderReading',
+                message:'Reading DOM after render',
+                data:{childCount:container.children.length},
+                timestamp:Date.now()
+            })
+        }).catch(()=>{});
+        // #endregion
     }
 
     // 渲染 Practice

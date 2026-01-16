@@ -1,0 +1,2328 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>识字课程</title>
+    <link rel="stylesheet" href="../../assets/css/nav-global.css">
+
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* ==================== CSS Variables ==================== */
+        :root {
+            /* 主色调 */
+            --primary-color: #0891b2;
+            --primary-light: #06b6d4;
+            --primary-dark: #0e7490;
+            
+            /* 辅助色 */
+            --secondary-color: #10b981;
+            --accent-color: #f59e0b;
+            --danger-color: #ef4444;
+            
+            /* 中性色 */
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --text-muted: #9ca3af;
+            
+            /* 背景色 */
+            --bg-page: #f9fafb;
+            --bg-card: #ffffff;
+            --bg-hover: #f3f4f6;
+            --bg-light: #e5e7eb;
+            
+            /* 边框色 */
+            --border-light: #e5e7eb;
+            --border-medium: #d1d5db;
+            --border-dark: #9ca3af;
+            
+            /* 特殊用途 */
+            --pinyin-color: #dc2626;
+            --character-color: #1f2937;
+            --meaning-color: #059669;
+            
+            /* 双语颜色 */
+            --english-color: #0891b2;
+            --spanish-color: #f59e0b;
+            
+            /* 字体 */
+            --font-primary: 'Microsoft JhengHei', 'Noto Sans TC', 'PingFang TC', sans-serif;
+            --text-base: 1rem;
+            --text-lg: 1.125rem;
+            --text-xl: 1.25rem;
+            --text-2xl: 1.5rem;
+            --text-3xl: 2rem;
+            --char-size-medium: 2rem;
+            --char-size-large: 3rem;
+            
+            /* 间距 */
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            --spacing-2xl: 3rem;
+            
+            /* 圆角 */
+            --radius-sm: 0.25rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            
+            /* 阴影 */
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+            
+            /* 字重 */
+            --font-normal: 400;
+            --font-medium: 500;
+            --font-semibold: 600;
+            --font-bold: 700;
+        }
+        
+        /* ==================== Global Styles ==================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: var(--font-primary);
+            font-size: var(--text-base);
+            color: var(--text-primary);
+            background: var(--bg-page);
+            line-height: 1.6;
+        }
+        
+        /* Top Navigation styles are now in nav-global.css */
+
+        /* ==================== Header ==================== */
+        .header {
+            background: var(--bg-card);
+            padding: var(--spacing-xl);
+            text-align: center;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .header h1 {
+            font-size: var(--text-3xl);
+            color: var(--primary-color);
+            margin-bottom: var(--spacing-sm);
+            font-weight: var(--font-bold);
+        }
+
+        .header .subtitle {
+            font-size: var(--text-lg);
+            color: var(--text-secondary);
+        }
+
+        /* ==================== Container ==================== */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+        }
+        
+        /* ==================== Tabs Navigation ==================== */
+        .tabs-nav {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-xl);
+            border-bottom: 2px solid var(--border-light);
+            flex-wrap: wrap;
+            overflow-x: auto;
+        }
+        
+        .tab-button {
+            padding: var(--spacing-md) var(--spacing-xl);
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-size: var(--text-lg);
+            font-weight: var(--font-semibold);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        
+        .tab-button:hover {
+            color: var(--primary-color);
+            background: var(--bg-hover);
+        }
+        
+        .tab-button.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+        
+        /* ==================== Tab Content ==================== */
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* ==================== Section Header ==================== */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-xl);
+            padding: var(--spacing-lg);
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+        
+        .section-title h2 {
+            font-size: var(--text-2xl);
+            color: var(--primary-color);
+            font-weight: var(--font-bold);
+        }
+        
+        .count-badge {
+            background: var(--primary-color);
+            color: white;
+            padding: var(--spacing-xs) var(--spacing-md);
+            border-radius: var(--radius-xl);
+            font-size: var(--text-base);
+            font-weight: var(--font-semibold);
+        }
+        
+        /* ==================== Vocabulary Table ==================== */
+        .vocabulary-table {
+            width: 100%;
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .vocabulary-table thead {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .vocabulary-table th {
+            padding: var(--spacing-lg);
+            text-align: left;
+            font-weight: var(--font-bold);
+            font-size: var(--text-lg);
+        }
+        
+        .vocabulary-table td {
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-bottom: 1px solid var(--border-light);
+        }
+        
+        .vocabulary-table tr:hover {
+            background: var(--bg-hover);
+        }
+        
+        .vocabulary-table .char {
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+            color: var(--character-color);
+        }
+        
+        .vocabulary-table .pinyin {
+            color: var(--pinyin-color);
+            font-size: var(--text-lg);
+        }
+        
+        .vocabulary-table .meaning-en {
+            color: var(--english-color);
+        }
+        
+        .vocabulary-table .meaning-es {
+            color: var(--spanish-color);
+        }
+        
+        .vocabulary-table .notes {
+            color: var(--text-secondary);
+            font-size: var(--text-base);
+            font-style: italic;
+        }
+        
+        /* ==================== Character Grid ==================== */
+        .character-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-2xl);
+        }
+        
+/* ==================== Character Card (Streamlined) ==================== */
+        .character-card {
+            background: var(--bg-card);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            border: 2px solid var(--border-light);
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            min-height: 180px;
+            max-height: 180px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: var(--spacing-sm);
+        }
+
+        .character-card:hover {
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-3px);
+        }
+
+        .character-card .character {
+            font-size: var(--char-size-large);
+            font-weight: var(--font-bold);
+            color: var(--character-color);
+        }
+
+        .character-card .pinyin {
+            font-size: var(--text-xl);
+            color: var(--pinyin-color);
+            font-weight: var(--font-medium);
+        }
+
+        .character-card .meaning {
+            font-size: var(--text-base);
+            color: var(--meaning-color);
+            font-weight: var(--font-medium);
+        }
+
+        /* ==================== Modal Overlay ==================== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            overflow-y: auto;
+            padding: var(--spacing-xl);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 50px;
+        }
+
+        /* ==================== Modal Content ==================== */
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-xl);
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            margin: auto;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            background: var(--primary-color);
+            color: white;
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header .character-display {
+            font-size: 3rem;
+            font-weight: var(--font-bold);
+        }
+
+        .modal-close-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            color: white;
+            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .modal-close-btn:hover {
+            background: white;
+            color: var(--primary-color);
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            padding: var(--spacing-xl);
+        }
+
+        .modal-section {
+            margin-bottom: var(--spacing-xl);
+            padding-bottom: var(--spacing-xl);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .modal-section:last-child {
+            border-bottom: none;
+        }
+
+        .modal-section-title {
+            font-size: var(--text-lg);
+            font-weight: var(--font-bold);
+            color: var(--primary-color);
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        /* ==================== Image Styles (Alt-based) ==================== */
+        /* 字形補丁系統 (Character Patch) - 通用樣式 */
+        .img-comp {
+            height: 1.8em;
+            width: auto;
+            display: inline-block;
+            vertical-align: middle;
+            margin: 0 var(--spacing-xs);
+            object-fit: contain;
+        }
+
+        .markdown-content img.img-origin {
+            max-width: 100%;
+            height: 200px;
+            object-fit: contain;
+            background: var(--bg-light);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-sm);
+            display: block;
+            margin: var(--spacing-md) auto;
+        }
+
+        .markdown-content img.img-story {
+            max-width: 100%;
+            height: 250px;
+            object-fit: contain;
+            border-radius: var(--radius-md);
+            display: block;
+            margin: var(--spacing-md) auto;
+        }
+
+        .markdown-content img.img-comp {
+            height: 1.8em;
+            width: auto;
+            display: inline-block;
+            vertical-align: middle;
+            margin: 0 var(--spacing-xs);
+        }
+        
+        /* ==================== Phrase Card ==================== */
+        .phrase-card {
+            background: var(--bg-card);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            border: 2px solid var(--border-light);
+            margin-bottom: var(--spacing-md);
+            transition: all 0.3s ease;
+        }
+        
+        .phrase-card:hover {
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+        
+        .phrase-card .chinese {
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+            color: var(--character-color);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .phrase-card .translations {
+            display: flex;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+        }
+        
+        .phrase-card .translation-en {
+            color: var(--english-color);
+            font-size: var(--text-lg);
+            font-weight: var(--font-medium);
+        }
+        
+        .phrase-card .translation-es {
+            color: var(--spanish-color);
+            font-size: var(--text-lg);
+            font-weight: var(--font-medium);
+        }
+        
+        .phrase-card .notes {
+            margin-top: var(--spacing-sm);
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        /* ==================== Dialogue Box ==================== */
+        .dialogue-box {
+            background: var(--bg-light);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-lg);
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .dialogue-title {
+            color: var(--primary-color);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .dialogue-line {
+            font-size: var(--text-lg);
+            margin: var(--spacing-sm) 0;
+            padding: var(--spacing-sm);
+        }
+        
+        /* ==================== Grammar Point ==================== */
+        .grammar-point {
+            background: var(--bg-card);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-xl);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .grammar-header {
+            background: var(--primary-color);
+            color: white;
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .grammar-title {
+            font-size: var(--text-xl);
+            font-weight: var(--font-bold);
+        }
+        
+        .grammar-content {
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .grammar-content .spanish {
+            color: var(--spanish-color);
+            font-size: var(--text-lg);
+            line-height: 1.8;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .grammar-content .english {
+            color: var(--english-color);
+            font-size: var(--text-lg);
+            line-height: 1.8;
+        }
+        
+        .grammar-examples {
+            background: var(--bg-light);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            margin-top: var(--spacing-md);
+        }
+        
+        .grammar-example {
+            font-size: var(--text-lg);
+            margin: var(--spacing-sm) 0;
+            padding-left: var(--spacing-md);
+            border-left: 3px solid var(--accent-color);
+        }
+        
+        /* ==================== Exercise Styles ==================== */
+        .exercise-item {
+            background: var(--bg-card);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-xl);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .exercise-header {
+            font-weight: var(--font-bold);
+            color: var(--primary-color);
+            font-size: var(--text-xl);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .exercise-question {
+            font-size: var(--text-xl);
+            line-height: 1.8;
+            margin-bottom: var(--spacing-lg);
+            color: var(--text-primary);
+        }
+        
+        .blank-position {
+            display: inline-block;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            margin: 0 var(--spacing-xs);
+            border: 2px dashed var(--border-medium);
+            border-radius: var(--radius-sm);
+            min-width: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: var(--bg-light);
+        }
+        
+        .blank-position:hover {
+            border-color: var(--primary-color);
+            background: var(--primary-light);
+            color: white;
+        }
+        
+        .blank-position.selected {
+            background: var(--primary-color);
+            color: white;
+            border-style: solid;
+        }
+        
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .option-btn {
+            padding: var(--spacing-lg);
+            background: white;
+            border: 2px solid var(--border-light);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: var(--text-lg);
+        }
+        
+        .option-btn:hover {
+            border-color: var(--primary-color);
+            background: var(--bg-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .option-btn.selected {
+            border-color: var(--primary-color);
+            background: var(--primary-light);
+            color: white;
+        }
+        
+        .btn {
+            padding: var(--spacing-md) var(--spacing-xl);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: var(--text-lg);
+            font-weight: var(--font-semibold);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .result-box {
+            margin-top: var(--spacing-lg);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-md);
+            font-weight: var(--font-bold);
+            font-size: var(--text-lg);
+        }
+        
+        .result-box.correct {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        .result-box.incorrect {
+            background: var(--danger-color);
+            color: white;
+        }
+        
+        .result-box.warning {
+            background: var(--accent-color);
+            color: white;
+        }
+        
+        /* ==================== Card ==================== */
+        .card {
+            background: var(--bg-card);
+            padding: var(--spacing-2xl);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .card h2 {
+            color: var(--primary-color);
+            margin-bottom: var(--spacing-xl);
+            border-bottom: 3px solid var(--primary-color);
+            padding-bottom: var(--spacing-md);
+        }
+        
+        /* ==================== Placeholder ==================== */
+        .placeholder {
+            text-align: center;
+            padding: var(--spacing-2xl);
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .placeholder h3 {
+            font-size: var(--text-2xl);
+            color: var(--text-muted);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .placeholder p {
+            font-size: var(--text-lg);
+            color: var(--text-secondary);
+        }
+        
+        /* ==================== Loading ==================== */
+        .loader {
+            display: none;
+            border: 4px solid var(--border-light);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: var(--spacing-2xl) auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            text-align: center;
+            padding: var(--spacing-xl);
+            background: #fee;
+            border: 2px solid var(--danger-color);
+            border-radius: var(--radius-lg);
+            color: var(--danger-color);
+            margin: var(--spacing-xl) 0;
+        }
+        
+        /* ==================== Markdown Content ==================== */
+        .markdown-content {
+            font-size: var(--text-base);
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+        
+        .markdown-content strong {
+            color: var(--primary-color);
+            font-weight: var(--font-bold);
+        }
+        
+        .markdown-content em {
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .markdown-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: var(--radius-md);
+            margin: var(--spacing-md) 0;
+        }
+        
+        .markdown-content img.small {
+            max-width: 120px;
+        }
+        
+        .markdown-content img.large {
+            max-width: 800px;
+        }
+        
+        /* ==================== Responsive Design ==================== */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: var(--text-2xl);
+            }
+
+            .tabs-nav {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+            }
+
+            .tab-button {
+                font-size: var(--text-base);
+                padding: var(--spacing-sm) var(--spacing-md);
+            }
+
+            .character-grid {
+                grid-template-columns: 1fr;
+                gap: var(--spacing-md);
+            }
+
+            .section-header {
+                flex-direction: column;
+                gap: var(--spacing-md);
+                text-align: center;
+            }
+
+            .vocabulary-table {
+                font-size: var(--text-base);
+            }
+
+            .vocabulary-table th,
+            .vocabulary-table td {
+                padding: var(--spacing-sm);
+            }
+
+            /* Modal mobile styles */
+            .modal-overlay {
+                padding: var(--spacing-sm);
+            }
+
+            .modal-overlay.active {
+                padding-top: 20px;
+            }
+
+            .modal-content {
+                max-height: 95vh;
+            }
+
+            .modal-header {
+                padding: var(--spacing-lg);
+            }
+
+            .modal-header .character-display {
+                font-size: 2rem;
+            }
+
+            .modal-close-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 1.25rem;
+            }
+
+            .modal-body {
+                padding: var(--spacing-md);
+            }
+
+            .modal-section {
+                margin-bottom: var(--spacing-lg);
+                padding-bottom: var(--spacing-lg);
+            }
+        }
+        
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .character-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+        }
+
+  /* ==================== Lesson Navigation Bar (BBC Style) ==================== */
+    .lesson-navigation {
+        background: var(--bg-card);
+        padding: var(--spacing-xl) var(--spacing-lg);
+        margin-bottom: var(--spacing-xl);
+        box-shadow: var(--shadow-sm);
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .lesson-nav-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--spacing-lg);
+    }
+
+    .lesson-nav-title {
+        font-size: 0.75rem;
+        font-weight: var(--font-bold);
+        color: var(--text-muted);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+
+    .refresh-btn {
+        padding: 6px 12px;
+        background: transparent;
+        color: var(--text-secondary);
+        border: 1px solid var(--border-medium);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-size: 0.875rem;
+        transition: all 0.3s;
+    }
+
+    .refresh-btn:hover {
+        background: var(--bg-hover);
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+
+    /* BBC-style horizontal bar layout */
+    .lesson-numbers {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 10px;
+    }
+
+    .lesson-unit {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        min-width: 40px;
+    }
+
+    /* BBC-style rectangular bar */
+    .lesson-bar {
+        width: 40px;
+        height: 8px;
+        background: var(--bg-light);
+        border: 1px solid var(--border-medium);
+        cursor: pointer;
+        transition: all 0.3s;
+        border-radius: 2px;
+    }
+
+    .lesson-bar:hover {
+        background: var(--primary-light);
+        border-color: var(--primary-color);
+        transform: translateY(-2px);
+    }
+
+    .lesson-bar.active {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+        height: 10px;
+    }
+
+    .lesson-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        font-weight: var(--font-medium);
+    }
+
+    .lesson-bar.active + .lesson-label {
+        color: var(--primary-color);
+        font-weight: var(--font-bold);
+    }
+
+    /* Mobile: Dropdown select */
+    .lesson-dropdown {
+        display: none;
+        width: 100%;
+        padding: var(--spacing-md);
+        font-size: var(--text-base);
+        border: 2px solid var(--border-medium);
+        border-radius: var(--radius-md);
+        background: white;
+        color: var(--text-primary);
+        cursor: pointer;
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+        .lesson-numbers {
+            display: none;
+        }
+
+        .lesson-dropdown {
+            display: block;
+        }
+
+        .lesson-nav-title {
+            font-size: 0.7rem;
+        }
+    }
+        /* 管理後台風格的字卡 */
+        .admin-character-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid var(--border-light);
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            cursor: pointer;
+        }
+
+        .admin-character-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            border-color: var(--primary-color);
+        }
+
+        .admin-char-main {
+            font-size: 3em;
+            font-weight: bold;
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .admin-char-pinyin {
+            color: var(--pinyin-color);
+            font-size: 1.3em;
+            text-align: center;
+            margin-bottom: 8px;
+            font-weight: var(--font-medium);
+        }
+
+        .admin-char-meaning {
+            color: var(--meaning-color);
+            font-size: 1.1em;
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: var(--font-medium);
+        }
+
+        .admin-char-section {
+            margin-bottom: 12px;
+            padding: 10px;
+            background: var(--bg-light);
+            border-radius: 8px;
+        }
+
+        .admin-char-section-title {
+            font-size: 0.85em;
+            font-weight: bold;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .admin-char-section-content {
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        .admin-char-image {
+            width: 100%;
+            height: 180px;
+            object-fit: contain;
+            background: var(--bg-light);
+            border-radius: 8px;
+            margin: 12px 0;
+            border: 1px solid var(--border-light);
+        }
+
+        .admin-placeholder {
+            text-align: center;
+            padding: 60px 20px;
+            background: var(--bg-light);
+            border-radius: 12px;
+            color: var(--text-muted);
+        }
+
+        .admin-placeholder h3 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        .admin-placeholder p {
+            font-size: 1em;
+            color: var(--text-secondary);
+        }
+
+        /* Markdown 渲染樣式 */
+        .admin-char-section-content strong {
+            color: var(--primary-color);
+            font-weight: var(--font-bold);
+        }
+
+        .admin-char-section-content em {
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .admin-char-section-content img.img-comp {
+            height: 28px;
+            width: auto;
+            display: inline-block;
+            vertical-align: middle;
+            margin: 0 4px;
+        }
+
+        /* ==================== Modal Image Container ==================== */
+.modal-image-container {
+    background: var(--bg-light);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+    border: 1px solid var(--border-light);
+}
+
+.modal-image-container img {
+    max-width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+}
+
+/* ==================== Markdown Content 中的圖片（保持原樣）==================== */
+.markdown-content img.img-origin {
+    max-width: 100%;
+    height: 200px;
+    object-fit: contain;
+    background: var(--bg-light);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm);
+    display: block;
+    margin: var(--spacing-md) auto;
+}
+
+.markdown-content img.img-story {
+    max-width: 100%;
+    height: 250px;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+    display: block;
+    margin: var(--spacing-md) auto;
+}
+
+.markdown-content img.img-comp {
+    height: 35px;
+    width: auto;
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 var(--spacing-xs);
+}
+    </style>
+</head>
+
+
+
+
+
+<body>
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <!-- Desktop Navigation -->
+        <div class="nav-content">
+            <a href="../../index.html" class="nav-link">Home</a>
+            <span class="nav-separator">|</span>
+            <a href="../bct/lessons/lesson.html" class="nav-link">Lessons</a>
+            <span class="nav-separator">|</span>
+            <a href="lesson.html" class="nav-link active">Literacy</a>
+            <span class="nav-separator">|</span>
+            <a href="review.html" class="nav-link">Review Lit.</a>
+            <span class="nav-separator group-separator">•</span>
+            <a href="../../pages/grammar.html" class="nav-link">Grammar</a>
+            <span class="nav-separator">|</span>
+            <a href="../../pages/extras.html" class="nav-link">Extras</a>
+            <span class="nav-separator">|</span>
+            <a href="../../pages/mini-story.html" class="nav-link">Mini Story</a>
+            <span class="nav-separator">|</span>
+            <a href="../../pages/music.html" class="nav-link">Music</a>
+            <span class="nav-separator group-separator">•</span>
+            <a href="../../pages/timeline.html" class="nav-link">Timeline</a>
+        </div>
+
+        <!-- Mobile Navigation -->
+        <div class="mobile-nav">
+            <button class="hamburger-btn" aria-label="Open menu">☰</button>
+            <span class="site-title">Chinese with Elisa</span>
+        </div>
+    </nav>
+
+    <!-- Mobile Sidebar -->
+    <div class="mobile-sidebar">
+        <button class="close-sidebar" aria-label="Close menu">✕</button>
+
+        <a href="../../index.html" class="mobile-menu-single">
+            <span class="icon">🏠</span>
+            <span>Home</span>
+        </a>
+
+        <div class="mobile-menu-group">
+            <div class="mobile-menu-title">
+                <span class="icon">📚</span>
+                <span>Courses</span>
+            </div>
+            <a href="../bct/lessons/lesson.html" class="mobile-menu-item">Lessons</a>
+            <a href="lesson.html" class="mobile-menu-item active">Literacy</a>
+            <a href="review.html" class="mobile-menu-item">Review Lit.</a>
+        </div>
+
+        <div class="mobile-menu-group">
+            <div class="mobile-menu-title">
+                <span class="icon">📖</span>
+                <span>Resources</span>
+            </div>
+            <a href="../../pages/grammar.html" class="mobile-menu-item">Grammar</a>
+            <a href="../../pages/extras.html" class="mobile-menu-item">Extras</a>
+            <a href="../../pages/mini-story.html" class="mobile-menu-item">Mini Story</a>
+            <a href="../../pages/music.html" class="mobile-menu-item">Music</a>
+        </div>
+
+        <a href="../../pages/timeline.html" class="mobile-menu-single">
+            <span class="icon">📅</span>
+            <span>Timeline</span>
+        </a>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay"></div>
+
+    <!-- Lesson Navigation Bar (BBC Style) -->
+    <div class="container" style="margin-top: 20px;">
+        <!-- Lesson Navigation (Always visible at top) -->
+        <div class="lesson-navigation">
+            <div class="lesson-nav-header">
+                <span class="lesson-nav-title">SELECT A LESSON</span>
+                <button class="refresh-btn" onclick="refreshLessonData()">🔄 Refresh</button>
+            </div>
+
+            <!-- Desktop: BBC-style horizontal bars -->
+            <div class="lesson-numbers" id="lessonNumbers">
+                <!-- JavaScript will populate this -->
+            </div>
+
+            <!-- Mobile: Dropdown -->
+            <select class="lesson-dropdown" id="lessonDropdown" onchange="navigateToLesson(this.value)">
+                <!-- JavaScript will populate this -->
+            </select>
+        </div>
+
+        <!-- Lesson Tip (shown when no lesson selected) -->
+        <div class="lesson-tip" id="lessonTip" style="display: none; text-align: center; padding: var(--spacing-2xl); background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); margin: var(--spacing-xl) 0; font-size: var(--text-xl); color: var(--text-secondary);">
+            💡 点击课程号进入学习 / Click lesson number to start learning
+        </div>
+
+        <!-- Lesson Content (shown when lesson selected) -->
+        <div id="lessonContent" style="display: none;">
+            <!-- Lesson Header -->
+            <div class="header">
+                <h1 id="lessonTitle">加载中...Loading…</h1>
+                <p class="subtitle" id="lessonSubtitle">Rapid Literacy</p>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div class="loader" id="loader"></div>
+
+            <!-- Error Message -->
+            <div id="errorMessage" style="display: none;"></div>
+
+            <!-- Tabs Navigation -->
+            <div class="tabs-nav" id="tabsNav" style="display: none;">
+            <button class="tab-button active" data-tab="components">🧩 部件</button>
+            <button class="tab-button" data-tab="targets">🎯 目标字</button>
+            <button class="tab-button" data-tab="vocabulary">📚 生词表</button>
+            <button class="tab-button" data-tab="phrases">📖 词组</button>
+            <button class="tab-button" data-tab="grammar">📝 语法</button>
+            <button class="tab-button" data-tab="exercises">✏️ 练习</button>
+            <button class="tab-button" data-tab="reading" id="readingTab" style="display: none;">📄 阅读短文</button>
+        </div>
+        
+<!-- ==================== Tab Content: Components ==================== -->
+<div id="tab-components" class="tab-content active">
+    <div class="section-header">
+        <div class="section-title">
+            <h2>🧩 部件</h2>
+            <span class="count-badge" id="componentCount">0</span>
+        </div>
+        <button class="btn btn-primary" onclick="enterTeachingMode('components')">
+            🎯 Presentation Mode
+        </button>           
+    </div>
+    
+    <!-- 簡潔卡片網格 -->
+    <div id="componentsGrid" class="character-grid">
+        <!-- JavaScript 會動態插入簡潔卡片 -->
+    </div>
+</div>
+
+<!-- ==================== Tab Content: Target Characters ==================== -->
+<div id="tab-targets" class="tab-content">
+    <div class="section-header">
+        <div class="section-title">
+            <h2>🎯 目标字</h2>
+            <span class="count-badge" id="targetCount">0</span>
+        </div>
+        <button class="btn btn-primary" onclick="enterTeachingMode('targets')">
+            🎯 Presentation Mode
+        </button>
+    </div>
+    
+    <!-- 簡潔卡片網格 -->
+    <div id="targetsGrid" class="character-grid">
+        <!-- JavaScript 會動態插入簡潔卡片 -->
+    </div>
+</div>
+        
+
+
+        <!-- Tab Content: Vocabulary -->
+        <div id="tab-vocabulary" class="tab-content">
+            <div class="section-header">
+                <div class="section-title">
+                    <h2>📚 生词表</h2>
+                    <span class="count-badge" id="vocabularyCount">0</span>
+                </div>
+            </div>
+            <div id="vocabularyContainer"></div>
+        </div>
+        
+        <!-- Tab Content: Phrases -->
+        <div id="tab-phrases" class="tab-content">
+            <div class="section-header">
+                <div class="section-title">
+                    <h2>📖 词组</h2>
+                    <span class="count-badge" id="phrasesCount">0</span>
+                </div>
+            </div>
+            <div id="phrasesContainer"></div>
+        </div>
+        
+        <!-- Tab Content: Grammar -->
+        <div id="tab-grammar" class="tab-content">
+            <div class="section-header">
+                <div class="section-title">
+                    <h2>📝 语法</h2>
+                    <span class="count-badge" id="grammarCount">0</span>
+                </div>
+            </div>
+            <div id="grammarContainer"></div>
+        </div>
+        
+        <!-- Tab Content: Exercises -->
+        <div id="tab-exercises" class="tab-content">
+            <div class="section-header">
+                <div class="section-title">
+                    <h2>✏️ 练习</h2>
+                    <span class="count-badge" id="exercisesCount">0</span>
+                </div>
+            </div>
+            <div id="exercisesContainer"></div>
+        </div>
+        
+        <!-- Tab Content: Reading Text -->
+        <div id="tab-reading" class="tab-content">
+            <div class="card" style="max-width: 900px; margin: 0 auto;">
+                <h2>📄 阅读短文</h2>
+                <div id="readingContent" class="markdown-content" style="font-size: 1.2em; line-height: 1.8;">
+                    <!-- 短文内容会动态插入这里 -->
+                </div>
+            </div>
+        </div>
+        </div>
+        <!-- End Lesson Content -->
+    </div>
+
+    <!-- Character Detail Modal -->
+    <div id="characterModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="character-display" id="modalCharacter"></div>
+                <button class="modal-close-btn" onclick="closeCharacterModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Content will be dynamically inserted -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ==================== Firebase Configuration ====================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDMDTDwDP0mEXwgJdwsXVMB2IFi9Q5zfyU",
+            authDomain: "shizi-with-elisa.firebaseapp.com",
+            projectId: "shizi-with-elisa",
+            storageBucket: "shizi-with-elisa.firebasestorage.app",
+            messagingSenderId: "46368268308",
+            appId: "1:46368268308:web:5847aeb7b239b16d624701"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        // ==================== Global Variables ====================
+        let currentLessonData = null;
+        
+        // ==================== Tab Switching ====================
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                
+                button.classList.add('active');
+                const tabId = 'tab-' + button.dataset.tab;
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+        
+        // ==================== Get Lesson ID from URL ====================
+        function getLessonId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('id') || null;
+        }
+        
+        // ==================== Load Lesson Data ====================
+        async function loadLesson() {
+            const lessonId = getLessonId();
+            const loader = document.getElementById('loader');
+            const errorMessage = document.getElementById('errorMessage');
+            const tabsNav = document.getElementById('tabsNav');
+            const lessonTip = document.getElementById('lessonTip');
+            const lessonTitle = document.getElementById('lessonTitle');
+            const lessonSubtitle = document.getElementById('lessonSubtitle');
+
+            // Check if no lesson is selected
+            if (!lessonId) {
+                // Show lesson selection tip
+                lessonTip.style.display = 'block';
+                document.getElementById('lessonContent').style.display = 'none';
+                return;
+            }
+
+            // Lesson is selected - hide tip and show content
+            lessonTip.style.display = 'none';
+            document.getElementById('lessonContent').style.display = 'block';
+            loader.style.display = 'block';
+            errorMessage.style.display = 'none';
+
+            try {
+                console.time('Loading ' + lessonId);
+
+                // ========== 強制繞過快取：直接從 Firestore 載入 ==========
+                console.log('📡 Loading from Firebase (bypassing cache):', lessonId);
+                const doc = await db.collection('lessons').doc(lessonId).get();
+
+                if (!doc.exists) {
+                    throw new Error('课程不存在/Course not found');
+                }
+
+                currentLessonData = doc.data();
+
+                console.timeEnd('Loading ' + lessonId);
+
+                // Update header with Chinese number format
+                const lessonNum = parseInt(lessonId.replace('lesson', ''));
+                const chineseTitle = convertToChineseNumber(lessonNum);
+                lessonTitle.textContent = chineseTitle;
+                lessonSubtitle.textContent = 'Chinese Learning Platform';
+
+                // Render all content
+                renderComponents(currentLessonData.components || []);
+                renderTargets(currentLessonData.target_characters || []);
+                renderVocabulary(currentLessonData.vocabulary || []);
+                renderPhrases(currentLessonData.phrases || []);
+                renderGrammar(currentLessonData.grammar || []);
+                renderExercises(currentLessonData.exercises || []);
+
+                // Check if reading text exists
+                if (currentLessonData.reading_text && currentLessonData.reading_text.trim()) {
+                    document.getElementById('readingTab').style.display = 'block';
+                    renderReading(currentLessonData.reading_text);
+                }
+
+                // Reset all tabs to use CSS classes (remove inline styles)
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.style.display = '';
+                    tab.classList.remove('active');
+                });
+
+                // Set first tab as active
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                document.querySelector('.tab-button[data-tab="components"]').classList.add('active');
+                document.getElementById('tab-components').classList.add('active');
+
+                // Show tabs
+                tabsNav.style.display = 'flex';
+                
+            } catch (error) {
+                errorMessage.textContent = '加载失败/Failed to load：' + error.message;
+                errorMessage.style.display = 'block';
+                errorMessage.className = 'error-message';
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+        
+// ==================== Render Components (新版：簡潔卡片) ====================
+function renderComponents(components) {
+    const grid = document.getElementById('componentsGrid');
+    const countBadge = document.getElementById('componentCount');
+
+    countBadge.textContent = components.length;
+
+    if (components.length === 0) {
+        grid.innerHTML = `
+            <div class="placeholder" style="grid-column: 1 / -1;">
+                <h3>📦No Components Yet</h3>
+                <p>This part will grow as you learn</p>
+            </div>
+        `;
+        return;
+    }
+
+    // 使用簡潔卡片
+    grid.innerHTML = components.map((char, index) => 
+        createSimpleCharacterCard(char, `comp-${index}`)
+    ).join('');
+}
+
+// ==================== Render Targets (新版：簡潔卡片) ====================
+function renderTargets(targets) {
+    const grid = document.getElementById('targetsGrid');
+    const countBadge = document.getElementById('targetCount');
+
+    countBadge.textContent = targets.length;
+
+    if (targets.length === 0) {
+        grid.innerHTML = `
+            <div class="placeholder" style="grid-column: 1 / -1;">
+                <h3>🎯Nothing Here Yet</h3>
+                <p>Target characters will appear here once they are added.</p>
+            </div>
+        `;
+        return;
+    }
+
+    // 使用簡潔卡片
+    grid.innerHTML = targets.map((char, index) => 
+        createSimpleCharacterCard(char, `target-${index}`)
+    ).join('');
+}
+
+function createSimpleCharacterCard(char, cardId) {
+    const uniqueId = `char-card-${cardId}`;
+    
+    let charDisplay = char.character; // 預設顯示文字
+    
+    // 字形補丁系統：優先檢查 display_image 欄位（V2.2 規格）
+    if (char.display_image && char.display_image.trim()) {
+        charDisplay = `<img src="${char.display_image.trim()}" class="img-comp" alt="comp" onerror="this.style.display='none';">`;
+    }
+    // Fallback: 如果 character 欄位本身是 http 開頭的網址，自動視為圖片補丁
+    else if (char.character && typeof char.character === 'string' && char.character.trim().toLowerCase().startsWith('http')) {
+        charDisplay = `<img src="${char.character.trim()}" class="img-comp" alt="comp" onerror="this.style.display='none';">`;
+    }
+
+    const html = `
+        <div class="character-card" id="${uniqueId}">
+            <div class="character" style="font-size: var(--char-size-large); line-height: 1.1;">
+                ${charDisplay}
+            </div>
+            <div class="pinyin">${char.pinyin}</div>
+            <div class="meaning">${char.meaning}</div>
+        </div>
+    `;
+
+    // 延遲綁定點擊事件（保持原樣）
+    setTimeout(() => {
+        const cardElement = document.getElementById(uniqueId);
+        if (cardElement) {
+            cardElement.addEventListener('click', () => openCharacterModal(char));
+        }
+    }, 0);
+
+    return html;
+}
+
+// ==================== 創建管理後台風格的字卡 ====================
+function createAdminCharacterCard(char, index) {
+    const cardId = `admin-char-card-${index}`;
+
+    let sectionsHTML = '';
+
+    // 組件拆解
+    if (char.components_breakdown) {
+        sectionsHTML += `
+            <div class="admin-char-section">
+                <div class="admin-char-section-title">parts</div>
+                <div class="admin-char-section-content">${processMarkdownImages(marked.parse(char.components_breakdown))}</div>
+            </div>
+        `;
+    }
+
+    // 圖片
+    if (char.image) {
+        sectionsHTML += `
+            <img src="${char.image}" class="admin-char-image" onerror="this.style.display='none'" alt="字源圖">
+        `;
+    }
+
+    // 書本解釋
+    if (char.book_explanation) {
+        sectionsHTML += `
+            <div class="admin-char-section">
+                <div class="admin-char-section-title">📖 Explanation</div>
+                <div class="admin-char-section-content">${processMarkdownImages(marked.parse(char.book_explanation))}</div>
+            </div>
+        `;
+    }
+
+    // 記憶故事
+    if (char.story) {
+        sectionsHTML += `
+            <div class="admin-char-section" style="background: #fff3cd;">
+                <div class="admin-char-section-title" style="color: #856404;">🧠 Story</div>
+                <div class="admin-char-section-content">${processMarkdownImages(marked.parse(char.story))}</div>
+            </div>
+        `;
+    }
+
+    // 發音提示
+    if (char.pronunciation_cue) {
+        sectionsHTML += `
+            <div class="admin-char-section">
+                <div class="admin-char-section-title">🔊 發音 Pronunciation_cue</div>
+                <div class="admin-char-section-content">${processMarkdownImages(marked.parse(char.pronunciation_cue))}</div>
+            </div>
+        `;
+    }
+
+    // 詞組範例
+    if (char.phrases) {
+        sectionsHTML += `
+            <div class="admin-char-section">
+                <div class="admin-char-section-title">💬 Fhrases</div>
+                <div class="admin-char-section-content">${processMarkdownImages(marked.parse(char.phrases))}</div>
+            </div>
+        `;
+    }
+
+    // 例句
+    if (char.example) {
+        sectionsHTML += `
+            <div class="admin-char-section">
+                <div class="admin-char-section-title">💡 例句 example </div>
+                <div class="admin-char-section-content">${char.example}</div>
+            </div>
+        `;
+    }
+
+    const html = `
+        <div class="admin-character-card" id="${cardId}">
+            <div class="admin-char-main">${char.character}</div>
+            <div class="admin-char-pinyin">${char.pinyin}</div>
+            <div class="admin-char-meaning">${char.meaning}</div>
+            ${sectionsHTML}
+        </div>
+    `;
+
+    // 添加點擊事件
+    setTimeout(() => {
+        const cardElement = document.getElementById(cardId);
+        if (cardElement) {
+            cardElement.addEventListener('click', () => openCharacterModal(char));
+        }
+    }, 0);
+
+    return html;
+    } 
+        
+        // ==================== Render Vocabulary ====================
+        function renderVocabulary(vocabulary) {
+            const container = document.getElementById('vocabularyContainer');
+            const countBadge = document.getElementById('vocabularyCount');
+            
+            countBadge.textContent = vocabulary.length;
+            
+            if (vocabulary.length === 0) {
+                container.innerHTML = '<div class="placeholder"><h3>暂无资料/Nothing Here Yet</h3></div>';
+                return;
+            }
+            
+            // Parse vocabulary data
+            const vocabItems = vocabulary.map(item => {
+                const parts = item.content.split('|').map(s => s.trim());
+                return {
+                    character: parts[0] || '',
+                    pinyin: parts[1] || '',
+                    meaning_en: parts[2] || '',
+                    meaning_es: '', // Will be added later when CSV includes translations
+                    notes: item.notes || ''
+                };
+            });
+            
+            let html = `
+                <table class="vocabulary-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>字</th>
+                            <th>拼音</th>
+                            <th>English</th>
+                            <th>例句</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+           vocabItems.forEach((item, index) => {
+                html += `
+                    <tr>
+                         <td style="text-align:center;font-weight:bold;">${index + 1}</td>
+                         <td class="char">${item.character}</td>
+                        <td class="pinyin">${item.pinyin}</td>
+                        <td class="meaning-en">${item.meaning_en}</td>
+                        <td class="notes">${item.notes}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            if (currentLessonData.literacy_sentence) {
+    html += `
+        <div style="margin-top: var(--spacing-xl); padding: var(--spacing-xl); background: var(--bg-light); border-radius: var(--radius-lg); border-left: 4px solid var(--accent-color);">
+            <h3 style="color: var(--accent-color); margin-bottom: var(--spacing-md);">📖 识字句</h3>
+            <p style="font-size: var(--text-lg); line-height: 1.8; color: var(--text-primary);">
+                ${currentLessonData.literacy_sentence}
+            </p>
+        </div>
+    `;
+}
+            
+            container.innerHTML = html;
+        }
+        
+        // ==================== Render Phrases ====================
+        function renderPhrases(phrases) {
+            const container = document.getElementById('phrasesContainer');
+            const countBadge = document.getElementById('phrasesCount');
+            
+            countBadge.textContent = phrases.length;
+            
+            if (phrases.length === 0) {
+                container.innerHTML = '<div class="placeholder"><h3>暂无资料/Nothing Here Yet</h3></div>';
+                return;
+            }
+            
+            const regularPhrases = phrases.filter(p => p.subtype === 'phrase');
+            const dialogues = phrases.filter(p => p.subtype === 'dialogue');
+            
+            let html = '';
+            
+            // Regular phrases
+            if (regularPhrases.length > 0) {
+                html += '<div class="card"><h2>词组</h2>';
+                html += '<div class="character-grid">';
+                regularPhrases.forEach(phrase => {
+                    const parts = phrase.content.split('|').map(s => s.trim());
+                    const chinese = parts[0] || '';
+                    const pinyin = parts[1] || ''; // We have it but won't display
+                    const english = parts[2] || '';
+                    const spanish = ''; // Will be added when CSV includes translations
+                    
+                    html += `
+                        <div class="phrase-card">
+                            <div class="chinese">${chinese}</div>
+                            <div class="translations">
+                                <span class="translation-en">${english}</span>
+                                ${spanish ? `<span class="translation-es">/ ${spanish}</span>` : ''}
+                            </div>
+                            ${phrase.notes ? `<div class="notes">${phrase.notes}</div>` : ''}
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            // Dialogues
+            if (dialogues.length > 0) {
+                html += '<div class="card" style="margin-top:30px;"><h2>对话</h2>';
+                dialogues.forEach(dialogue => {
+                    const parts = dialogue.content.split('|').map(s => s.trim());
+                    html += `
+                        <div class="dialogue-box">
+                            ${dialogue.notes ? `<div class="dialogue-title">${dialogue.notes}</div>` : ''}
+                            ${parts.map(part => `<div class="dialogue-line">${part}</div>`).join('')}
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        // ==================== Render Grammar ====================
+        function renderGrammar(grammar) {
+            const container = document.getElementById('grammarContainer');
+            const countBadge = document.getElementById('grammarCount');
+            
+            countBadge.textContent = grammar.length;
+            
+            if (grammar.length === 0) {
+                container.innerHTML = '<div class="placeholder"><h3>暂无资料/Nothing Here Yet</h3></div>';
+                return;
+            }
+            
+            let html = '';
+            let currentRuleIndex = 0;
+            let currentExamples = [];
+            
+        grammar.forEach((item, index) => {
+            if (item.subtype === 'rule') {
+                // 如果有上一个语法点，先关闭它
+                if (currentRuleIndex > 0) {
+                    html += renderGrammarExamples(currentExamples);
+                    html += '</div>'; // 关闭上一个 grammar-point
+                    currentExamples = [];
+                }
+                
+                currentRuleIndex++;
+                
+                // 分割双语内容
+                const parts = item.content.split('|').map(s => s.trim());
+                const spanish = parts[0] || item.content;
+                const english = parts[1] || '';
+                
+                html += `
+                    <div class="grammar-point">
+                        <div class="grammar-header">
+                            <div class="grammar-title">📝 语法点 ${currentRuleIndex}</div>
+                        </div>
+                        <div class="grammar-content">
+                            <div class="spanish">${spanish}</div>
+                            ${english ? `<div class="english">${english}</div>` : ''}
+                        </div>
+                `;
+            } else if (item.subtype === 'example') {
+                currentExamples.push(item.content);
+            }
+        });
+
+        // 关闭最后一个语法点
+        if (currentRuleIndex > 0) {
+            html += renderGrammarExamples(currentExamples);
+            html += '</div>';
+        }
+
+        container.innerHTML = html;
+            
+            // Close the last grammar point
+            if (currentRuleIndex > 0) {
+                html += renderGrammarExamples(currentExamples);
+                html += '</div>';
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        function renderGrammarExamples(examples) {
+            if (examples.length === 0) return '';
+            
+            let html = '<div class="grammar-examples">';
+            examples.forEach(example => {
+                html += `<div class="grammar-example">💡 ${example}</div>`;
+            });
+            html += '</div>';
+            return html;
+        }
+        
+        // ==================== Render Exercises ====================
+        function renderExercises(exercises) {
+            const container = document.getElementById('exercisesContainer');
+            const countBadge = document.getElementById('exercisesCount');
+            
+            countBadge.textContent = exercises.length;
+            
+            if (exercises.length === 0) {
+                container.innerHTML = '<div class="placeholder"><h3>暂无资料/Nothing Here Yet</h3></div>';
+                return;
+            }
+            
+            let html = '';
+            
+            exercises.forEach((exercise, index) => {
+                const qNum = index + 1;
+                
+                if (exercise.subtype === 'fill_blank') {
+                    html += renderFillBlankExercise(exercise, qNum, index);
+                } else if (exercise.subtype === 'multiple_choice') {
+                    html += renderMultipleChoiceExercise(exercise, qNum, index);
+                }
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function renderFillBlankExercise(exercise, qNum, index) {
+            // Parse the question to add clickable blank positions
+            let question = exercise.content;
+            const positions = ['A', 'B', 'C', 'D'];
+            
+            positions.forEach(pos => {
+                const regex = new RegExp(`_${pos}_`, 'g');
+                question = question.replace(regex, 
+                    `<span class="blank-position" data-position="${pos}" onclick="selectBlank(${index}, '${pos}', this)">${pos}</span>`
+                );
+            });
+            
+            return `
+                <div class="exercise-item" id="exercise-${index}">
+                    <div class="exercise-header">${qNum}. 填空题 - 选择正确的位置</div>
+                    <div class="exercise-question">${question}</div>
+                    <div style="margin-bottom: var(--spacing-md);">
+                        <strong>填入：</strong><span style="color: var(--primary-color); font-size: var(--text-xl); margin-left: var(--spacing-sm);">${exercise.options || ''}</span>
+                    </div>
+                    <button class="btn btn-primary" onclick="checkBlankAnswer(${index}, '${exercise.answer}')">
+                        检查答案
+                    </button>
+                    <div id="result-${index}" class="result-box" style="display:none;"></div>
+                    
+                </div>
+            `;
+        }
+        
+        function renderMultipleChoiceExercise(exercise, qNum, index) {
+            const options = exercise.options.split('|').map(o => o.trim());
+            
+            return `
+                <div class="exercise-item" id="exercise-${index}">
+                    <div class="exercise-header">${qNum}. 选择题</div>
+                    <div class="exercise-question">${exercise.content}</div>
+                    <div class="options-grid">
+                        ${options.map((opt, i) => `
+                            <div class="option-btn" onclick="selectOption(${index}, '${String.fromCharCode(65 + i)}', this)">
+                                ${opt}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="btn btn-primary" onclick="checkMultipleChoice(${index}, '${exercise.answer}')">
+                        检查答案
+                    </button>
+                    <div id="result-${index}" class="result-box" style="display:none;"></div>
+                    ${exercise.notes ? `<div style="margin-top:var(--spacing-md);color:var(--text-secondary);font-style:italic;">${exercise.notes}</div>` : ''}
+                </div>
+            `;
+        }
+        
+        // ==================== Exercise Interaction ====================
+        const selectedAnswers = {};
+        const selectedBlanks = {};
+        
+        function selectBlank(exerciseIndex, position, element) {
+            selectedBlanks[exerciseIndex] = position;
+            
+            // Clear previous selections
+            const parent = element.parentElement;
+            parent.querySelectorAll('.blank-position').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // Mark current selection
+            element.classList.add('selected');
+        }
+        
+        function checkBlankAnswer(exerciseIndex, correctAnswer) {
+            const resultDiv = document.getElementById(`result-${exerciseIndex}`);
+            const selected = selectedBlanks[exerciseIndex];
+            
+            if (!selected) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result-box warning';
+                resultDiv.textContent = '⚠️ 请先选择一个位置';
+                return;
+            }
+            
+            if (selected === correctAnswer) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result-box correct';
+                resultDiv.textContent = `✅ 正确！答案是 ${correctAnswer}`;
+            } else {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result-box incorrect';
+                resultDiv.textContent = `❌ 错误！正确答案是 ${correctAnswer}`;
+            }
+        }
+        
+        function selectOption(exerciseIndex, choice, element) {
+            selectedAnswers[exerciseIndex] = choice;
+            
+            // Clear all selections
+            const parent = element.parentElement;
+            parent.querySelectorAll('.option-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            // Mark current selection
+            element.classList.add('selected');
+        }
+        
+        function checkMultipleChoice(exerciseIndex, correctAnswer) {
+            const resultDiv = document.getElementById(`result-${exerciseIndex}`);
+            const selected = selectedAnswers[exerciseIndex];
+            
+            if (!selected) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result-box warning';
+                resultDiv.textContent = '⚠️ 请先选择一个答案';
+                return;
+            }
+            
+            if (selected === correctAnswer) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result-box correct';
+                resultDiv.textContent = `✅ 正确！答案是 ${correctAnswer}`;
+            } else {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result-box incorrect';
+                resultDiv.textContent = `❌ 错误！正确答案是 ${correctAnswer}`;
+            }
+        }
+        
+        // ==================== Render Reading ====================
+        function renderReading(readingText) {
+            const container = document.getElementById('readingContent');
+            
+            if (!readingText) {
+                container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: var(--spacing-2xl);">本课无阅读短文</p>';
+                return;
+            }
+            
+            // 嚴格遵守 Alt-based 分類系統
+            container.innerHTML = processMarkdownImages(marked.parse(readingText));
+        }
+        
+        // ==================== Open Character Modal ====================
+function openCharacterModal(charData) {
+    if (!charData) {
+        console.error('No character data provided');
+        return;
+    }
+
+    const modal = document.getElementById('characterModal');
+    const modalCharacter = document.getElementById('modalCharacter');
+    const modalBody = document.getElementById('modalBody');
+
+// Set character display (優先用 display_image 字形補丁，沒有就顯示文字)
+// 根據 V2.2 規格：display_image 是字形補丁，與文字地位相同
+let displayContent = `<div style="font-size: 4rem; font-weight: bold; line-height: 1;">${charData.character || ''}</div>`;
+
+// 優先檢查 display_image 欄位（V2.2 規格）
+if (charData.display_image && charData.display_image.trim()) {
+    // Modal header 中字形補丁可適當放大顯示（max-height: 220px）
+    displayContent = `<img src="${charData.display_image.trim()}" style="max-height: 220px; max-width: 100%; height: auto; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15);" alt="comp" onerror="this.style.display='none';">`;
+}
+// Fallback: 如果 character 欄位本身是 http 開頭的網址，自動視為圖片補丁
+else if (charData.character && typeof charData.character === 'string' && charData.character.trim().toLowerCase().startsWith('http')) {
+    displayContent = `<img src="${charData.character.trim()}" style="max-height: 220px; max-width: 100%; height: auto; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15);" alt="comp" onerror="this.style.display='none';">`;
+}
+
+modalCharacter.innerHTML = displayContent;
+
+    // Build modal body content preserving original order
+    let bodyHTML = '';
+
+    // Basic info section
+    bodyHTML += `
+        <div class="modal-section">
+            <div style="text-align: center;">
+                <div style="font-size: var(--text-2xl); color: var(--pinyin-color); font-weight: var(--font-semibold); margin-bottom: var(--spacing-sm);">
+                    ${charData.pinyin}
+                </div>
+                <div style="font-size: var(--text-xl); color: var(--meaning-color); font-weight: var(--font-medium);">
+                    ${charData.meaning}
+                </div>
+    `;
+
+    // ✅ 修改：先解析 Markdown，再處理圖片
+    if (charData.components_breakdown) {
+        bodyHTML += `
+            <div style="margin-top: var(--spacing-md); padding: var(--spacing-md); background: var(--bg-light); border-radius: var(--radius-md); font-size: var(--text-base); color: var(--text-secondary);">
+                ${processMarkdownImages(marked.parse(charData.components_breakdown))}
+            </div>
+        `;
+    }
+
+    bodyHTML += `</div></div>`;
+
+    // Image (輔助插圖) - 根據 V2.2 規格，只顯示 image 欄位，不顯示 display_image
+    // display_image 已作為字形補丁在 modal header 中顯示
+    if (charData.image && charData.image.trim()) {
+        bodyHTML += `
+            <div class="modal-section">
+                <div class="modal-image-container">
+                    <img src="${charData.image.trim()}" 
+                        alt="${charData.meaning || charData.character || '輔助插圖'}"
+                        style="max-height: 300px; object-fit: contain;"
+                        onerror="this.parentElement.parentElement.style.display='none'">
+                </div>
+            </div>
+        `;
+    }
+
+    // Book explanation
+    if (charData.book_explanation) {
+        bodyHTML += `
+            <div class="modal-section">
+                <div class="modal-section-title">📖 解释</div>
+                <div class="markdown-content">${processMarkdownImages(marked.parse(charData.book_explanation))}</div>
+            </div>
+        `;
+    }
+
+    // Story
+    if (charData.story) {
+        bodyHTML += `
+            <div class="modal-section">
+                <div class="modal-section-title">🧠 记忆故事</div>
+                <div class="markdown-content">${processMarkdownImages(marked.parse(charData.story))}</div>
+            </div>
+        `;
+    }
+
+    // Pronunciation cue
+    if (charData.pronunciation_cue) {
+        bodyHTML += `
+            <div class="modal-section">
+                <div class="modal-section-title">🔊 发音</div>
+                <div class="markdown-content">${processMarkdownImages(marked.parse(charData.pronunciation_cue))}</div>
+            </div>
+        `;
+    }
+
+    // Phrases
+    if (charData.phrases) {
+        bodyHTML += `
+            <div class="modal-section">
+                <div class="modal-section-title">💬 词组范例</div>
+                <div class="markdown-content">${processMarkdownImages(marked.parse(charData.phrases))}</div>
+            </div>
+        `;
+    }
+
+    // Example
+    if (charData.example) {
+        bodyHTML += `
+            <div class="modal-section">
+                <div class="modal-section-title">💡 例句</div>
+                <div class="markdown-content">${charData.example}</div>
+            </div>
+        `;
+    }
+
+    modalBody.innerHTML = bodyHTML;
+    modal.classList.add('active');
+
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden';
+}
+
+        // ==================== Close Character Modal ====================
+        function closeCharacterModal() {
+            const modal = document.getElementById('characterModal');
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // Close modal when clicking outside content
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById('characterModal');
+            if (e.target === modal) {
+                closeCharacterModal();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeCharacterModal();
+            }
+        });
+
+        // ==================== Process Markdown Images ====================
+        function processMarkdownImages(html) {
+            // Parse HTML and add classes based on alt text
+            const div = document.createElement('div');
+            div.innerHTML = html;
+
+            const images = div.querySelectorAll('img');
+            images.forEach(img => {
+                const alt = img.getAttribute('alt') || '';
+
+                if (alt === 'origin') {
+                    img.classList.add('img-origin');
+                } else if (alt === 'story') {
+                    img.classList.add('img-story');
+                } else if (alt === 'comp') {
+                    img.classList.add('img-comp');
+                }
+            });
+
+            return div.innerHTML;
+        }
+        function enterTeachingMode(tab) {
+    const lessonId = getLessonId();
+    window.location.href = `lesson-presentation.html?id=${lessonId}&tab=${tab}`;
+}
+        // ==================== Initialize ====================
+        window.addEventListener('DOMContentLoaded', () => {
+            loadLesson();
+        });
+
+
+
+
+
+
+ // ==================== Render Lesson Navigation (BBC Style) ====================
+    function renderLessonNavigation() {
+        const currentLesson = getLessonId();
+        const currentNum = currentLesson ? parseInt(currentLesson.replace('lesson', '')) : null;
+
+        const lessonNumbers = document.getElementById('lessonNumbers');
+        const lessonDropdown = document.getElementById('lessonDropdown');
+
+        // Generate BBC-style horizontal bars for desktop (1-25)
+        let barsHTML = '';
+        for (let i = 1; i <= 25; i++) {
+            const isActive = i === currentNum;
+            barsHTML += `
+                <div class="lesson-unit">
+                    <div class="lesson-bar ${isActive ? 'active' : ''}"
+                         onclick="navigateToLesson(${i})"
+                         title="识字${i}">
+                    </div>
+                    <span class="lesson-label">${i}</span>
+                </div>
+            `;
+        }
+        lessonNumbers.innerHTML = barsHTML;
+
+        // Generate dropdown options for mobile
+        let dropdownHTML = '';
+        for (let i = 1; i <= 25; i++) {
+            const lessonTitle = convertToChineseNumber(i);
+            const isSelected = i === currentNum;
+            dropdownHTML += `
+                <option value="${i}" ${isSelected ? 'selected' : ''}>
+                    ${lessonTitle}
+                </option>
+            `;
+        }
+        lessonDropdown.innerHTML = dropdownHTML;
+    }
+
+    // ==================== Convert Number to Chinese Format ====================
+    function convertToChineseNumber(num) {
+        const digits = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+        const units = ['十', '百', '千'];
+
+        if (num <= 10) {
+            if (num === 10) return '识字十';
+            return `识字${digits[num]}`;
+        }
+
+        if (num < 20) {
+            return `识字十${digits[num - 10]}`;
+        }
+
+        if (num < 100) {
+            const tens = Math.floor(num / 10);
+            const ones = num % 10;
+            return `识字${digits[tens]}十${ones > 0 ? digits[ones] : ''}`;
+        }
+
+        return `识字${num}`;
+    }
+
+    // ==================== Navigate to Lesson ====================
+    function navigateToLesson(lessonNum) {
+        window.location.href = `lesson.html?id=lesson${lessonNum}`;
+    }
+
+    // ==================== Refresh Lesson Data ====================
+    function refreshLessonData() {
+        const lessonId = getLessonId();
+        if (confirm('🔄 重新加载最新数据？\n\nReload fresh data from server?')) {
+            const cacheKey = `lesson_cache_${lessonId}`;
+            localStorage.removeItem(cacheKey);
+            console.log('🗑️ Cleared cache for:', lessonId);
+            location.reload();
+        }
+    }
+
+    // ==================== Initialize Navigation ====================
+    renderLessonNavigation();
+
+// 測試用：印出第一個部件的資料，看 image 有沒有值
+window.addEventListener('DOMContentLoaded', () => {
+    loadLesson().then(() => {
+        if (currentLessonData && currentLessonData.components && currentLessonData.components[0]) {
+            console.log('第一個部件的資料：', currentLessonData.components[0]);
+            console.log('它的 image 欄位是：', currentLessonData.components[0].image);
+        }
+    });
+});
+
+    </script>
+    <script src="../../assets/js/nav-global.js"></script>
+</body>
+</html>

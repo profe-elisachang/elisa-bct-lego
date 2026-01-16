@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BCT Lesson</title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/nav-global.css">
 </head>
 <body>
     <div class="container">
@@ -24,9 +25,9 @@
                 <button class="tab-btn active" data-tab="dialogue">Dialogue</button>
                 <button class="tab-btn" data-tab="reading">Reading</button>
                 <button class="tab-btn" data-tab="vocabulary">Vocabulary</button>
+                <button class="tab-btn" data-tab="components">Components</button>
+                <button class="tab-btn" data-tab="vocab">Vocab</button>
                 <button class="tab-btn" data-tab="practice">Practice</button>
-                <button class="tab-btn" data-tab="timeline-components">部件</button>
-                <button class="tab-btn" data-tab="timeline-vocab">字</button>
             </nav>
 
             <!-- Tab 內容容器 -->
@@ -52,6 +53,22 @@
                     </div>
                 </div>
 
+                <!-- Components Tab (Timeline: component) -->
+                <div id="components" class="tab-pane">
+                    <div id="timeline-components-content" class="content-group">
+                        <!-- 動態注入部件補充 -->
+                        <p class="placeholder">尚無部件補充</p>
+                    </div>
+                </div>
+
+                <!-- Vocab Tab (Timeline: vocab) -->
+                <div id="vocab" class="tab-pane">
+                    <div id="timeline-vocab-content" class="content-group">
+                        <!-- 動態注入字詞補充 -->
+                        <p class="placeholder">尚無字詞補充</p>
+                    </div>
+                </div>
+
                 <!-- Practice Tab -->
                 <div id="practice" class="tab-pane">
                     <div id="practice-content" class="content-group">
@@ -59,23 +76,14 @@
                         <p class="placeholder">練習功能開發中...</p>
                     </div>
                 </div>
-
-                <!-- Timeline Components Tab -->
-                <div id="timeline-components" class="tab-pane">
-                    <div id="timeline-components-content" class="content-group">
-                        <p class="placeholder">尚無部件補充</p>
-                    </div>
-                </div>
-
-                <!-- Timeline Vocabulary Tab -->
-                <div id="timeline-vocab" class="tab-pane">
-                    <div id="timeline-vocab-content" class="content-group">
-                        <p class="placeholder">尚無字詞補充</p>
-                    </div>
-                </div>
             </div>
         </main>
 
+        <!-- Timeline 補充區 -->
+        <aside class="timeline-section">
+            <h2>課堂補充 (Timeline)</h2>
+            <p class="placeholder">補充內容已整合到 Components / Vocab 分頁</p>
+        </aside>
     </div>
 
     <!-- 載入 Firebase SDK -->
@@ -83,10 +91,40 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
+    <!-- 導航系統 -->
+    <script src="assets/js/course-config.js"></script>
+    <script src="assets/js/nav.js?v=debug-3"></script>
+    <!-- #region agent log -->
+    <script>
+      (function () {
+        const firestoreSrc = Array.from(document.querySelectorAll('script[src]'))
+          .map(s => s.getAttribute('src'))
+          .find(src => src && src.includes('assets/js/firestore.js'));
+        fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'debug-session',
+            runId: 'baseline',
+            hypothesisId: 'H15',
+            location: 'lesson.html:inline',
+            message: 'HTML loaded',
+            data: {
+              href: window.location.href,
+              firestoreSrc,
+              hasServiceWorker: !!navigator.serviceWorker?.controller
+            },
+            timestamp: Date.now()
+          })
+        }).catch(() => {});
+      })();
+    </script>
+    <!-- #endregion -->
+
     <!-- 載入 JavaScript -->
-    <script src="assets/js/firestore.js"></script>
+    <script src="assets/js/firestore.js?v=debug-8"></script>
     <script src="assets/js/audio.js"></script>
-    <script src="assets/js/loader.js"></script>
+    <script src="assets/js/loader.js?v=debug-4"></script>
     <script src="assets/js/toggle.js"></script>
 </body>
 </html>

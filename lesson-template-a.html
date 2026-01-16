@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BCT Lesson - Template A</title>
+  <!-- 原始課程樣式，保持內容視覺一致 -->
+  <link rel="stylesheet" href="assets/css/style.css">
+  <!-- 視覺樣式草稿：Template A -->
+  <link rel="stylesheet" href="styles/templates/lesson-a.css">
+  <!-- 共享導覽樣式（沿用現有） -->
+  <link rel="stylesheet" href="assets/css/nav-global.css">
+</head>
+<body class="template-a">
+  <div class="container template-a-container">
+    <!-- 全局導覽 -->
+    <header class="a-header">
+      <div class="a-header-left">
+        <div class="logo">Logo</div>
+      </div>
+      <div class="a-header-center">
+        <button class="course-selector" id="course-selector">课程选择 ▼</button>
+      </div>
+      <div class="a-header-right">
+        <a href="#" id="auth-link" class="auth-link">学生</a>
+      </div>
+    </header>
+
+    <!-- 參考 lesson.html 的課程標題與語言切換 -->
+    <header class="lesson-header a-header-secondary">
+      <h1 id="lesson-title">Loading...</h1>
+      <div class="toggle-controls">
+        <button id="toggle-en" class="toggle-btn active">English</button>
+        <button id="toggle-es" class="toggle-btn active">Español</button>
+      </div>
+    </header>
+
+    <!-- BBC Unit Bar -->
+    <section class="unit-bar" id="unit-bar">
+      <div class="unit-bar-inner" id="unit-bar-inner">
+        <!-- JS 將在此處動態注入 1..20 與對應課程的 Review 連結 -->
+      </div>
+    </section>
+
+    <!-- 主控制列 -->
+    <section class="main-controls">
+      <div class="tab-strip" role="tablist">
+        <button class="tab-btn active" data-tab="dialogue">Dialogue</button>
+        <button class="tab-btn" data-tab="reading">Reading</button>
+        <button class="tab-btn" data-tab="vocabulary">Vocabulary</button>
+        <button class="tab-btn" data-tab="components">Components</button>
+        <button class="tab-btn" data-tab="vocab">Vocab</button>
+        <button class="tab-btn" data-tab="practice">Practice</button>
+      </div>
+    </section>
+
+    <!-- 主體 70/30 Split -->
+    <main class="a-main">
+      <section class="content-col">
+        <div class="card">
+          <h1 class="card-title" aria-describedby="lesson-title">课程内容</h1>
+          <div class="tab-content">
+            <div id="dialogue" class="tab-pane active">
+              <div id="dialogue-content" class="content-group"></div>
+            </div>
+            <div id="reading" class="tab-pane">
+              <div id="reading-content" class="content-group"></div>
+            </div>
+            <div id="vocabulary" class="tab-pane">
+              <div id="vocabulary-content" class="content-group"></div>
+            </div>
+            <div id="components" class="tab-pane">
+              <div id="timeline-components-content" class="content-group">
+                <p class="placeholder">暂无部件补充</p>
+              </div>
+            </div>
+            <div id="vocab" class="tab-pane">
+              <div id="timeline-vocab-content" class="content-group">
+                <p class="placeholder">暂无字词补充</p>
+              </div>
+            </div>
+            <div id="practice" class="tab-pane">
+              <div id="practice-content" class="content-group">
+                <p class="placeholder">练习开发中...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="notes-col">
+        <div class="card sticky">
+          <h3 class="card-subtitle">Elisa 的笔记</h3>
+          <div id="teacher-notes" class="notes-markdown"></div>
+          <div class="notes-extra">
+            <p>* Notes in Markdown</p>
+            <p>* Key Vocabulary</p>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+  <!-- 保持既有資料與邏輯 -->
+  <script src="assets/js/course-config.js"></script>
+  <script src="assets/js/nav.js?v=debug-3"></script>
+  <!-- #region agent log -->
+  <script>
+    (function () {
+      const firestoreSrc = Array.from(document.querySelectorAll('script[src]'))
+        .map(s => s.getAttribute('src'))
+        .find(src => src && src.includes('assets/js/firestore.js'));
+      fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'debug-session',
+          runId: 'baseline',
+          hypothesisId: 'H15',
+          location: 'lesson-template-a.html:inline',
+          message: 'HTML loaded',
+          data: {
+            href: window.location.href,
+            firestoreSrc,
+            hasServiceWorker: !!navigator.serviceWorker?.controller
+          },
+          timestamp: Date.now()
+        })
+      }).catch(() => {});
+    })();
+  </script>
+  <!-- #endregion -->
+  <script src="assets/js/firestore.js?v=debug-8"></script>
+  <script src="assets/js/audio.js"></script>
+  <script src="assets/js/loader.js?v=debug-4"></script>
+  <script src="assets/js/toggle.js"></script>
+</body>
+</html>
+
