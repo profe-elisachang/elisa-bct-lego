@@ -56,11 +56,21 @@ function initDateDefaults() {
 
 function setupTypeToggle() {
     const radios = document.querySelectorAll('input[name="type"]');
+    const cohortRow = document.querySelector('.cohort-select');
+    
     radios.forEach(r => {
         r.addEventListener('change', () => {
             const isNote = r.value === 'note';
+            const needsCohort = r.value === 'vocab' || r.value === 'note';
+            
+            // 显示/隐藏字段
             document.querySelectorAll('.type-note').forEach(el => el.classList.toggle('hidden', !isNote));
             document.querySelectorAll('.type-vocab').forEach(el => el.classList.toggle('hidden', isNote));
+            
+            // 显示/隐藏班级选择
+            if (cohortRow) {
+                cohortRow.classList.toggle('hidden', !needsCohort);
+            }
         });
     });
 }
@@ -90,17 +100,17 @@ function renderLessonOptions() {
 async function ensureAuth() {
     const saved = localStorage.getItem('teacher_auth');
     if (saved === teacherPassword) {
-        document.getElementById('adminStatus').textContent = '已驗證';
+        document.getElementById('adminStatus').textContent = '已验证';
         return;
     }
-    const input = prompt('請輸入老師密碼：');
+    const input = prompt('请输入老师密码：');
     if (input !== teacherPassword) {
-        alert('密碼錯誤');
+        alert('密码错误');
         window.location.href = 'index.html';
         return;
     }
     localStorage.setItem('teacher_auth', input);
-    document.getElementById('adminStatus').textContent = '已驗證';
+    document.getElementById('adminStatus').textContent = '已验证';
 }
 
 async function initFirebase() {
@@ -123,9 +133,17 @@ async function addEntry() {
     const date = document.getElementById('dateInput').value;
     const lesson = document.getElementById('lessonInput').value;
     const type = document.querySelector('input[name="type"]:checked').value;
+    const level = document.querySelector('input[name="level"]:checked').value;
+    const cohort = document.querySelector('input[name="cohort"]:checked')?.value;
 
     if (!date || !lesson) {
-        alert('請填日期與課次');
+        alert('请填日期与课次');
+        return;
+    }
+
+    // 生词和笔记需要班级
+    if ((type === 'vocab' || type === 'note') && !cohort) {
+        alert('生词和笔记需要选择班级');
         return;
     }
 
@@ -134,19 +152,23 @@ async function addEntry() {
         const py = document.getElementById('pinyinInput').value.trim();
         const me = document.getElementById('meaningInput').value.trim();
         if (!ch || !py || !me) {
-            alert('請填寫漢字、拼音、意思');
+            alert('请填写汉字、拼音、意思');
             return;
         }
     }
 
     let data = {
         type,
-        source: 'timeline',
         lesson,
         date,
         review: type !== 'note',
         timestamp: new Date().toISOString()
     };
+
+    // 生词和笔记添加 cohort 字段
+    if (type === 'vocab' || type === 'note') {
+        data.cohort = cohort;
+    }
 
     if (type === 'note') {
         data.title = document.getElementById('noteTitleInput').value;
@@ -158,26 +180,30 @@ async function addEntry() {
         data.notes = document.getElementById('notesInput').value;
     }
 
-    const todayDoc = `timeline-${date}`;
-    const coll = type === 'component' ? 'components' : type === 'vocab' ? 'vocabulary' : 'notes';
+    // 新的路径结构
+    let collectionPath;
+    if (type === 'component') {
+        // components: timeline/{level}/components/
+        collectionPath = `timeline/${level}/components`;
+    } else if (type === 'vocab') {
+        // vocab: timeline/{level}/vocab/{cohort}/items/
+        collectionPath = `timeline/${level}/vocab/${cohort}/items`;
+    } else {
+        // notes: timeline/{level}/notes/{cohort}/items/
+        collectionPath = `timeline/${level}/notes/${cohort}/items`;
+    }
 
     try {
-        await db.collection('timeline').doc(todayDoc).set({
-            scope: 'timeline',
-            date,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+        await db.collection(collectionPath).add(data);
 
-        await db.collection('timeline').doc(todayDoc).collection(coll).add(data);
-
-        dlog('TA2','timeline-admin:addEntry','write success',{coll, lesson, type});
-        alert('儲存成功！');
+        dlog('TA2','timeline-admin:addEntry','write success',{level, cohort, type, lesson});
+        alert('储存成功！');
         clearForm(type);
         await refreshList();
     } catch (error) {
         console.error(error);
         dlog('TA2','timeline-admin:addEntry','write failed',{message:error.message});
-        alert('儲存失敗：' + error.message);
+        alert('储存失败：' + error.message);
     }
 }
 
@@ -191,75 +217,123 @@ function clearForm(type) {
 }
 
 async function refreshList() {
-    const lesson = document.getElementById('filterLesson').value;
+    const filterLesson = document.getElementById('filterLesson').value;
+    const filterLevel = document.getElementById('filterLevel').value;
+    const filterCohort = document.getElementById('filterCohort').value;
     const keyword = document.getElementById('keywordInput').value.trim().toLowerCase();
     const startDate = document.getElementById('startDate').value;
     const endDate = document.getElementById('endDate').value;
     const types = Array.from(document.querySelectorAll('input[name="filterType"]:checked')).map(i=>i.value);
 
-    dlog('TA3','timeline-admin:refreshList','query start',{lesson, keyword, types, startDate, endDate});
+    dlog('TA3','timeline-admin:refreshList','query start',{filterLesson, filterLevel, filterCohort, keyword, types, startDate, endDate});
 
-    const [compSnap, vocabSnap, noteSnap] = await Promise.all([
-        db.collectionGroup('components').get(),
-        db.collectionGroup('vocabulary').get(),
-        db.collectionGroup('notes').get()
-    ]);
-
+    // 读取所有等级的数据
+    const levels = filterLevel ? [filterLevel] : ['btc1', 'btc2', 'btc3'];
+    const cohorts = filterCohort ? [filterCohort] : ['taigen-a', 'taigen-b'];
+    
     const items = [];
-    const pushItem = (doc, type) => {
-        const data = doc.data();
-        items.push({
-            id: doc.id,
-            path: doc.ref.path,
-            type,
-            lesson: data.lesson,
-            date: data.date,
-            character: data.character,
-            pinyin: data.pinyin,
-            meaning: data.meaning,
-            notes: data.notes,
-            title: data.title,
-            content: data.content,
-            timestamp: data.timestamp
-        });
-    };
-
-    compSnap.forEach(doc => pushItem(doc,'component'));
-    vocabSnap.forEach(doc => pushItem(doc,'vocab'));
-    noteSnap.forEach(doc => pushItem(doc,'note'));
-
-    let filtered = items.filter(item => types.includes(item.type));
-    if (lesson) filtered = filtered.filter(i => i.lesson === lesson);
-    if (startDate) filtered = filtered.filter(i => (i.date || '') >= startDate);
-    if (endDate) filtered = filtered.filter(i => (i.date || '') <= endDate);
-    if (keyword) {
-        filtered = filtered.filter(i => {
-            const hay = [
-                i.character, i.pinyin, i.meaning, i.notes,
-                i.title, i.content
-            ].join(' ').toLowerCase();
-            return hay.includes(keyword);
-        });
+    
+    for (const level of levels) {
+        // 读取 components (所有班共用)
+        if (types.includes('component')) {
+            try {
+                const compSnap = await db.collection(`timeline/${level}/components`).get();
+                compSnap.forEach(doc => {
+                    items.push({
+                        id: doc.id,
+                        level,
+                        cohort: null,
+                        ...doc.data()
+                    });
+                });
+            } catch (e) {
+                console.warn('Error loading components:', e);
+            }
+        }
+        
+        // 读取 vocab (分班)
+        if (types.includes('vocab')) {
+            for (const cohort of cohorts) {
+                try {
+                    const vocabSnap = await db.collection(`timeline/${level}/vocab/${cohort}/items`).get();
+                    vocabSnap.forEach(doc => {
+                        items.push({
+                            id: doc.id,
+                            level,
+                            cohort,
+                            ...doc.data()
+                        });
+                    });
+                } catch (e) {
+                    console.warn('Error loading vocab:', e);
+                }
+            }
+        }
+        
+        // 读取 notes (分班)
+        if (types.includes('note')) {
+            for (const cohort of cohorts) {
+                try {
+                    const noteSnap = await db.collection(`timeline/${level}/notes/${cohort}/items`).get();
+                    noteSnap.forEach(doc => {
+                        items.push({
+                            id: doc.id,
+                            level,
+                            cohort,
+                            ...doc.data()
+                        });
+                    });
+                } catch (e) {
+                    console.warn('Error loading notes:', e);
+                }
+            }
+        }
     }
 
-    filtered.sort((a,b) => {
-        const ta = (a.date || '') + (a.timestamp || '');
-        const tb = (b.date || '') + (b.timestamp || '');
-        return tb.localeCompare(ta);
+    // 筛选逻辑
+    allItems = items.filter(item => {
+        // 课次筛选
+        if (filterLesson && item.lesson !== filterLesson) return false;
+        
+        // 日期筛选
+        if (startDate && item.date < startDate) return false;
+        if (endDate && item.date > endDate) return false;
+        
+        // 关键字筛选
+        if (keyword) {
+            const text = [
+                item.character || '',
+                item.pinyin || '',
+                item.meaning || '',
+                item.title || '',
+                item.content || ''
+            ].join(' ').toLowerCase();
+            if (!text.includes(keyword)) return false;
+        }
+        
+        return true;
     });
 
-    allItems = filtered;
+    // 排序：最新的在前
+    allItems.sort((a, b) => {
+        const dateA = a.date || '';
+        const dateB = b.date || '';
+        return dateB.localeCompare(dateA);
+    });
+
     currentPage = 1;
-    renderList();
-    dlog('TA3','timeline-admin:refreshList','query done',{count: filtered.length});
+    renderPage();
+    
+    dlog('TA3','timeline-admin:refreshList','filtered',{total: allItems.length});
 }
 
-function renderList() {
+function renderPage() {
     const list = document.getElementById('entryList');
     const stats = document.getElementById('listStats');
+    
     if (!allItems.length) {
-        list.innerHTML = `<div class="no-data">尚無資料</div>`;
-        stats.textContent = '共 0 筆';
+        list.innerHTML = `<div class="no-data">尚无资料</div>`;
+        stats.textContent = '共 0 笔';
         document.getElementById('prevPage').disabled = true;
         document.getElementById('nextPage').disabled = true;
         document.getElementById('pageInfo').textContent = '0 / 0';
@@ -273,29 +347,33 @@ function renderList() {
 
     list.innerHTML = pageItems.map(item => {
         const typeTag = `<span class="tag ${item.type}">${item.type}</span>`;
+        const levelTag = `<span class="tag level">${item.level.toUpperCase()}</span>`;
+        const cohortTag = item.cohort ? `<span class="tag cohort">${item.cohort === 'taigen-a' ? 'A班' : 'B班'}</span>` : '';
+        
         const main = item.type === 'note'
-            ? (item.title || '(無標題)')
+            ? (item.title || '(无标题)')
             : [item.character, item.pinyin].filter(Boolean).join(' · ');
         const sub = item.type === 'note'
             ? (item.content || '')
             : (item.meaning || '');
+            
         return `
             <div class="entry-row">
                 <div class="text-muted">${item.date || '-'}</div>
                 <div>${item.lesson || '-'}</div>
-                <div>${typeTag}</div>
+                <div>${levelTag} ${typeTag} ${cohortTag}</div>
                 <div class="line-tight">
                     <div>${main}</div>
                     <div class="text-muted">${sub}</div>
                 </div>
                 <div>
-                    <button class="btn btn-danger btn-sm" onclick="deleteItem('${item.type}','${item.path}')">刪除</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteItem('${item.id}','${item.level}','${item.type}','${item.cohort || ''}')">删除</button>
                 </div>
             </div>
         `;
     }).join('');
 
-    stats.textContent = `共 ${allItems.length} 筆`;
+    stats.textContent = `共 ${allItems.length} 笔`;
     document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
     document.getElementById('prevPage').disabled = currentPage === 1;
     document.getElementById('nextPage').disabled = currentPage === totalPages;
@@ -303,11 +381,21 @@ function renderList() {
 
 function changePage(delta) {
     currentPage += delta;
-    renderList();
+    renderPage();
 }
 
-async function deleteItem(type, path) {
-    if (!confirm('確定刪除這筆資料？')) return;
+async function deleteItem(id, level, type, cohort) {
+    if (!confirm('确定删除这笔资料？')) return;
+    
+    let path;
+    if (type === 'component') {
+        path = `timeline/${level}/components/${id}`;
+    } else if (type === 'vocab') {
+        path = `timeline/${level}/vocab/${cohort}/items/${id}`;
+    } else {
+        path = `timeline/${level}/notes/${cohort}/items/${id}`;
+    }
+    
     try {
         await db.doc(path).delete();
         dlog('TA4','timeline-admin:delete','delete success',{type, path});
@@ -315,7 +403,7 @@ async function deleteItem(type, path) {
     } catch (error) {
         console.error(error);
         dlog('TA4','timeline-admin:delete','delete failed',{message:error.message});
-        alert('刪除失敗：' + error.message);
+        alert('删除失败：' + error.message);
     }
 }
 

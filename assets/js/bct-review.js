@@ -26,6 +26,7 @@ class BCTReviewSystem {
         this.lessonVocab = [];
         this.userProgress = {};
         this.currentTab = 'components';
+        this.currentLevel = 'btc1';  // BCT Level tracking
         this.reviewMode = 'pinyin-hint';
         this.reviewQueue = [];
         this.currentIndex = 0;
@@ -36,6 +37,29 @@ class BCTReviewSystem {
 
     async init() {
         try {
+            // 从 URL 读取参数
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlLevel = urlParams.get('level');
+            const urlCohort = urlParams.get('cohort');
+            
+            // 优先使用 URL 参数，其次 localStorage，最后默认值
+            if (urlLevel) {
+                this.currentLevel = urlLevel;
+                // 保存到 localStorage 供下次使用
+                localStorage.setItem('bct-current-level', urlLevel);
+            } else {
+                // 从 localStorage 读取上次的选择
+                this.currentLevel = localStorage.getItem('bct-current-level') || 'btc1';
+            }
+            
+            // 保存 cohort 到 localStorage（供其他功能使用）
+            if (urlCohort) {
+                localStorage.setItem('bct-cohort', urlCohort);
+            }
+            
+            const currentCohort = localStorage.getItem('bct-cohort') || 'taigen-a';
+            console.log(`🎯 BCT Review 初始化：Level=${this.currentLevel}, Cohort=${currentCohort}`);
+            
             // 無需 Auth：直接載入資料，deviceCode 用訪客隨機碼
             this.currentUser = { uid: 'guest-' + Math.random().toString(36).slice(2, 8) };
             this.deviceCode = this.currentUser.uid.substring(0, 6).toUpperCase();
@@ -66,11 +90,13 @@ class BCTReviewSystem {
         this.characterVocab = [];
         this.lessonVocab = [];
 
-        // 1. Load from Lessons (1-25)
-        for (let i = 1; i <= 25; i++) {
+        // 1. Load from Lessons (1-20) under courses/[currentLevel]
+        for (let i = 1; i <= 20; i++) {
             try {
                 const lessonId = `lesson${i}`;
-                const vocabSnap = await db.collection('lessons')
+                const vocabSnap = await db.collection('courses')
+                    .doc(this.currentLevel)
+                    .collection('lessons')
                     .doc(lessonId)
                     .collection('vocabulary')
                     .get();
@@ -96,47 +122,45 @@ class BCTReviewSystem {
             }
         }
 
-        // 2. Load from Timeline
+        // 2. Load from Timeline (新数据结构)
         try {
-            const timelineSnap = await db.collection('timeline').get();
-            console.log(`Found ${timelineSnap.size} timeline documents`);
-
-            for (const timelineDoc of timelineSnap.docs) {
-                const docId = timelineDoc.id;
-
-                // Load components
-                const compSnap = await db.collection('timeline')
-                    .doc(docId)
-                    .collection('components')
-                    .get();
-
+            // 获取学生班级
+            const studentCohort = localStorage.getItem('bct-cohort') || 'taigen-a';
+            console.log(`Loading timeline data for ${this.currentLevel}, cohort: ${studentCohort}`);
+            
+            // Load components (所有班共用)
+            try {
+                const compSnap = await db.collection(`timeline/${this.currentLevel}/components`).get();
+                console.log(`Found ${compSnap.size} timeline components for ${this.currentLevel}`);
+                
                 compSnap.forEach(doc => {
                     const data = doc.data();
                     this.componentVocab.push({
                         ...data,
                         source: 'timeline',
-                        sourceDate: docId,
-                        lesson: data.lesson || docId, // Use lesson from data or docId
+                        lesson: data.lesson || 'unknown',
                         firestoreId: doc.id
                     });
                 });
+            } catch (error) {
+                console.log(`No timeline components for ${this.currentLevel}:`, error.message);
+            }
 
-                // Load vocabulary
-                const vocabSnap = await db.collection('timeline')
-                    .doc(docId)
-                    .collection('vocabulary')
-                    .get();
-
+            // Load vocabulary (只加载学生自己班级的)
+            try {
+                const vocabSnap = await db.collection(`timeline/${this.currentLevel}/vocab/${studentCohort}/items`).get();
+                console.log(`Found ${vocabSnap.size} timeline vocab for ${this.currentLevel}/${studentCohort}`);
+                
                 vocabSnap.forEach(doc => {
                     const data = doc.data();
                     const vocabItem = {
                         ...data,
                         source: 'timeline',
-                        sourceDate: docId,
-                        lesson: data.lesson || docId, // Use lesson from data or docId
+                        cohort: studentCohort,
+                        lesson: data.lesson || 'unknown',
                         firestoreId: doc.id
                     };
-                    // timeline vocab 放入 vocab tab（詞組），如果 type=component 也可依需求分流
+                    // 根据 type 分类
                     if (data.type === 'component') {
                         this.componentVocab.push(vocabItem);
                     } else if (data.type === 'vocab' || !data.type) {
@@ -145,6 +169,8 @@ class BCTReviewSystem {
                         this.characterVocab.push(vocabItem);
                     }
                 });
+            } catch (error) {
+                console.log(`No timeline vocab for ${this.currentLevel}/${studentCohort}:`, error.message);
             }
         } catch (error) {
             console.error('Error loading timeline:', error);
@@ -212,7 +238,7 @@ class BCTReviewSystem {
         else if (this.currentTab === 'characters') currentVocab = this.characterVocab;
         else if (this.currentTab === 'vocab') currentVocab = this.lessonVocab;
 
-        for (let i = 1; i <= 25; i++) {
+        for (let i = 1; i <= 20; i++) {
             const lessonId = `lesson${i}`;
             const chars = currentVocab.filter(c => c.lesson === lessonId);
 
@@ -385,6 +411,20 @@ class BCTReviewSystem {
     }
 
     setupEventListeners() {
+        // BCT Level switching
+        document.querySelectorAll('.level-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const level = e.currentTarget.dataset.level;
+                
+                // Update button styles
+                document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                
+                // Execute level switch
+                await this.switchLevel(level);
+            });
+        });
+
         // Tab switching
         document.querySelectorAll('#typeTabSystem .tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -407,6 +447,75 @@ class BCTReviewSystem {
         this.clearSelections();
         this.renderLessonSelector();
         this.updateReviewSections();
+    }
+
+    // Switch BCT Level
+    async switchLevel(level) {
+        // Show loading
+        const mainContent = document.getElementById('mainContent');
+        const loadingContainer = document.getElementById('loadingContainer');
+        mainContent.classList.add('hidden');
+        loadingContainer.classList.remove('hidden');
+        
+        try {
+            // 1. Save current selections to localStorage
+            this.saveCurrentSelections();
+            
+            // 2. Update level
+            this.currentLevel = level;
+            
+            // 保存到 localStorage
+            localStorage.setItem('bct-current-level', level);
+            
+            // 更新 URL（保持 cohort 参数）
+            const cohort = localStorage.getItem('bct-cohort') || 'taigen-a';
+            const newUrl = `${window.location.pathname}?level=${level}&cohort=${cohort}`;
+            window.history.pushState({ level, cohort }, '', newUrl);
+            
+            console.log(`✅ 已切换到 ${level}，URL 已更新`);
+            
+            // 3. Clear current selections
+            this.clearSelections();
+            
+            // 4. Reload data for this level
+            await this.loadAllVocabulary();
+            
+            // 5. Restore selections for this level
+            this.restoreSelections();
+            
+            // 6. Re-render
+            this.renderLessonSelector();
+            this.updateReviewSections();
+        } finally {
+            // Hide loading
+            loadingContainer.classList.add('hidden');
+            mainContent.classList.remove('hidden');
+        }
+    }
+
+    // Save current lesson selections
+    saveCurrentSelections() {
+        const selected = this.getSelectedLessons();
+        localStorage.setItem(`${this.currentLevel}-selected`, JSON.stringify(selected));
+    }
+
+    // Restore lesson selections
+    restoreSelections() {
+        const saved = localStorage.getItem(`${this.currentLevel}-selected`);
+        if (saved) {
+            const lessonIds = JSON.parse(saved);
+            // Set after DOM renders
+            setTimeout(() => {
+                lessonIds.forEach(lessonId => {
+                    const card = document.querySelector(`[data-lesson="${lessonId}"]`);
+                    if (card && !card.classList.contains('locked')) {
+                        card.dataset.selected = 'true';
+                    }
+                });
+                this.updateSelectedCount();
+                this.updateReviewSections();
+            }, 100);
+        }
     }
 
     // 清空選課選取

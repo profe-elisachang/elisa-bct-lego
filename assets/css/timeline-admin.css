@@ -9,6 +9,11 @@
     --danger: #dc2626;
 }
 
+/* Utility classes */
+.hidden {
+    display: none !important;
+}
+
 body {
     background: #f6f8fb;
     font-family: 'Segoe UI','Microsoft JhengHei',sans-serif;

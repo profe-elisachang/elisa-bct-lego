@@ -167,7 +167,8 @@
 
     // Review 連結
     const reviewLink = document.createElement('a');
-    reviewLink.href = `bct-review.html?class=${currentClassId}`;
+    const cohort = localStorage.getItem('bct-cohort') || 'taigen-a';
+    reviewLink.href = `bct-review.html?level=${currentClassId}&cohort=${cohort}`;
     reviewLink.textContent = 'Review';
     if (path.endsWith('bct-review.html')) {
       reviewLink.classList.add('active');
@@ -185,12 +186,11 @@
       body.appendChild(root);
     }
 
-    // 課程條（在首頁和 lesson.html 頁面顯示）
+    // 課程條（在 lesson.html 頁面顯示，不在首頁顯示）
     const showCourseBar =
       path.endsWith('lesson.html') ||
-      path.endsWith('lesson-template-a.html') ||
-      path.endsWith('index.html') ||
-      path.endsWith('/');
+      path.endsWith('lesson-template-a.html');
+      // 移除首页显示：&& !path.endsWith('index.html') && !path.endsWith('/')
     if (showCourseBar && currentClass?.lessons?.length) {
       const targetInner = document.getElementById('unit-bar-inner');
 
@@ -211,7 +211,8 @@
         // Add Review button for Template A
         const reviewBtn = document.createElement('a');
         reviewBtn.className = 'unit-btn review';
-        reviewBtn.href = `bct-review.html?class=${currentClass.id}`;
+        const cohort = localStorage.getItem('bct-cohort') || 'taigen-a';
+        reviewBtn.href = `bct-review.html?level=${currentClass.id}&cohort=${cohort}`;
         reviewBtn.innerHTML = '⚡ Review';
         targetInner.appendChild(reviewBtn);
       } else {
@@ -319,6 +320,38 @@
         }
         sidebarList.appendChild(item);
       });
+      const normalizeLessonId = (id) => {
+        if (!id) return null;
+        if (/^L\d+$/i.test(id)) return `lesson${id.slice(1)}`;
+        return id;
+      };
+      const updateSidebarTitlesFromFirestore = async () => {
+        if (typeof firestoreService === 'undefined') return;
+        if (!firestoreService.isConnected()) {
+          await firestoreService.init();
+        }
+        const items = Array.from(sidebarList.querySelectorAll('.b-unit-item'));
+        await Promise.all(items.map(async (item) => {
+          const href = item.getAttribute('href') || '';
+          const match = href.match(/lesson=([^&]+)/i);
+          if (!match) return;
+          const lessonId = normalizeLessonId(match[1]);
+          if (!lessonId) return;
+          const data = await firestoreService.getLesson(lessonId, currentClass.id);
+          if (!data || !data.title) return;
+          const labelSpan = item.querySelector('span:nth-of-type(2)') || item.querySelector('span:last-child');
+          if (!labelSpan) return;
+          labelSpan.textContent = data.title;
+        }));
+      };
+      const waitForFirestore = (tries = 0) => {
+        if (typeof firestoreService !== 'undefined') {
+          updateSidebarTitlesFromFirestore();
+          return;
+        }
+        if (tries < 120) requestAnimationFrame(() => waitForFirestore(tries + 1));
+      };
+      waitForFirestore();
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
         method:'POST',
@@ -342,7 +375,8 @@
 
       const reviewLink = document.getElementById('sidebar-review-link');
       if (reviewLink) {
-        reviewLink.href = `bct-review.html?class=${currentClass.id}`;
+        const cohort = localStorage.getItem('bct-cohort') || 'taigen-a';
+        reviewLink.href = `bct-review.html?level=${currentClass.id}&cohort=${cohort}`;
       }
     }
   };

@@ -19,12 +19,20 @@ class LessonLoader {
 
     // 初始化：從 URL 取得課次並載入
     async init() {
+        // ⏱️ 性能测试：记录开始时间
+        const startTime = performance.now();
+        console.log('⏱️ 开始加载课程...', new Date().toLocaleTimeString());
+        
         const urlParams = new URLSearchParams(window.location.search);
         const STORAGE_KEY = 'bct-active-class';
         const rememberedClass = localStorage.getItem(STORAGE_KEY);
         const classId = urlParams.get('class') || rememberedClass || window?.BCT_COURSE_CONFIG?.defaultClassId || null;
         let lessonId = urlParams.get('lesson') || 'L1';
         this.currentClassId = classId;
+        
+        // 读取学生班级（cohort）
+        this.currentCohort = urlParams.get('cohort') || localStorage.getItem('bct-cohort') || 'taigen-a';
+        
         // #region agent log
         const firestoreSrc = Array.from(document.querySelectorAll('script[src]'))
             .map((s) => s.getAttribute('src'))
@@ -40,7 +48,8 @@ class LessonLoader {
                 message:'Firestore version seen',
                 data:{
                     firestoreSrc,
-                    firestoreVersion:window.__firestoreVersion || null
+                    firestoreVersion:window.__firestoreVersion || null,
+                    cohort: this.currentCohort
                 },
                 timestamp:Date.now()
             })
@@ -75,6 +84,22 @@ class LessonLoader {
 
         await this.loadLesson(lessonId);
         this.setupTabSystem();
+        
+        // 更新 Vocab tab 标签和复习按钮（在 DOM 和数据都加载完成后）
+        this.updateVocabTabLabel();
+        this.updateReviewLink();
+        
+        // ⏱️ 性能测试：计算总耗时
+        const endTime = performance.now();
+        const totalTime = ((endTime - startTime) / 1000).toFixed(2);
+        console.log(`⏱️ 课程加载完成！总耗时：${totalTime} 秒`, new Date().toLocaleTimeString());
+        
+        // 显示在页面上（可选）
+        const perfInfo = document.createElement('div');
+        perfInfo.style.cssText = 'position:fixed;bottom:10px;right:10px;background:#4CAF50;color:white;padding:8px 12px;border-radius:8px;font-size:12px;z-index:9999;';
+        perfInfo.textContent = `⏱️ 加载耗时：${totalTime} 秒`;
+        document.body.appendChild(perfInfo);
+        setTimeout(() => perfInfo.remove(), 5000); // 5秒后自动消失
     }
 
     // 從 Firestore 載入課程資料
@@ -144,7 +169,18 @@ class LessonLoader {
             this.lessonData.practice = []; // Practice 暫時保持空的
 
             // 載入 Timeline 補充內容
-            const timeline = await firestoreService.getTimelineForLesson(lessonId);
+            // 转换 lessonId：L1 → lesson1, L2 → lesson2
+            let timelineLessonId = lessonId;
+            if (/^L\d+$/i.test(lessonId)) {
+                // 如果是 L1, L2, L3... 格式
+                const num = lessonId.match(/\d+/)[0];
+                timelineLessonId = 'lesson' + num;
+            } else if (/^lesson\d+$/i.test(lessonId)) {
+                // 如果已经是 lesson1, lesson2 格式
+                timelineLessonId = lessonId.toLowerCase();
+            }
+            console.log('🔄 转换 lessonId：', lessonId, '→', timelineLessonId);
+            const timeline = await firestoreService.getTimelineForLesson(timelineLessonId, this.currentCohort, 'btc1');
             this.lessonData.timeline = timeline;
             this.lessonData.timelineComponents = timeline.filter(t => t.type === 'component');
             this.lessonData.timelineVocab = timeline.filter(t => t.type === 'vocab');
@@ -325,6 +361,7 @@ class LessonLoader {
         this.renderPractice();
         this.renderTimelineComponents();
         this.renderTimelineVocab();
+        this.renderTimelineNotes();
     }
 
     // 渲染 Dialogue（按 group 分組顯示）
@@ -679,6 +716,43 @@ class LessonLoader {
         });
     }
 
+    // 渲染 Timeline 筆記
+    renderTimelineNotes() {
+        const container = document.getElementById('teacher-notes');
+        if (!container) {
+            console.warn('⚠️ 找不到笔记容器 #teacher-notes');
+            return;
+        }
+
+        const card = container.closest('.b-notes-card');
+        const placeholder = card ? card.querySelector('.placeholder') : null;
+        container.innerHTML = '';
+
+        console.log('📝 Timeline Notes 数据：', this.lessonData.timelineNotes);
+        console.log('📝 笔记数量：', this.lessonData.timelineNotes.length);
+
+        if (!this.lessonData.timelineNotes.length) {
+            console.log('📝 没有笔记，显示占位符');
+            if (placeholder) placeholder.style.display = '';
+            return;
+        }
+
+        console.log('📝 开始渲染笔记');
+        if (placeholder) placeholder.style.display = 'none';
+
+        this.lessonData.timelineNotes.forEach((item) => {
+            console.log('📝 渲染笔记项：', item);
+            const note = document.createElement('div');
+            note.className = 'timeline-note';
+            const title = item.title ? `<div class="note-title">${item.title}</div>` : '';
+            const content = item.content ? `<div class="note-content">${item.content}</div>` : '';
+            note.innerHTML = title + content;
+            container.appendChild(note);
+        });
+        
+        console.log('✅ 笔记渲染完成');
+    }
+
     // 創建 Timeline 卡片（用於 components 和 vocabulary）
     createTimelineCard(data) {
         const card = document.createElement('div');
@@ -743,6 +817,28 @@ class LessonLoader {
                 document.getElementById(targetTab).classList.add('active');
             });
         });
+    }
+
+    // 更新 Vocab tab 标签（根据班级）
+    updateVocabTabLabel() {
+        const vocabTab = document.getElementById('vocabTab');
+        if (!vocabTab) return;
+
+        // 转换 cohort ID 为显示标签
+        const cohortLabel = this.currentCohort === 'taigen-a' ? 'A' : 'B';
+        vocabTab.textContent = `Vocab ${cohortLabel}`;
+    }
+
+    // 更新复习按钮链接
+    updateReviewLink() {
+        const reviewLink = document.getElementById('sidebar-review-link');
+        if (!reviewLink) return;
+
+        // 添加 level 和 cohort 参数
+        const level = new URLSearchParams(window.location.search).get('level') || 'btc1';
+        reviewLink.href = `bct-review.html?level=${level}&cohort=${this.currentCohort}`;
+        
+        console.log(`✅ 复习链接已更新：level=${level}, cohort=${this.currentCohort}`);
     }
 }
 

@@ -587,60 +587,105 @@ class FirestoreService {
      * @param {string} lessonId - 課程 ID（例如："lesson1"）
      * @returns {Array} Timeline 項目陣列，包含 components、vocabulary、notes
      */
-    async getTimelineForLesson(lessonId) {
+    async getTimelineForLesson(lessonId, cohort = 'taigen-a', level = 'btc1') {
         try {
-            // 若缺索引，改以全取再前端過濾
-            const fetchGroup = async (collName) => {
-                try {
-                    return await this.db.collectionGroup(collName).where('lesson', '==', lessonId).get();
-                } catch (err) {
-                    if (err?.message?.includes(`collection ${collName}`)) {
-                        console.warn(`Missing index for ${collName}.lesson, fallback to client filter`);
-                        const snapAll = await this.db.collectionGroup(collName).get();
-                        const filtered = [];
-                        snapAll.forEach(doc => {
-                            const d = doc.data();
-                            if (d.lesson === lessonId) filtered.push(doc);
-                        });
-                        return {
-                            forEach: (fn) => filtered.forEach(fn)
-                        };
-                    }
-                    throw err;
-                }
-            };
-
-            const [compSnapshot, vocabSnapshot, notesSnapshot] = await Promise.all([
-                fetchGroup('components'),
-                fetchGroup('vocabulary'),
-                fetchGroup('notes')
-            ]);
-
+            console.log('🔍 开始读取 Timeline 数据：', { lessonId, cohort, level });
             const timelineItems = [];
 
-            compSnapshot.forEach(doc => {
-                timelineItems.push({
-                    id: doc.id,
-                    type: 'component',
-                    ...doc.data()
-                });
-            });
+            // 1. 载入 Components（所有班共用）- 客户端过滤
+            try {
+                console.log('📦 读取 Components：timeline/' + level + '/components/');
+                const compSnapshot = await this.db
+                    .collection('timeline')
+                    .doc(level)
+                    .collection('components')
+                    .get();  // 不用 where，全部读取
 
-            vocabSnapshot.forEach(doc => {
-                timelineItems.push({
-                    id: doc.id,
-                    type: 'vocab',
-                    ...doc.data()
+                console.log('📦 Components 原始数量：', compSnapshot.size);
+                compSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    // 客户端过滤（去除空格）
+                    if ((data.lesson || '').trim() === lessonId.trim()) {
+                        timelineItems.push({
+                            id: doc.id,
+                            type: 'component',
+                            ...data
+                        });
+                    }
                 });
-            });
+                console.log('📦 过滤后 Components：', timelineItems.filter(i => i.type === 'component').length, '个');
+            } catch (error) {
+                console.warn('❌ Error loading timeline components:', error);
+            }
 
-            notesSnapshot.forEach(doc => {
-                timelineItems.push({
-                    id: doc.id,
-                    type: 'note',
-                    ...doc.data()
+            // 2. 载入 Vocab（分班）- 客户端过滤
+            try {
+                console.log('📝 读取 Vocab：timeline/' + level + '/vocab/' + cohort + '/items/');
+                const vocabSnapshot = await this.db
+                    .collection('timeline')
+                    .doc(level)
+                    .collection('vocab')
+                    .doc(cohort)
+                    .collection('items')
+                    .get();  // 不用 where，全部读取
+
+                console.log('📝 Vocab 原始数量：', vocabSnapshot.size);
+                vocabSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    // 客户端过滤（去除空格）
+                    if ((data.lesson || '').trim() === lessonId.trim()) {
+                        timelineItems.push({
+                            id: doc.id,
+                            type: 'vocab',
+                            cohort: cohort,
+                            ...data
+                        });
+                    }
                 });
-            });
+                console.log('📝 过滤后 Vocab：', timelineItems.filter(i => i.type === 'vocab').length, '个');
+            } catch (error) {
+                console.warn('❌ Error loading timeline vocab:', error);
+            }
+
+            // 3. 载入 Notes（分班）- 客户端过滤
+            try {
+                console.log('📒 读取 Notes：timeline/' + level + '/notes/' + cohort + '/items/');
+                const notesSnapshot = await this.db
+                    .collection('timeline')
+                    .doc(level)
+                    .collection('notes')
+                    .doc(cohort)
+                    .collection('items')
+                    .get();  // 不用 where，全部读取
+
+                console.log('📒 Notes 原始数量：', notesSnapshot.size);
+                notesSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    // 去除首尾空格后再比较
+                    const dataLesson = (data.lesson || '').trim();
+                    const targetLesson = lessonId.trim();
+                    console.log('📒 检查 Note：', doc.id, 'lesson:', data.lesson, '(trimmed:', dataLesson + ')', '目标:', targetLesson);
+                    // 客户端过滤
+                    if (dataLesson === targetLesson) {
+                        console.log('✅ 匹配！添加到结果');
+                        const noteItem = {
+                            id: doc.id,
+                            type: 'note',
+                            cohort: cohort,
+                            ...data
+                        };
+                        console.log('✅ Note 对象：', noteItem);
+                        timelineItems.push(noteItem);
+                        console.log('✅ 当前 timelineItems 长度：', timelineItems.length);
+                    } else {
+                        console.log('❌ 不匹配，跳过');
+                    }
+                });
+                console.log('📒 过滤后 Notes：', timelineItems.filter(i => i.type === 'note').length, '个');
+                console.log('📒 timelineItems 完整内容：', timelineItems);
+            } catch (error) {
+                console.warn('❌ Error loading timeline notes:', error);
+            }
 
             timelineItems.sort((a, b) => {
                 const dateA = a.date || a.timestamp || '';
@@ -658,7 +703,7 @@ class FirestoreService {
                     hypothesisId:'T-read',
                     location:'assets/js/firestore.js:getTimelineForLesson',
                     message:'Timeline query result',
-                    data:{lessonId, count: timelineItems.length},
+                    data:{lessonId, cohort, level, count: timelineItems.length},
                     timestamp:Date.now()
                 })
             }).catch(()=>{});
@@ -676,7 +721,7 @@ class FirestoreService {
                     hypothesisId:'T-read',
                     location:'assets/js/firestore.js:getTimelineForLesson',
                     message:'Timeline query error',
-                    data:{lessonId, message:error?.message||'unknown'},
+                    data:{lessonId, cohort, level, message:error?.message||'unknown'},
                     timestamp:Date.now()
                 })
             }).catch(()=>{});

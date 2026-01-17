@@ -22,7 +22,7 @@ HTML 僅作為外殼樣板（Template），嚴禁將任何教學內容直接寫�
 課堂即時補充內容，具備明確時間屬性，反映真實上課過程。
 
 **Review（記憶系統）**
-不產生內容，僅從 Lesson 與 Timeline 中提取資料，進行 SRS 複習。
+不產生內容，僅從 /courses 與 Timeline 中提取資料，進行 SRS 複習。
 
 ---
 
@@ -79,7 +79,7 @@ HTML 僅作為外殼樣板（Template），嚴禁將任何教學內容直接寫�
 ```yaml
 ---
 id: unique_id
-scope: lesson | timeline
+scope: course | timeline
 type: vocab | sentence | note
 review: true | false
 date: YYYY-MM-DD

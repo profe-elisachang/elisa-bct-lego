@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -12,7 +13,9 @@
   <div class="container template-b-container">
     <header class="b-topbar">
       <div class="logo">Logo</div>
-      <div class="student">学生</div>
+      <a href="index.html" class="student cohort-badge-link" id="cohort-badge-container" title="返回首页更换班级">
+        👤 学生
+      </a>
     </header>
 
     <div class="b-layout">
@@ -34,7 +37,7 @@
             <button class="tab-btn" data-tab="reading">Reading</button>
             <button class="tab-btn" data-tab="vocabulary">Vocabulary</button>
             <button class="tab-btn" data-tab="components">Components</button>
-            <button class="tab-btn" data-tab="vocab">Vocab</button>
+            <button class="tab-btn" data-tab="vocab" id="vocabTab">Vocab</button>
             <button class="tab-btn" data-tab="practice">Practice</button>
           </nav>
           <div class="toggle-controls">
@@ -58,17 +61,17 @@
               </div>
               <div id="components" class="tab-pane">
                 <div id="timeline-components-content" class="content-group">
-                  <p class="placeholder">暂无部件补充</p>
+                  <p class="placeholder">暂无内容 Nothing here yet.</p>
                 </div>
               </div>
               <div id="vocab" class="tab-pane">
                 <div id="timeline-vocab-content" class="content-group">
-                  <p class="placeholder">暂无字词补充</p>
+                  <p class="placeholder">暂无内容 Nothing here yet.</p>
                 </div>
               </div>
               <div id="practice" class="tab-pane">
                 <div id="practice-content" class="content-group">
-                  <p class="placeholder">练习开发中...</p>
+                  <p class="placeholder">练习功能开发中... Practice feature coming soon.</p>
                 </div>
               </div>
             </div>
@@ -78,7 +81,7 @@
             <div class="tab-content b-notes-card">
               <h3>Elisa 的笔记</h3>
               <div id="teacher-notes"></div>
-              <p class="placeholder">暂无笔记</p>
+              <p class="placeholder">暂无笔记 No notes yet.</p>
             </div>
           </aside>
         </div>
@@ -120,8 +123,8 @@
   <!-- #endregion -->
   <script src="assets/js/firestore.js?v=debug-8"></script>
   <script src="assets/js/audio.js"></script>
+  <script src="assets/js/cohort-selector.js"></script>
   <script src="assets/js/loader.js?v=debug-4"></script>
   <script src="assets/js/toggle.js"></script>
 </body>
 </html>
-

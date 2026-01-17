@@ -24,28 +24,46 @@
         </header>
 
         <section class="panel">
-            <h2>新增補充</h2>
+            <h2>新增补充</h2>
+            <p class="form-hint" style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">
+                💡 部件为所有班级共用，生词和笔记需选择班级
+            </p>
             <div class="form-grid">
+                <div class="form-row">
+                    <label>等级</label>
+                    <div class="type-group">
+                        <label><input type="radio" name="level" value="btc1" checked> BCT 1</label>
+                        <label><input type="radio" name="level" value="btc2"> BCT 2</label>
+                        <label><input type="radio" name="level" value="btc3"> BCT 3</label>
+                    </div>
+                </div>
+                <div class="form-row cohort-select hidden">
+                    <label>班级</label>
+                    <div class="type-group">
+                        <label><input type="radio" name="cohort" value="taigen-a" checked> Taigen A</label>
+                        <label><input type="radio" name="cohort" value="taigen-b"> Taigen B</label>
+                    </div>
+                </div>
                 <div class="form-row">
                     <label>日期</label>
                     <input type="date" id="dateInput">
                 </div>
                 <div class="form-row">
-                    <label>課次</label>
+                    <label>课次</label>
                     <select id="lessonInput">
-                        <option value="">選擇課次...</option>
+                        <option value="">选择课次...</option>
                     </select>
                 </div>
                 <div class="form-row">
-                    <label>類型</label>
+                    <label>类型</label>
                     <div class="type-group">
                         <label><input type="radio" name="type" value="component" checked> 部件</label>
-                        <label><input type="radio" name="type" value="vocab"> 生詞</label>
-                        <label><input type="radio" name="type" value="note"> 筆記</label>
+                        <label><input type="radio" name="type" value="vocab"> 生词</label>
+                        <label><input type="radio" name="type" value="note"> 笔记</label>
                     </div>
                 </div>
                 <div class="form-row type-vocab">
-                    <label>漢字</label>
+                    <label>汉字</label>
                     <input type="text" id="characterInput" placeholder="例如：氵">
                 </div>
                 <div class="form-row type-vocab">
@@ -57,63 +75,80 @@
                     <input type="text" id="meaningInput" placeholder="English | Español">
                 </div>
                 <div class="form-row type-vocab">
-                    <label>補充</label>
-                    <textarea id="notesInput" rows="2" placeholder="記憶故事、例句等..."></textarea>
+                    <label>补充</label>
+                    <textarea id="notesInput" rows="2" placeholder="记忆故事、例句等..."></textarea>
                 </div>
                 <div class="form-row type-note hidden">
-                    <label>筆記標題</label>
-                    <input type="text" id="noteTitleInput" placeholder="課堂討論重點">
+                    <label>笔记标题</label>
+                    <input type="text" id="noteTitleInput" placeholder="课堂讨论重点">
                 </div>
                 <div class="form-row type-note hidden">
-                    <label>筆記內容</label>
-                    <textarea id="noteContentInput" rows="4" placeholder="輸入筆記內容..."></textarea>
+                    <label>笔记内容</label>
+                    <textarea id="noteContentInput" rows="4" placeholder="输入笔记内容..."></textarea>
                 </div>
                 <div class="form-row">
-                    <button id="submitBtn" class="btn btn-primary">💾 儲存</button>
+                    <button id="submitBtn" class="btn btn-primary">💾 储存</button>
                 </div>
             </div>
         </section>
 
         <section class="panel">
-            <h2>篩選 / 搜尋</h2>
+            <h2>筛选 / 搜寻</h2>
             <div class="filter-grid">
                 <div class="form-row">
-                    <label>課次</label>
-                    <select id="filterLesson">
-                        <option value="">全部課次</option>
+                    <label>等级</label>
+                    <select id="filterLevel">
+                        <option value="">全部等级</option>
+                        <option value="btc1">BCT 1</option>
+                        <option value="btc2">BCT 2</option>
+                        <option value="btc3">BCT 3</option>
                     </select>
                 </div>
                 <div class="form-row">
-                    <label>類型</label>
+                    <label>班级</label>
+                    <select id="filterCohort">
+                        <option value="">全部班级</option>
+                        <option value="taigen-a">Taigen A</option>
+                        <option value="taigen-b">Taigen B</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label>课次</label>
+                    <select id="filterLesson">
+                        <option value="">全部课次</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label>类型</label>
                     <div class="type-group">
                         <label><input type="checkbox" name="filterType" value="component" checked> 部件</label>
-                        <label><input type="checkbox" name="filterType" value="vocab" checked> 生詞</label>
-                        <label><input type="checkbox" name="filterType" value="note" checked> 筆記</label>
+                        <label><input type="checkbox" name="filterType" value="vocab" checked> 生词</label>
+                        <label><input type="checkbox" name="filterType" value="note" checked> 笔记</label>
                     </div>
                 </div>
                 <div class="form-row">
-                    <label>關鍵字</label>
-                    <input type="text" id="keywordInput" placeholder="字/拼音/意思/標題...">
+                    <label>关键字</label>
+                    <input type="text" id="keywordInput" placeholder="字/拼音/意思/标题...">
                 </div>
                 <div class="form-row date-range">
-                    <label>日期範圍</label>
+                    <label>日期范围</label>
                     <input type="date" id="startDate"> —
                     <input type="date" id="endDate">
                 </div>
                 <div class="form-row">
-                    <button id="searchBtn" class="btn btn-secondary">🔍 查詢</button>
+                    <button id="searchBtn" class="btn btn-secondary">🔍 查询</button>
                 </div>
             </div>
         </section>
 
         <section class="panel">
-            <h2>補充列表</h2>
-            <div id="listStats" class="list-stats">共 0 筆</div>
-            <div id="entryList" class="entry-list">載入中...</div>
+            <h2>补充列表</h2>
+            <div id="listStats" class="list-stats">共 0 笔</div>
+            <div id="entryList" class="entry-list">载入中...</div>
             <div class="pagination">
-                <button id="prevPage" class="btn btn-secondary" disabled>上一頁</button>
+                <button id="prevPage" class="btn btn-secondary" disabled>上一页</button>
                 <span id="pageInfo">1 / 1</span>
-                <button id="nextPage" class="btn btn-secondary" disabled>下一頁</button>
+                <button id="nextPage" class="btn btn-secondary" disabled>下一页</button>
             </div>
         </section>
     </div>
