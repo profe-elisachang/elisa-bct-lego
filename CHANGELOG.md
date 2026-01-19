@@ -1,5 +1,15 @@
 # 更新日志
 
+## [3.1.0] - 2026-01-19
+
+### 📱 Mobile navigation polish
+
+- ✅ 全站 `index.html`、`lesson-template-b.html`、`bct-review.html` 共用 `mobile-nav` 與新增的 `assets/js/mobile-nav.js`，保持 Courses/Review/Group dropdown 與 `back-to-top` 行為一致。
+- ✅ Home 只顯示 icon，其他三個按鈕繼續顯示 icon+文字 pill style，desktop 端既有 `.unified-nav` 完整保留。
+- ✅ 重構行動樣式：`styles/templates/lesson-b.css` 拆除冗餘 nav，所有手機樣式移至 `assets/css/style.css`，並以 `@media (max-width:1024px)` 顯示，`nav-global.css` 在手機隱藏桌機 nav。
+- ✅ 手機 nav 改為相對定位並加上統一 padding/gap，新增 `back-to-top` 按鈕與 icon-only Home hit area，保持頁面內容可捲動。
+- ✅ `templates/lesson.template.html` 移到 `standalone(archive)` 並更新 `README.md`，確保舊版本被封存但不影響現有流程。
+
 ## [3.0.0] - 2026-01-18
 
 ✅ Unified navigation across all 3 pages

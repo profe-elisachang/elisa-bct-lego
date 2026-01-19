@@ -430,6 +430,7 @@
   color: var(--gray-500);
 }
 
+
 /* ================================================
    舊結構兼容（隱藏）
    ================================================ */
@@ -456,7 +457,7 @@
   }
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1024px) {
   .template-b-container {
     padding: var(--space-3);
   }
@@ -465,24 +466,58 @@
     grid-template-columns: 1fr;
     gap: var(--space-4);
     height: auto;
+    grid-auto-rows: auto;
   }
 
   .b-sidebar {
+    order: -1;
+    width: 100%;
     height: auto;
     max-height: none;
+    padding-bottom: var(--space-3);
   }
 
   .b-unit-list {
     flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
-    padding-right: 0;
-    padding-bottom: var(--space-2);
+    padding: 0 var(--space-2);
+    gap: var(--space-2);
     max-height: none;
+    scroll-behavior: smooth;
+  }
+
+  .b-unit-list::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .b-unit-item {
+    min-width: 150px;
+    flex: 0 0 auto;
+  }
+
+  .b-review-btn {
+    width: 100%;
+    position: sticky;
+    top: 0;
+    margin-top: var(--space-2);
+  }
+
+  .sidebar-toggle {
+    display: none;
+  }
+
+  .b-main,
+  .b-content-wrapper,
+  .b-content-scroll,
+  .b-notes,
+  .b-notes-card {
+    height: auto;
+    min-height: auto;
   }
 
   .b-main {
-    height: calc(100vh - 200px);
+    padding-bottom: var(--space-4);
   }
 
   .b-main-header .tabs {
@@ -492,6 +527,38 @@
   .b-content-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  html,
+  body,
+  .container,
+  .template-b-container,
+  .b-layout,
+  .b-main,
+  .b-content-wrapper,
+  .b-content-scroll {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  #back-to-top {
+    position: fixed;
+    bottom: 25px;
+    right: 20px;
+    width: 45px;
+    height: 45px;
+    background: #ff7a3d;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 22px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1500;
   }
 }
 

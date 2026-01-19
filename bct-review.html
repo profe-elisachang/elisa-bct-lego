@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Design System -->
     <link rel="stylesheet" href="assets/css/design-system.css">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/nav-global.css">
     <link rel="stylesheet" href="assets/css/review.css">
 
@@ -22,6 +23,53 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
+    <header class="mobile-nav">
+        <div class="mobile-nav-container">
+            <a id="mobile-home-link" class="m-nav-item m-icon-only mobile-home-hitarea" href="index.html" aria-label="Home">
+                <span class="m-nav-icon">🏠</span>
+            </a>
+            <div class="m-dropdown">
+                <button type="button" class="m-dropbtn" aria-haspopup="true" aria-expanded="false">
+                    <span class="m-nav-icon">📚</span>
+                    <span class="m-nav-label">Courses</span>
+                </button>
+                <div class="m-dropdown-content">
+                    <button type="button" class="m-course-option" data-level="btc1">
+                        <span class="m-nav-icon">🟢</span>
+                        <span class="m-nav-label">BCT 1</span>
+                    </button>
+                    <button type="button" class="m-course-option" data-level="btc2">
+                        <span class="m-nav-icon">🟠</span>
+                        <span class="m-nav-label">BCT 2</span>
+                    </button>
+                    <button type="button" class="m-course-option" data-level="btc3">
+                        <span class="m-nav-icon">🟣</span>
+                        <span class="m-nav-label">BCT 3</span>
+                    </button>
+                </div>
+            </div>
+            <a id="mobile-review-link" class="m-nav-item m-review" href="#" aria-label="Review">
+                <span class="m-nav-icon">⚡</span>
+                <span class="m-nav-label">Review</span>
+            </a>
+            <div class="m-dropdown">
+                <button type="button" class="m-dropbtn" aria-haspopup="true" aria-expanded="false">
+                    <span class="m-nav-icon">👥</span>
+                    <span class="m-nav-label">Group</span>
+                </button>
+                <div class="m-dropdown-content">
+                    <button type="button" class="m-group-option" data-cohort="taigen-a">
+                        <span class="m-nav-icon">A</span>
+                        <span class="m-nav-label">Taigen A</span>
+                    </button>
+                    <button type="button" class="m-group-option" data-cohort="taigen-b">
+                        <span class="m-nav-icon">B</span>
+                        <span class="m-nav-label">Taigen B</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
     <div class="container">
         <!-- Header -->
         <header class="review-header">
@@ -211,9 +259,12 @@
         </div>
     </div>
 
+    <button class="back-to-top" aria-label="回到頂端">↑</button>
+
     <script src="assets/js/course-config.js"></script>
     <script src="assets/js/nav.js"></script>
     <script src="assets/js/cohort-selector.js"></script>
     <script src="assets/js/bct-review.js"></script>
+    <script src="assets/js/mobile-nav.js"></script>
 </body>
 </html>

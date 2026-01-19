@@ -1,4 +1,4 @@
-📖 BCT 數位教材自動化專案 (README)
+只📖 BCT 數位教材自動化專案 (README)
 🎯 專案願景
 本專案旨在將 BCT (Business Chinese Test) 教材數位化，並轉化為一個具備「高互動性」與「動態擴充性」的學習平台。核心目標是讓 Elisa 老師在課堂上能即時補充，並讓學生能自動複習。
 
@@ -23,7 +23,7 @@
 📂 資料夾導覽
 /data: 存放 BCT 各課的 Markdown 內容。
 /js: 包含 loader.js (內容加載器) 與 components.js (練習組件)。
-template.html: 核心分頁樣板（對話、短文、詞彙、練習）。
+standalone(archive)/lesson.template.html: 原始核心分頁樣板（對話、短文、詞彙、練習），目前已封存備份。
 Timeline.html: 全局課堂紀錄匯總頁。
 
 

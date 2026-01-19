@@ -16,6 +16,53 @@
   <link rel="stylesheet" href="styles/templates/lesson-b.css">
 </head>
 <body class="template-b">
+  <header class="mobile-nav">
+    <div class="mobile-nav-container">
+      <a id="mobile-home-link" class="m-nav-item m-icon-only mobile-home-hitarea" href="index.html" aria-label="Home">
+        <span class="m-nav-icon">🏠</span>
+      </a>
+      <div class="m-dropdown courses-dropdown">
+        <button type="button" class="m-dropbtn" aria-haspopup="true" aria-expanded="false">
+          <span class="m-nav-icon">📚</span>
+          <span class="m-nav-label">Courses</span>
+        </button>
+        <div class="m-dropdown-content">
+          <button type="button" class="m-course-option" data-level="btc1">
+            <span class="m-nav-icon">🟢</span>
+            <span class="m-nav-label">BCT 1</span>
+          </button>
+          <button type="button" class="m-course-option" data-level="btc2">
+            <span class="m-nav-icon">🟠</span>
+            <span class="m-nav-label">BCT 2</span>
+          </button>
+          <button type="button" class="m-course-option" data-level="btc3">
+            <span class="m-nav-icon">🟣</span>
+            <span class="m-nav-label">BCT 3</span>
+          </button>
+        </div>
+      </div>
+      <a id="mobile-review-link" class="m-nav-item m-review" href="#" aria-label="Review">
+        <span class="m-nav-icon">⚡</span>
+        <span class="m-nav-label">Review</span>
+      </a>
+      <div class="m-dropdown group-dropdown">
+        <button type="button" class="m-dropbtn" aria-haspopup="true" aria-expanded="false">
+          <span class="m-nav-icon">👥</span>
+          <span class="m-nav-label">Group</span>
+        </button>
+        <div class="m-dropdown-content">
+          <button type="button" class="m-group-option" data-cohort="taigen-a">
+            <span class="m-nav-icon">A</span>
+            <span class="m-nav-label">Taigen A</span>
+          </button>
+          <button type="button" class="m-group-option" data-cohort="taigen-b">
+            <span class="m-nav-icon">B</span>
+            <span class="m-nav-label">Taigen B</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
   <div class="container template-b-container">
     <div class="b-layout">
       <!-- 左側：課程列表（可收合） -->
@@ -110,6 +157,7 @@
       </aside>
     </div>
   </div>
+  <button class="back-to-top" aria-label="回到頂部">↑</button>
 
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -122,7 +170,6 @@
   <script src="assets/js/cohort-selector.js"></script>
   <script src="assets/js/loader.js"></script>
   <script src="assets/js/toggle.js"></script>
-
   <!-- 側邊欄收合功能 -->
   <script>
     (function() {
@@ -131,7 +178,6 @@
       const layout = document.querySelector('.b-layout');
       const storageKey = 'bct-sidebar-collapsed';
 
-      // 載入儲存的狀態
       const isCollapsed = localStorage.getItem(storageKey) === 'true';
       if (isCollapsed) {
         layout.classList.add('sidebar-collapsed');
@@ -146,5 +192,6 @@
       });
     })();
   </script>
+  <script src="assets/js/mobile-nav.js"></script>
 </body>
 </html>
