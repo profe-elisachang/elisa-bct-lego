@@ -18,17 +18,18 @@
 <body class="template-b">
   <div class="container template-b-container">
     <div class="b-layout">
-      <aside class="b-sidebar">
-        <div class="nav-dropdown" id="sidebar-course-dropdown">
-          <button type="button" class="nav-dropdown-btn" id="sidebar-course-btn">课程选择 ▼</button>
-          <div class="nav-dropdown-menu" id="sidebar-course-menu"></div>
-        </div>
-
+      <!-- 左側：課程列表（可收合） -->
+      <aside class="b-sidebar" id="sidebar">
         <div class="b-unit-list" id="sidebar-unit-list"></div>
-
-        <a class="b-review-btn" id="sidebar-review-link" href="#">⚡ 课程复习</a>
+        <a class="b-review-btn" id="sidebar-review-link" href="#">⚡ 課程複習</a>
       </aside>
 
+      <!-- 側邊欄收合按鈕 -->
+      <button class="sidebar-toggle" id="sidebar-toggle" title="收合/展開課程列表">
+        <span class="toggle-icon">◀</span>
+      </button>
+
+      <!-- 中間：主內容區 -->
       <section class="b-main">
         <header class="b-main-header">
           <nav class="tabs">
@@ -36,18 +37,32 @@
             <button class="tab-btn" data-tab="reading">Reading</button>
             <button class="tab-btn" data-tab="vocabulary">Vocabulary</button>
             <button class="tab-btn" data-tab="components">Components</button>
-            <button class="tab-btn" data-tab="vocab" id="vocabTab">Vocab</button>
+            <button class="tab-btn" data-tab="vocab" id="vocabTab">Vocab A</button>
             <button class="tab-btn" data-tab="practice">Practice</button>
+            <button class="tab-btn" data-tab="grammar">Grammar</button>
           </nav>
-          <div class="toggle-controls">
-            <button id="toggle-en" class="toggle-btn active">English</button>
-            <button id="toggle-es" class="toggle-btn active">Español</button>
-          </div>
         </header>
 
-        <div class="b-content">
-          <div class="b-center">
+        <div class="b-content-wrapper">
+          <!-- 標題 + 語言切換 -->
+          <div class="b-content-header">
             <h1 id="lesson-title" class="b-title">Loading...</h1>
+            <div class="toggle-controls">
+              <span class="toggle-label">Show:</span>
+              <button id="toggle-pinyin" class="toggle-btn toggle-pinyin active" data-lang="pinyin">
+                <span class="toggle-check">✓</span> Pinyin
+              </button>
+              <button id="toggle-en" class="toggle-btn toggle-en active" data-lang="en">
+                <span class="toggle-check">✓</span> English
+              </button>
+              <button id="toggle-es" class="toggle-btn toggle-es active" data-lang="es">
+                <span class="toggle-check">✓</span> Español
+              </button>
+            </div>
+          </div>
+
+          <!-- 可滾動內容區 -->
+          <div class="b-content-scroll">
             <div class="tab-content">
               <div id="dialogue" class="tab-pane active">
                 <div id="dialogue-content" class="content-group"></div>
@@ -60,31 +75,39 @@
               </div>
               <div id="components" class="tab-pane">
                 <div id="timeline-components-content" class="content-group">
-                  <p class="placeholder">暂无内容 Nothing here yet.</p>
+                  <p class="placeholder">暫無內容 Nothing here yet.</p>
                 </div>
               </div>
               <div id="vocab" class="tab-pane">
                 <div id="timeline-vocab-content" class="content-group">
-                  <p class="placeholder">暂无内容 Nothing here yet.</p>
+                  <p class="placeholder">暫無內容 Nothing here yet.</p>
                 </div>
               </div>
               <div id="practice" class="tab-pane">
                 <div id="practice-content" class="content-group">
-                  <p class="placeholder">练习功能开发中... Practice feature coming soon.</p>
+                  <p class="placeholder">練習功能開發中... Practice feature coming soon.</p>
+                </div>
+              </div>
+              <div id="grammar" class="tab-pane">
+                <div id="grammar-content" class="content-group">
+                  <p class="placeholder">文法筆記開發中... Grammar notes coming soon.</p>
                 </div>
               </div>
             </div>
           </div>
-
-          <aside class="b-notes">
-            <div class="tab-content b-notes-card">
-              <h3>Elisa 的笔记</h3>
-              <div id="teacher-notes"></div>
-              <p class="placeholder">暂无笔记 No notes yet.</p>
-            </div>
-          </aside>
         </div>
       </section>
+
+      <!-- 右側：筆記欄 -->
+      <aside class="b-notes">
+        <div class="b-notes-card">
+          <h3>Elisa 的筆記</h3>
+          <div class="b-notes-content">
+            <div id="teacher-notes"></div>
+            <p class="placeholder">暫無筆記 No notes yet.</p>
+          </div>
+        </div>
+      </aside>
     </div>
   </div>
 
@@ -93,37 +116,35 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
   <script src="assets/js/course-config.js"></script>
-  <script src="assets/js/nav.js?v=debug-3"></script>
-  <!-- #region agent log -->
-  <script>
-    (function () {
-      const firestoreSrc = Array.from(document.querySelectorAll('script[src]'))
-        .map(s => s.getAttribute('src'))
-        .find(src => src && src.includes('assets/js/firestore.js'));
-      fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: 'debug-session',
-          runId: 'baseline',
-          hypothesisId: 'H15',
-          location: 'lesson-template-b.html:inline',
-          message: 'HTML loaded',
-          data: {
-            href: window.location.href,
-            firestoreSrc,
-            hasServiceWorker: !!navigator.serviceWorker?.controller
-          },
-          timestamp: Date.now()
-        })
-      }).catch(() => {});
-    })();
-  </script>
-  <!-- #endregion -->
-  <script src="assets/js/firestore.js?v=debug-8"></script>
+  <script src="assets/js/nav.js"></script>
+  <script src="assets/js/firestore.js"></script>
   <script src="assets/js/audio.js"></script>
   <script src="assets/js/cohort-selector.js"></script>
-  <script src="assets/js/loader.js?v=debug-4"></script>
+  <script src="assets/js/loader.js"></script>
   <script src="assets/js/toggle.js"></script>
+
+  <!-- 側邊欄收合功能 -->
+  <script>
+    (function() {
+      const sidebar = document.getElementById('sidebar');
+      const toggleBtn = document.getElementById('sidebar-toggle');
+      const layout = document.querySelector('.b-layout');
+      const storageKey = 'bct-sidebar-collapsed';
+
+      // 載入儲存的狀態
+      const isCollapsed = localStorage.getItem(storageKey) === 'true';
+      if (isCollapsed) {
+        layout.classList.add('sidebar-collapsed');
+        toggleBtn.querySelector('.toggle-icon').textContent = '▶';
+      }
+
+      toggleBtn.addEventListener('click', () => {
+        layout.classList.toggle('sidebar-collapsed');
+        const collapsed = layout.classList.contains('sidebar-collapsed');
+        toggleBtn.querySelector('.toggle-icon').textContent = collapsed ? '▶' : '◀';
+        localStorage.setItem(storageKey, collapsed);
+      });
+    })();
+  </script>
 </body>
 </html>

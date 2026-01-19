@@ -126,25 +126,20 @@
   // 事件綁定
   // ================================================
   const bindNavEvents = (nav, pageType, currentLevel, currentCohort) => {
-    // BCT 等級切換
+    // BCT 等級切換 - 統一行為：跳轉到對應等級的 lesson 頁
     nav.querySelectorAll('.nav-level-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const level = btn.dataset.level;
-        if (level === currentLevel) return;
 
         setCurrentLevel(level);
 
-        // 根據頁面類型決定行為
-        if (pageType === 'home') {
-          // 首頁：跳轉到課程頁
-          window.location.href = `lesson-template-b.html?level=${level}&lesson=L1&cohort=${getCurrentCohort()}`;
-        } else if (pageType === 'lesson') {
-          // 課程頁：更新 URL 參數，保持當前課程
+        // 統一跳轉到 lesson 頁（首頁從 L1 開始，其他頁面保持當前課程）
+        if (pageType === 'lesson') {
           const currentLesson = getParam('lesson') || 'L1';
           window.location.href = `lesson-template-b.html?level=${level}&lesson=${currentLesson}&cohort=${getCurrentCohort()}`;
-        } else if (pageType === 'review') {
-          // 複習頁：更新 URL 參數
-          window.location.href = `bct-review.html?level=${level}&cohort=${getCurrentCohort()}`;
+        } else {
+          // 首頁和複習頁：跳轉到該等級的 L1
+          window.location.href = `lesson-template-b.html?level=${level}&lesson=L1&cohort=${getCurrentCohort()}`;
         }
       });
     });

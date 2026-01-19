@@ -1,5 +1,19 @@
 # 更新日志
 
+## [3.0.0] - 2026-01-18
+
+✅ Unified navigation across all 3 pages
+✅ Issue 1-2 solved (class switching without returning to homepage)
+✅ Hero section redesigned with light gray background
+✅ BCT tab behavior unified (all jump to lesson page)
+✅ Language toggle moved below title with colored buttons (Pinyin=green, English=teal, Spanish=purple)
+✅ 3-column layout optimized for 65" TV (260px | 1fr | 350px)
+✅ Grammar tab added
+✅ Collapsible sidebar with localStorage persistence
+
+
+
+
 ## [2.1.0] - 2026-01-17
 
 ### 🎯 阶段 5 完成：系统整合与 URL 参数统一

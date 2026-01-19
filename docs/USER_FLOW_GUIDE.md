@@ -233,7 +233,7 @@ lesson-template-b.html?level=btc1&lesson=lesson3&cohort=taigen-a
 
 ---
 
-### 🔄 场景：更换班级
+### 🔄 场景：更换班级(1/18已經改為下拉選單可在任何頁面直接切換班級)
 
 #### 方法一：从首页更换（推荐）
 
