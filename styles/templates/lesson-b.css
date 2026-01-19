@@ -1,140 +1,376 @@
+/* ================================================
+   Lesson Template B - 優化版
+   使用 Design System 變數
+   ================================================ */
+
 .template-b #global-nav-shell {
   display: none;
 }
 
 .template-b-container {
-  max-width: 1400px;
+  max-width: 1500px;
   margin: 0 auto;
-  padding: 20px;
+  padding: var(--space-5);
 }
 
+/* ================================================
+   頂部導航條
+   ================================================ */
 .b-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 0 20px;
+  padding: var(--space-3) 0 var(--space-5);
 }
 
-/* 班级标签样式 */
+.b-topbar .logo {
+  font-weight: var(--font-extrabold);
+  font-size: var(--text-xl);
+  color: var(--gray-900);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.b-topbar .logo::before {
+  content: '🧱';
+  font-size: 1.3em;
+}
+
+/* 班級標籤樣式 */
 .cohort-badge-link {
-  background: #FF8C42;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   color: white;
-  padding: 8px 16px;
-  border-radius: 999px;
-  font-weight: 600;
-  font-size: 0.9rem;
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-full);
+  font-weight: var(--font-bold);
+  font-size: var(--text-sm);
   text-decoration: none;
-  transition: all 0.3s;
-  box-shadow: 0 2px 8px rgba(255, 140, 66, 0.3);
+  transition: all var(--duration-normal) var(--ease-out);
+  box-shadow: var(--shadow-sm), 0 2px 8px rgba(255, 122, 61, 0.2);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .cohort-badge-link:hover {
-  background: #E67A30;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 140, 66, 0.4);
+  box-shadow: var(--shadow-md), 0 4px 12px rgba(255, 122, 61, 0.3);
   color: white;
 }
 
+/* ================================================
+   主要佈局
+   ================================================ */
 .b-layout {
   display: grid;
-  grid-template-columns: 260px 1fr;
-  gap: 20px;
+  grid-template-columns: 280px 1fr;
+  gap: var(--space-6);
 }
 
+/* ================================================
+   側邊欄
+   ================================================ */
 .b-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
   position: sticky;
-  top: 20px;
+  top: var(--space-5);
   align-self: start;
-  height: calc(100vh - 40px);
+  height: calc(100vh - var(--space-10));
 }
 
+/* 課程下拉選單 - 側邊欄版本 */
+.b-sidebar .nav-dropdown {
+  width: 100%;
+}
+
+.b-sidebar .nav-dropdown-btn {
+  width: 100%;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+}
+
+.b-sidebar .nav-dropdown-menu {
+  width: 100%;
+  left: 0;
+  right: 0;
+}
+
+/* ================================================
+   課程單元列表
+   ================================================ */
 .b-unit-list {
   flex: 1;
-  overflow: auto;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-right: 4px;
+  gap: var(--space-2);
+  padding-right: var(--space-2);
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-300) transparent;
+}
+
+.b-unit-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.b-unit-list::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: var(--radius-full);
+}
+
+.b-unit-list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .b-unit-item {
   text-decoration: none;
-  color: var(--color-char);
+  color: var(--gray-700);
   background: var(--bg-card);
-  border-radius: 12px;
-  padding: 10px 12px;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-xs);
   display: flex;
-  gap: 8px;
+  gap: var(--space-3);
   align-items: center;
+  transition: all var(--duration-fast) var(--ease-out);
+  font-size: var(--text-sm);
+}
+
+.b-unit-item:hover {
+  border-color: var(--primary-border);
+  background: var(--primary-bg);
+  transform: translateX(4px);
 }
 
 .b-unit-item.active {
-  border-color: var(--color-accent);
-  box-shadow: 0 6px 18px rgba(255, 140, 66, 0.15);
+  border-color: var(--primary);
+  background: var(--primary-bg);
+  box-shadow: var(--shadow-sm), 0 2px 8px rgba(255, 122, 61, 0.15);
+}
+
+.b-unit-item.active .b-unit-num {
+  color: var(--primary);
 }
 
 .b-unit-num {
-  font-weight: 700;
-  min-width: 44px;
+  font-weight: var(--font-bold);
+  min-width: 48px;
+  color: var(--gray-500);
+  font-size: var(--text-sm);
 }
 
+/* ================================================
+   複習按鈕
+   ================================================ */
 .b-review-btn {
-  display: block;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   text-decoration: none;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: var(--color-accent);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   color: #fff;
-  font-weight: 700;
+  font-weight: var(--font-bold);
+  font-size: var(--text-sm);
+  transition: all var(--duration-normal) var(--ease-out);
+  box-shadow: var(--shadow-sm), 0 4px 12px rgba(255, 122, 61, 0.25);
+}
+
+.b-review-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), 0 6px 16px rgba(255, 122, 61, 0.35);
+}
+
+/* ================================================
+   主內容區
+   ================================================ */
+.b-main {
+  min-width: 0;
 }
 
 .b-main-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
 }
 
+/* Tab 導航 - 課程頁面版本 */
+.b-main-header .tabs {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.b-main-header .tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.b-main-header .tab-btn {
+  flex: none;
+  white-space: nowrap;
+  padding: var(--space-3) var(--space-5);
+}
+
+/* 切換控制項 */
+.b-main-header .toggle-controls {
+  flex-shrink: 0;
+}
+
+/* ================================================
+   內容佈局
+   ================================================ */
 .b-content {
   display: grid;
-  grid-template-columns: 7fr 3fr;
-  gap: 20px;
+  grid-template-columns: 1fr 320px;
+  gap: var(--space-6);
+}
+
+.b-center {
+  min-width: 0;
 }
 
 .b-title {
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-5);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--gray-900);
 }
 
+/* ================================================
+   筆記側欄
+   ================================================ */
 .b-notes {
   position: relative;
 }
 
 .b-notes-card {
   position: sticky;
-  top: 20px;
+  top: var(--space-5);
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-md);
+}
+
+.b-notes-card h3 {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--gray-900);
+  margin: 0 0 var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 2px solid var(--gray-100);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.b-notes-card h3::before {
+  content: '📝';
+}
+
+.b-notes-card .placeholder {
+  padding: var(--space-6);
+  font-size: var(--text-sm);
+}
+
+/* ================================================
+   響應式設計
+   ================================================ */
+@media (max-width: 1200px) {
+  .b-content {
+    grid-template-columns: 1fr;
+  }
+
+  .b-notes-card {
+    position: static;
+  }
 }
 
 @media (max-width: 960px) {
   .b-layout {
     grid-template-columns: 1fr;
   }
+
   .b-sidebar {
     position: static;
     height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--space-3);
   }
-  .b-content {
-    grid-template-columns: 1fr;
+
+  .b-sidebar .nav-dropdown {
+    flex: 1;
+    min-width: 200px;
   }
-  .b-notes-card {
-    position: static;
+
+  .b-unit-list {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-right: 0;
+    padding-bottom: var(--space-2);
+    flex: 100%;
+    order: 3;
+  }
+
+  .b-unit-item {
+    flex-shrink: 0;
+  }
+
+  .b-review-btn {
+    flex: 1;
+    min-width: 150px;
+  }
+
+  .b-main-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .b-main-header .toggle-controls {
+    justify-content: center;
   }
 }
 
+@media (max-width: 640px) {
+  .template-b-container {
+    padding: var(--space-3);
+  }
 
+  .b-topbar {
+    padding: var(--space-2) 0 var(--space-4);
+  }
+
+  .b-topbar .logo {
+    font-size: var(--text-base);
+  }
+
+  .cohort-badge-link {
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-xs);
+  }
+
+  .b-title {
+    font-size: var(--text-xl);
+  }
+
+  .b-notes-card {
+    padding: var(--space-4);
+  }
+}

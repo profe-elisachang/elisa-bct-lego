@@ -1,247 +1,323 @@
-/* Global Navigation Styles */
-.nav-shell {
+/* ================================================
+   統一導航欄樣式 - Unified Navigation
+   使用 Design System 變數
+   ================================================ */
+
+/* 導航容器 */
+.unified-nav {
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: var(--bg-card, #ffffff);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
 }
 
-.top-nav {
-  max-width: 1200px;
+.unified-nav-inner {
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0.75rem 20px;
+  padding: var(--space-3) var(--space-5);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
-  border-bottom: 1px solid #e6e8ec;
+  gap: var(--space-4);
 }
 
-.nav-brand {
-  font-weight: 800;
-  letter-spacing: 0.2px;
-  color: var(--color-char);
-}
-
-.nav-links {
+/* ================================================
+   左側：Logo
+   ================================================ */
+.nav-logo {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-}
-
-.nav-separator {
-  color: #ccc;
-  font-weight: 400;
-  user-select: none;
-}
-
-.top-nav a {
-  color: var(--color-char);
+  gap: var(--space-2);
   text-decoration: none;
-  font-weight: 600;
-  font-size: 1rem;
-  padding: 0.4rem 0.6rem;
-  border-radius: 6px;
-  transition: color 0.15s ease, background 0.15s ease;
+  color: var(--gray-900);
+  font-weight: var(--font-extrabold);
+  font-size: var(--text-lg);
+  transition: all var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
 }
 
-.top-nav a:hover {
-  background: #f2f5f8;
+.nav-logo::before {
+  content: '🧱';
+  font-size: 1.3em;
 }
 
-.top-nav a.active {
-  color: var(--color-char);
-  background: #fff3e6;
+.nav-logo:hover {
+  color: var(--primary);
+  transform: translateY(-1px);
 }
 
-/* Courses Dropdown */
-.nav-dropdown {
-  position: relative;
-}
-
-.nav-dropdown-btn {
+/* ================================================
+   中央：BCT 等級標籤
+   ================================================ */
+.nav-level-tabs {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  background: var(--color-pinyin);
-  color: #ffffff;
+  gap: var(--space-2);
+  background: var(--gray-100);
+  padding: var(--space-1);
+  border-radius: var(--radius-full);
+}
+
+.nav-level-btn {
+  padding: var(--space-2) var(--space-5);
   border: none;
-  border-radius: 999px;
-  padding: 0.5rem 1rem;
-  font-weight: 700;
-  font-size: 0.95rem;
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--duration-fast) var(--ease-out);
+  background: transparent;
+  color: var(--gray-600);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
-.nav-dropdown-btn:hover {
-  background: #1e8e3e;
+.nav-level-btn:hover {
+  background: var(--bg-card);
+  color: var(--gray-900);
+  box-shadow: var(--shadow-xs);
 }
 
-.nav-dropdown-btn .arrow {
-  font-size: 0.7rem;
-  transition: transform 0.2s ease;
+/* BCT 1 - 綠色 */
+.nav-level-btn[data-level="btc1"].active,
+.nav-level-btn[data-level="btc1"]:hover {
+  background: var(--bct1-color);
+  color: white;
 }
 
-.nav-dropdown.open .arrow {
+/* BCT 2 - 橙色 */
+.nav-level-btn[data-level="btc2"].active,
+.nav-level-btn[data-level="btc2"]:hover {
+  background: var(--bct2-color);
+  color: white;
+}
+
+/* BCT 3 - 紫色 */
+.nav-level-btn[data-level="btc3"].active,
+.nav-level-btn[data-level="btc3"]:hover {
+  background: var(--bct3-color);
+  color: white;
+}
+
+.nav-level-btn.active {
+  box-shadow: var(--shadow-sm);
+}
+
+/* ================================================
+   右側：操作區
+   ================================================ */
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+/* Review 按鈕 */
+.nav-review-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+  text-decoration: none;
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  transition: all var(--duration-normal) var(--ease-out);
+  box-shadow: var(--shadow-sm), 0 2px 8px rgba(255, 122, 61, 0.2);
+}
+
+.nav-review-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), 0 4px 12px rgba(255, 122, 61, 0.3);
+  color: white;
+}
+
+.nav-review-btn.active {
+  background: var(--primary-dark);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 班級選擇器按鈕 */
+.nav-cohort-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.nav-cohort-btn:hover {
+  background: var(--gray-200);
+  border-color: var(--gray-300);
+}
+
+.nav-cohort-btn .arrow {
+  font-size: 0.7em;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.nav-cohort-btn.open .arrow {
   transform: rotate(180deg);
 }
 
-.nav-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  background: var(--bg-card);
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
-  min-width: 180px;
-  padding: 0.5rem;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-10px);
-  transition: all 0.2s ease;
-  z-index: 200;
+/* ================================================
+   班級選擇下拉選單
+   ================================================ */
+.nav-cohort-dropdown {
+  position: relative;
 }
 
-.nav-dropdown.open .nav-dropdown-menu {
+.nav-cohort-menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  min-width: 180px;
+  padding: var(--space-2);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all var(--duration-fast) var(--ease-out);
+  z-index: 100;
+}
+
+.nav-cohort-dropdown.open .nav-cohort-menu {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
 }
 
-.nav-dropdown-item {
+.nav-cohort-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 0.8rem;
-  border-radius: 8px;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
   text-decoration: none;
-  color: var(--color-char);
-  font-size: 0.95rem;
-  transition: all 0.15s ease;
+  color: var(--gray-700);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
 }
 
-.nav-dropdown-item:hover {
-  background: #f3f4f6;
-  color: var(--color-pinyin);
+.nav-cohort-item:hover {
+  background: var(--gray-100);
+  color: var(--primary);
 }
 
-.nav-dropdown-item.active {
-  background: #e8f5e9;
-  color: var(--color-pinyin);
+.nav-cohort-item.active {
+  background: var(--primary-bg);
+  color: var(--primary);
 }
 
-.nav-dropdown-item .check {
-  color: var(--color-pinyin);
-  font-weight: 700;
+.nav-cohort-item .check {
+  color: var(--primary);
+  font-weight: var(--font-bold);
+  min-width: 16px;
 }
 
-.nav-dropdown-item .course-level {
-  font-size: 0.8rem;
-  color: #9ca3af;
-  margin-left: auto;
-}
-
-/* Course Bar - 深色进度条风格 */
-.course-bar-wrap {
-  background: var(--color-char);
-  padding: 0;
-  width: 100%;
-  box-sizing: border-box;
-  margin-bottom: 20px;
-  border-radius: 16px;
-  overflow: hidden;
-}
-
-.course-bar {
-  display: flex;
-  align-items: center;
-  justify-content: stretch;
-  gap: 0;
-  padding: 0;
-  background: transparent;
-  overflow-x: auto;
-}
-
-.course-bar::-webkit-scrollbar {
-  height: 8px;
-}
-
-.course-bar::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
-  border-radius: 10px;
-}
-
-.course-chip {
-  flex: 1;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.6);
-  border: none;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0;
-  padding: 12px 0;
-  font-size: 0.9rem;
-  text-decoration: none;
-  white-space: nowrap;
-  font-weight: 600;
-  transition: all 0.15s ease;
-  position: relative;
-  text-align: center;
-}
-
-.course-chip:last-child {
-  border-right: none;
-}
-
-.course-chip:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.course-chip.active {
-  background: var(--color-accent);
-  color: #fff;
-  font-weight: 700;
-}
-
-.course-chip.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: #ffb75e;
-}
-
-/* Responsive */
-@media (max-width: 640px) {
-  .top-nav {
-    padding: 0.6rem 15px;
-    gap: 0.8rem;
+/* ================================================
+   響應式設計
+   ================================================ */
+@media (max-width: 768px) {
+  .unified-nav-inner {
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
   }
 
-  .nav-brand {
-    font-size: 0.95rem;
+  .nav-logo {
+    font-size: var(--text-base);
   }
 
-  .nav-links {
-    gap: 0.3rem;
+  .nav-logo::before {
+    font-size: 1.1em;
   }
 
-  .top-nav a {
-    font-size: 0.9rem;
-    padding: 0.3rem 0.5rem;
+  .nav-level-tabs {
+    gap: var(--space-1);
+    padding: 2px;
   }
 
-  .nav-dropdown-btn {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.85rem;
+  .nav-level-btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
   }
 
-  .course-chip {
-    padding: 10px 12px;
-    font-size: 0.85rem;
+  .nav-actions {
+    gap: var(--space-2);
   }
+
+  .nav-review-btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
+  }
+
+  .nav-cohort-btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .unified-nav-inner {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-2);
+  }
+
+  .nav-logo {
+    order: 1;
+    width: 100%;
+    justify-content: center;
+    margin-bottom: var(--space-1);
+  }
+
+  .nav-level-tabs {
+    order: 2;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .nav-actions {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--gray-100);
+    margin-top: var(--space-1);
+  }
+
+  .nav-cohort-menu {
+    right: 50%;
+    transform: translateX(50%) translateY(-8px);
+  }
+
+  .nav-cohort-dropdown.open .nav-cohort-menu {
+    transform: translateX(50%) translateY(0);
+  }
+}
+
+/* ================================================
+   隱藏舊導航（兼容過渡期）
+   ================================================ */
+#global-nav-shell {
+  display: none !important;
 }

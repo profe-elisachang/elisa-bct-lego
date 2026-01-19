@@ -4,169 +4,314 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chinese Lego - Build Your Fluency Brick by Brick</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Design System (新設計系統) -->
+    <link rel="stylesheet" href="assets/css/design-system.css">
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/nav-global.css">
     <style>
-        /* Hero Header */
+        /* ================================================
+           首頁專屬樣式 - Hero Section (輕量風格)
+           ================================================ */
         .hero-header {
-            background: #ff9a56;
-            border-radius: 16px;
-            padding: 0 35px;
-            margin-bottom: 80px;
+            background: var(--gray-50);
+            background-image:
+                linear-gradient(90deg, var(--gray-200) 1px, transparent 1px),
+                linear-gradient(var(--gray-200) 1px, transparent 1px);
+            background-size: 40px 40px;
+            border-radius: var(--radius-2xl);
+            padding: var(--space-10) var(--space-10);
+            margin-bottom: var(--space-10);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 20px;
-            box-shadow: 0 8px 25px rgba(255, 154, 86, 0.25);
+            gap: var(--space-8);
             overflow: visible;
             position: relative;
-            height: 180px;
+            min-height: 320px;
         }
 
         .hero-content {
             flex: 1;
+            position: relative;
+            z-index: 1;
+            max-width: 550px;
         }
 
         .hero-content h1 {
-            font-size: 1.8rem;
-            color: #ffffff;
-            margin-bottom: 0;
-            font-weight: 800;
-            line-height: 1.3;
+            font-size: 2.4rem;
+            color: var(--gray-900);
+            margin-bottom: var(--space-2);
+            font-weight: var(--font-extrabold);
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+        }
+
+        .hero-content h1 .highlight {
+            color: var(--primary);
+        }
+
+        .hero-subtitle {
+            font-size: var(--text-lg);
+            color: var(--gray-600);
+            font-weight: var(--font-medium);
+            margin-top: var(--space-3);
+            line-height: 1.5;
+        }
+
+        /* 橘色裝飾線 */
+        .hero-content::after {
+            content: '';
+            display: block;
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+            border-radius: var(--radius-full);
+            margin-top: var(--space-5);
         }
 
         .hero-image {
             flex-shrink: 0;
-            position: absolute;
-            right: 25px;
-            top: -120px;
+            position: relative;
+            z-index: 2;
         }
 
         .hero-image img {
             width: 360px;
             height: auto;
             display: block;
+            filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.12));
+            transition: transform var(--duration-slow) var(--ease-out);
         }
 
-        /* Motto Card */
+        .hero-image:hover img {
+            transform: translateY(-8px) scale(1.02);
+        }
+
+        /* ================================================
+           Motto Card
+           ================================================ */
         .motto-card {
-            background: white;
-            border-radius: 20px;
-            padding: 50px 60px;
+            background: var(--bg-card);
+            border-radius: var(--radius-2xl);
+            padding: var(--space-12) var(--space-16);
             text-align: center;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-            max-width: 800px;
-            margin: -40px auto 60px;
+            box-shadow: var(--shadow-lg);
+            max-width: 900px;
+            margin: 0 auto var(--space-16);
             position: relative;
             z-index: 10;
+            border: 1px solid var(--gray-100);
         }
 
         .motto-card h2 {
-            font-size: 1.8rem;
-            color: #ff6b35;
-            margin-bottom: 30px;
-            font-weight: 700;
+            font-size: var(--text-2xl);
+            color: var(--primary);
+            margin-bottom: var(--space-8);
+            font-weight: var(--font-bold);
             font-style: italic;
+            position: relative;
+            display: inline-block;
+        }
+
+        .motto-card h2::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+            border-radius: var(--radius-full);
         }
 
         .motto-list {
-            font-size: 1.1rem;
-            color: #444;
+            font-size: var(--text-base);
+            color: var(--gray-600);
             line-height: 2;
-            margin-bottom: 30px;
+            margin-bottom: var(--space-8);
+            max-width: 650px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .motto-list p {
-            margin-bottom: 12px;
-            padding-left: 12px;
-            border-left: 3px solid #ffcba4;
+            margin-bottom: var(--space-3);
+            padding: var(--space-3) var(--space-4);
+            padding-left: var(--space-5);
+            border-left: 3px solid var(--primary-border);
             text-align: left;
+            background: var(--gray-50);
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            transition: all var(--duration-fast) var(--ease-out);
+        }
+
+        .motto-list p:hover {
+            border-left-color: var(--primary);
+            background: var(--primary-bg);
+            transform: translateX(4px);
         }
 
         .motto-highlight {
-            font-size: 1.25rem;
-            color: #ff6b35;
-            font-weight: 700;
+            font-size: var(--text-xl);
+            color: var(--primary-dark);
+            font-weight: var(--font-bold);
             font-style: italic;
-            margin-top: 30px;
-            padding: 20px;
-            background: #fff5f0;
-            border-radius: 12px;
-            border-left: 4px solid #ff6b35;
+            margin-top: var(--space-8);
+            padding: var(--space-6);
+            background: linear-gradient(135deg, var(--primary-bg), rgba(255, 122, 61, 0.05));
+            border-radius: var(--radius-xl);
+            border-left: 4px solid var(--primary);
+            box-shadow: var(--shadow-sm);
         }
 
-        /* Course Entry Buttons */
+        /* ================================================
+           Course Entry Buttons
+           ================================================ */
         .course-entry {
             display: flex;
-            gap: 15px;
+            gap: var(--space-4);
             justify-content: center;
-            margin-top: 35px;
+            margin-top: var(--space-10);
+            flex-wrap: wrap;
         }
 
         .course-entry-btn {
-            padding: 15px 35px;
-            background: #ff6b35;
+            padding: var(--space-4) var(--space-10);
             color: white;
             text-decoration: none;
-            border-radius: 12px;
-            font-size: 1.1rem;
-            font-weight: 700;
-            transition: all 0.3s;
-            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
+            border-radius: var(--radius-xl);
+            font-size: var(--text-lg);
+            font-weight: var(--font-bold);
+            transition: all var(--duration-normal) var(--ease-out);
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.02em;
         }
 
-        .course-entry-btn:hover {
-            background: #e85d2a;
-            transform: translateY(-3px);
-            box-shadow: 0 6px 18px rgba(255, 107, 53, 0.35);
+        .course-entry-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 50%);
+            pointer-events: none;
         }
 
+        .course-entry-btn1 {
+            background: linear-gradient(135deg, var(--bct1-color), #16A34A);
+            box-shadow: var(--shadow-md), 0 4px 16px rgba(34, 197, 94, 0.3);
+        }
+
+        .course-entry-btn2 {
+            background: linear-gradient(135deg, var(--bct2-color), var(--primary-dark));
+            box-shadow: var(--shadow-md), 0 4px 16px rgba(255, 122, 61, 0.3);
+        }
+
+        .course-entry-btn3 {
+            background: linear-gradient(135deg, var(--bct3-color), #7C3AED);
+            box-shadow: var(--shadow-md), 0 4px 16px rgba(139, 92, 246, 0.3);
+        }
+
+        .course-entry-btn1:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: var(--shadow-lg), 0 8px 24px rgba(34, 197, 94, 0.4);
+        }
+
+        .course-entry-btn2:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: var(--shadow-lg), 0 8px 24px rgba(255, 122, 61, 0.4);
+        }
+
+        .course-entry-btn3:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: var(--shadow-lg), 0 8px 24px rgba(139, 92, 246, 0.4);
+        }
+
+        .course-entry-btn:active {
+            transform: translateY(-2px) scale(1);
+        }
+
+        /* ================================================
+           響應式設計
+           ================================================ */
         @media (max-width: 768px) {
             .hero-header {
                 flex-direction: column;
                 align-items: center;
                 text-align: center;
-                padding: 20px 20px 0;
-                height: auto;
-                margin-bottom: 60px;
+                padding: var(--space-8) var(--space-5);
+                min-height: auto;
+                margin-bottom: var(--space-8);
+            }
+
+            .hero-content {
+                max-width: 100%;
             }
 
             .hero-content h1 {
-                font-size: 1.3rem;
+                font-size: 1.75rem;
+            }
+
+            .hero-subtitle {
+                font-size: var(--text-base);
+            }
+
+            .hero-content::after {
+                margin-left: auto;
+                margin-right: auto;
             }
 
             .hero-image {
-                position: relative;
-                right: auto;
-                top: auto;
-                margin-bottom: -40px;
+                margin-top: var(--space-6);
             }
 
             .hero-image img {
-                width: 200px;
+                width: 260px;
             }
 
             .motto-card {
-                padding: 30px 25px;
-                margin: -20px 20px 40px;
+                padding: var(--space-8) var(--space-5);
+                margin: 0 var(--space-2) var(--space-10);
+                border-radius: var(--radius-xl);
             }
 
             .motto-card h2 {
-                font-size: 1.3rem;
-                margin-bottom: 20px;
+                font-size: var(--text-xl);
+                margin-bottom: var(--space-6);
             }
 
             .motto-list {
-                font-size: 0.95rem;
+                font-size: var(--text-sm);
             }
 
             .motto-list p {
-                padding-left: 8px;
+                padding: var(--space-3);
+                padding-left: var(--space-4);
             }
 
             .motto-highlight {
-                font-size: 1.05rem;
-                padding: 15px;
+                font-size: var(--text-base);
+                padding: var(--space-4);
+            }
+
+            .course-entry {
+                flex-direction: column;
+                gap: var(--space-3);
+                padding: 0 var(--space-4);
+            }
+
+            .course-entry-btn {
+                padding: var(--space-4) var(--space-6);
+                font-size: var(--text-base);
+                width: 100%;
+                text-align: center;
             }
         }
     </style>
@@ -176,10 +321,11 @@
         <!-- Hero Header -->
         <section class="hero-header">
             <div class="hero-content">
-                <h1>Chinese Lego – Build Your Fluency Brick by Brick</h1>
+                <h1><span class="highlight">Elisa's</span> Chinese Lego</h1>
+                <p class="hero-subtitle">Build Your Fluency Brick by Brick</p>
             </div>
             <div class="hero-image">
-                <img src="assets/img/header.meeting.png" alt="Chinese Lego">
+                <img src="assets/img/1.png" alt="Chinese Lego">
             </div>
         </section>
 
@@ -187,9 +333,10 @@
         <section class="motto-card">
             <h2>Progress, not perfection.</h2>
             <div class="motto-list">
-                <p>Dare to speak, we move forward.</p>
+                <p> If you can give it a try, we move on. </p>
+                <P>The goal isn't to know everything, but to start using something.</P>
                 <p>Not everything at once—just a little more each day.</p>
-                <p>Forget it? Meet again until it feels like an old friend.</p>
+                <p> We learn, forget, and re-meet words and patterns until they become old friends.</p>
             </div>
             <div class="motto-highlight">
                 "I can say a bit more today."
@@ -197,9 +344,9 @@
             
             <!-- Course Entry Buttons -->
             <div class="course-entry">
-                <a href="lesson-template-b.html?level=btc1&lesson=L1" class="course-entry-btn">BCT 1</a>
-                <a href="lesson-template-b.html?level=btc2&lesson=L1" class="course-entry-btn">BCT 2</a>
-                <a href="lesson-template-b.html?level=btc3&lesson=L1" class="course-entry-btn">BCT 3</a>
+                <a href="lesson-template-b.html?level=btc1&lesson=L1" class="course-entry-btn course-entry-btn1">🟢 BCT 1</a>
+                <a href="lesson-template-b.html?level=btc2&lesson=L1" class="course-entry-btn course-entry-btn2">🟠 BCT 2</a>
+                <a href="lesson-template-b.html?level=btc3&lesson=L1" class="course-entry-btn course-entry-btn3">🟣 BCT 3</a>
             </div>
         </section>
     </div>
@@ -207,21 +354,5 @@
     <script src="assets/js/course-config.js"></script>
     <script src="assets/js/nav.js"></script>
     <script src="assets/js/cohort-selector.js"></script>
-    
-    <!-- 动态更新 BCT 按钮的 cohort 参数 -->
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const cohort = localStorage.getItem('bct-cohort') || 'taigen-a';
-        const buttons = document.querySelectorAll('.course-entry-btn');
-        
-        buttons.forEach(btn => {
-            const currentHref = btn.getAttribute('href');
-            // 添加 cohort 参数
-            btn.setAttribute('href', currentHref + `&cohort=${cohort}`);
-        });
-        
-        console.log('✅ 首页 BCT 按钮已更新，当前班级：', cohort);
-    });
-    </script>
 </body>
 </html>

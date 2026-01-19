@@ -1,311 +1,220 @@
-// 動態渲染全站導航與課程條
+// 統一導航欄 - Unified Navigation
+// 三頁共用：index.html, lesson-template-b.html, bct-review.html
+
 (function () {
-  const CONFIG = window.BCT_COURSE_CONFIG;
-  if (!CONFIG || !Array.isArray(CONFIG.classes)) return;
+  'use strict';
 
-  // 等待 DOM 加載完成
-  const init = () => {
-    const STORAGE_KEY = 'bct-active-class';
+  // ================================================
+  // 配置
+  // ================================================
+  const STORAGE_KEYS = {
+    CLASS: 'bct-active-class',
+    COHORT: 'bct-cohort'
+  };
 
-    const getParam = (key) => new URLSearchParams(window.location.search).get(key);
-    const normalizeLesson = (raw) => {
-      if (!raw) return null;
-      if (raw.match(/^lesson\d+$/i)) {
-        return 'L' + raw.replace(/lesson/i, '');
-      }
-      return raw.toUpperCase();
-    };
+  const COHORTS = [
+    { id: 'taigen-a', name: 'Taigen A', label: 'A' },
+    { id: 'taigen-b', name: 'Taigen B', label: 'B' }
+  ];
 
-    const resolveClassId = () => {
-      const qs = getParam('class');
-      const remembered = localStorage.getItem(STORAGE_KEY);
-      const candidate = qs || remembered || CONFIG.defaultClassId;
-      const exists = CONFIG.classes.find((c) => c.id === candidate);
-      return exists ? candidate : CONFIG.defaultClassId;
-    };
+  const LEVELS = [
+    { id: 'btc1', label: 'BCT 1', emoji: '🟢' },
+    { id: 'btc2', label: 'BCT 2', emoji: '🟠' },
+    { id: 'btc3', label: 'BCT 3', emoji: '🟣' }
+  ];
 
-    const setClassId = (id) => localStorage.setItem(STORAGE_KEY, id);
+  // ================================================
+  // 工具函數
+  // ================================================
+  const getParam = (key) => new URLSearchParams(window.location.search).get(key);
 
-    const currentClassId = resolveClassId();
-    const currentLessonId = normalizeLesson(getParam('lesson') || getParam('lessonId'));
-    const currentClass = CONFIG.classes.find((c) => c.id === currentClassId) || CONFIG.classes[0];
-
+  const getPageType = () => {
     const path = window.location.pathname;
-    const lessonPage = path.endsWith('lesson-template-a.html')
-      ? 'lesson-template-a.html'
-      : path.endsWith('lesson-template-b.html')
-        ? 'lesson-template-b.html'
-        : 'lesson.html';
-    // #region agent log
-    const scriptSrcs = Array.from(document.querySelectorAll('script[src]'))
-      .map((s) => s.getAttribute('src'))
-      .filter(Boolean);
-    fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        sessionId:'debug-session',
-        runId:'baseline',
-        hypothesisId:'H15',
-        location:'assets/js/nav.js:init',
-        message:'Script sources',
-        data:{baseURI:document.baseURI, scriptSrcs},
-        timestamp:Date.now()
-      })
-    }).catch(()=>{});
-    // #endregion
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        sessionId:'debug-session',
-        runId:'baseline',
-        hypothesisId:'H1',
-        location:'assets/js/nav.js:init',
-        message:'Resolved class/lesson/page',
-        data:{
-          path,
-          qsClass:getParam('class'),
-          qsLesson:getParam('lesson'),
-          currentClassId,
-          currentLessonId,
-          lessonPage
-        },
-        timestamp:Date.now()
-      })
-    }).catch(()=>{});
-    // #endregion
+    if (path.endsWith('bct-review.html')) return 'review';
+    if (path.endsWith('lesson-template-b.html') || path.endsWith('lesson-template-a.html') || path.endsWith('lesson.html')) return 'lesson';
+    return 'home';
+  };
 
-    const root = document.createElement('div');
-    root.id = 'global-nav-shell';
-    root.className = 'nav-shell';
+  const getCurrentLevel = () => {
+    const param = getParam('level') || getParam('class');
+    const stored = localStorage.getItem(STORAGE_KEYS.CLASS);
+    return param || stored || 'btc1';
+  };
 
-    // 第一層：主導覽
-    const topNav = document.createElement('nav');
-    topNav.className = 'top-nav';
+  const getCurrentCohort = () => {
+    const param = getParam('cohort');
+    const stored = localStorage.getItem(STORAGE_KEYS.COHORT);
+    return param || stored || 'taigen-a';
+  };
 
-    const brand = document.createElement('div');
-    brand.className = 'nav-brand';
-    brand.textContent = 'BCT Lego';
-    topNav.appendChild(brand);
+  const setCurrentLevel = (level) => {
+    localStorage.setItem(STORAGE_KEYS.CLASS, level);
+  };
 
-    const linksWrap = document.createElement('div');
-    linksWrap.className = 'nav-links';
+  const setCurrentCohort = (cohortId) => {
+    localStorage.setItem(STORAGE_KEYS.COHORT, cohortId);
+  };
 
-    // Home 連結
-    const homeLink = document.createElement('a');
-    homeLink.href = 'index.html';
-    homeLink.textContent = 'Home';
-    if (path.endsWith('index.html') || path.endsWith('/')) {
-      homeLink.classList.add('active');
-    }
-    linksWrap.appendChild(homeLink);
+  const getCohortInfo = (cohortId) => {
+    return COHORTS.find(c => c.id === cohortId) || COHORTS[0];
+  };
 
-    // 分隔符
-    const sep1 = document.createElement('span');
-    sep1.className = 'nav-separator';
-    sep1.textContent = '|';
-    linksWrap.appendChild(sep1);
+  // ================================================
+  // 導航欄渲染
+  // ================================================
+  const renderNav = () => {
+    const pageType = getPageType();
+    const currentLevel = getCurrentLevel();
+    const currentCohort = getCurrentCohort();
+    const cohortInfo = getCohortInfo(currentCohort);
 
-    // Courses 下拉選單
-    const dropdown = document.createElement('div');
-    dropdown.className = 'nav-dropdown';
+    // 創建導航容器
+    const nav = document.createElement('nav');
+    nav.className = 'unified-nav';
+    nav.innerHTML = `
+      <div class="unified-nav-inner">
+        <!-- Logo -->
+        <a href="index.html" class="nav-logo">Chinese Lego</a>
 
-    const dropdownBtn = document.createElement('button');
-    dropdownBtn.type = 'button';
-    dropdownBtn.className = 'nav-dropdown-btn';
-    dropdownBtn.innerHTML = `${currentClass.label} <span class="arrow">▼</span>`;
-    dropdown.appendChild(dropdownBtn);
+        <!-- BCT 等級標籤 -->
+        <div class="nav-level-tabs">
+          ${LEVELS.map(level => `
+            <button type="button"
+                    class="nav-level-btn ${level.id === currentLevel ? 'active' : ''}"
+                    data-level="${level.id}">
+              ${level.emoji} ${level.label}
+            </button>
+          `).join('')}
+        </div>
 
-    const dropdownMenu = document.createElement('div');
-    dropdownMenu.className = 'nav-dropdown-menu';
+        <!-- 右側操作區 -->
+        <div class="nav-actions">
+          <!-- Review 按鈕 -->
+          <a href="bct-review.html?level=${currentLevel}&cohort=${currentCohort}"
+             class="nav-review-btn ${pageType === 'review' ? 'active' : ''}">
+            🧠 Review
+          </a>
 
-    const courseLevels = {
-      btc1: '初级',
-      btc2: '中级',
-      btc3: '高级',
-    };
-
-    CONFIG.classes.forEach((cls) => {
-      const item = document.createElement('a');
-      item.className = 'nav-dropdown-item';
-      item.href = `${lessonPage}?class=${cls.id}`;
-      const isActive = cls.id === currentClassId;
-      if (isActive) item.classList.add('active');
-      item.innerHTML = `
-        <span class="check">${isActive ? '✓' : ''}</span>
-        <span>${cls.label}</span>
-        <span class="course-level">${courseLevels[cls.id] || ''}</span>
-      `;
-      item.addEventListener('click', (e) => {
-        e.preventDefault();
-        setClassId(cls.id);
-        window.location.href = `${lessonPage}?class=${cls.id}`;
-      });
-      dropdownMenu.appendChild(item);
-    });
-
-    dropdown.appendChild(dropdownMenu);
-    linksWrap.appendChild(dropdown);
-
-    // 下拉選單開關邏輯
-    dropdownBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      dropdown.classList.toggle('open');
-    });
-
-    document.addEventListener('click', () => {
-      dropdown.classList.remove('open');
-    });
-
-    // 分隔符
-    const sep2 = document.createElement('span');
-    sep2.className = 'nav-separator';
-    sep2.textContent = '|';
-    linksWrap.appendChild(sep2);
-
-    // Review 連結
-    const reviewLink = document.createElement('a');
-    const cohort = localStorage.getItem('bct-cohort') || 'taigen-a';
-    reviewLink.href = `bct-review.html?level=${currentClassId}&cohort=${cohort}`;
-    reviewLink.textContent = 'Review';
-    if (path.endsWith('bct-review.html')) {
-      reviewLink.classList.add('active');
-    }
-    linksWrap.appendChild(reviewLink);
-
-    topNav.appendChild(linksWrap);
-    root.appendChild(topNav);
+          <!-- 班級選擇器 -->
+          <div class="nav-cohort-dropdown">
+            <button type="button" class="nav-cohort-btn">
+              👤 ${cohortInfo.name}
+              <span class="arrow">▼</span>
+            </button>
+            <div class="nav-cohort-menu">
+              ${COHORTS.map(cohort => `
+                <div class="nav-cohort-item ${cohort.id === currentCohort ? 'active' : ''}"
+                     data-cohort="${cohort.id}">
+                  <span class="check">${cohort.id === currentCohort ? '✓' : ''}</span>
+                  <span>${cohort.name}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
 
     // 插入頁面最前面
-    const body = document.body;
-    if (body.firstChild) {
-      body.insertBefore(root, body.firstChild);
-    } else {
-      body.appendChild(root);
-    }
+    document.body.insertBefore(nav, document.body.firstChild);
 
-    // 課程條（在 lesson.html 頁面顯示，不在首頁顯示）
-    const showCourseBar =
-      path.endsWith('lesson.html') ||
-      path.endsWith('lesson-template-a.html');
-      // 移除首页显示：&& !path.endsWith('index.html') && !path.endsWith('/')
-    if (showCourseBar && currentClass?.lessons?.length) {
-      const targetInner = document.getElementById('unit-bar-inner');
+    // 綁定事件
+    bindNavEvents(nav, pageType, currentLevel, currentCohort);
+  };
 
-      if (targetInner) {
-        // Template A logic: Use existing container
-        targetInner.innerHTML = '';
-        currentClass.lessons.forEach((lesson) => {
-          const chip = document.createElement('a');
-          chip.className = 'unit-btn';
-          chip.href = `${lessonPage}?class=${currentClass.id}&lesson=${lesson.id}`;
-          chip.textContent = lesson.id.replace('L', '');
-          if (currentLessonId && lesson.id.toUpperCase() === currentLessonId.toUpperCase()) {
-            chip.classList.add('active');
-          }
-          targetInner.appendChild(chip);
-        });
+  // ================================================
+  // 事件綁定
+  // ================================================
+  const bindNavEvents = (nav, pageType, currentLevel, currentCohort) => {
+    // BCT 等級切換
+    nav.querySelectorAll('.nav-level-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const level = btn.dataset.level;
+        if (level === currentLevel) return;
 
-        // Add Review button for Template A
-        const reviewBtn = document.createElement('a');
-        reviewBtn.className = 'unit-btn review';
-        const cohort = localStorage.getItem('bct-cohort') || 'taigen-a';
-        reviewBtn.href = `bct-review.html?level=${currentClass.id}&cohort=${cohort}`;
-        reviewBtn.innerHTML = '⚡ Review';
-        targetInner.appendChild(reviewBtn);
-      } else {
-        // Original logic: Create black bar
-        const barWrap = document.createElement('div');
-        barWrap.className = 'course-bar-wrap';
+        setCurrentLevel(level);
 
-        const bar = document.createElement('div');
-        bar.className = 'course-bar';
-
-        currentClass.lessons.forEach((lesson) => {
-          const chip = document.createElement('a');
-          chip.className = 'course-chip';
-          chip.href = `${lessonPage}?class=${currentClass.id}&lesson=${lesson.id}`;
-          chip.textContent = lesson.id.replace('L', '');
-          if (currentLessonId && lesson.id.toUpperCase() === currentLessonId.toUpperCase()) {
-            chip.classList.add('active');
-          }
-          bar.appendChild(chip);
-        });
-
-        barWrap.appendChild(bar);
-
-        // 插入到 container 內部
-        const container = document.querySelector('.container');
-        const heroHeader = document.querySelector('.hero-header');
-        const lessonHeader = document.querySelector('.lesson-header');
-        const mainContent = document.querySelector('main');
-
-        if (container) {
-          if (heroHeader) {
-            heroHeader.after(barWrap);
-          } else if (lessonHeader) {
-            lessonHeader.before(barWrap);
-          } else if (mainContent) {
-            mainContent.before(barWrap);
-          } else {
-            container.prepend(barWrap);
-          }
-        } else {
-          body.appendChild(barWrap);
+        // 根據頁面類型決定行為
+        if (pageType === 'home') {
+          // 首頁：跳轉到課程頁
+          window.location.href = `lesson-template-b.html?level=${level}&lesson=L1&cohort=${getCurrentCohort()}`;
+        } else if (pageType === 'lesson') {
+          // 課程頁：更新 URL 參數，保持當前課程
+          const currentLesson = getParam('lesson') || 'L1';
+          window.location.href = `lesson-template-b.html?level=${level}&lesson=${currentLesson}&cohort=${getCurrentCohort()}`;
+        } else if (pageType === 'review') {
+          // 複習頁：更新 URL 參數
+          window.location.href = `bct-review.html?level=${level}&cohort=${getCurrentCohort()}`;
         }
-      }
-    }
-
-    const sidebarDropdown = document.getElementById('sidebar-course-dropdown');
-    const sidebarBtn = document.getElementById('sidebar-course-btn');
-    const sidebarMenu = document.getElementById('sidebar-course-menu');
-
-    if (sidebarDropdown && sidebarBtn && sidebarMenu) {
-      sidebarBtn.innerHTML = `${currentClass.label} <span class="arrow">▼</span>`;
-      sidebarMenu.innerHTML = '';
-
-      CONFIG.classes.forEach((cls) => {
-        const item = document.createElement('a');
-        item.className = 'nav-dropdown-item';
-        item.href = `${lessonPage}?class=${cls.id}`;
-        const isActive = cls.id === currentClassId;
-        if (isActive) item.classList.add('active');
-        item.innerHTML = `
-          <span class="check">${isActive ? '✓' : ''}</span>
-          <span>${cls.label}</span>
-          <span class="course-level">${courseLevels[cls.id] || ''}</span>
-        `;
-        item.addEventListener('click', (e) => {
-          e.preventDefault();
-          setClassId(cls.id);
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({
-              sessionId:'debug-session',
-              runId:'baseline',
-              hypothesisId:'H1',
-              location:'assets/js/nav.js:sidebarCourseClick',
-              message:'Sidebar course selected',
-              data:{targetClass:cls.id, redirect:`${lessonPage}?class=${cls.id}`},
-              timestamp:Date.now()
-            })
-          }).catch(()=>{});
-          // #endregion
-          window.location.href = `${lessonPage}?class=${cls.id}`;
-        });
-        sidebarMenu.appendChild(item);
       });
+    });
 
-      sidebarBtn.addEventListener('click', (e) => {
+    // 班級選擇器下拉
+    const cohortDropdown = nav.querySelector('.nav-cohort-dropdown');
+    const cohortBtn = nav.querySelector('.nav-cohort-btn');
+    const cohortMenu = nav.querySelector('.nav-cohort-menu');
+
+    cohortBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      cohortDropdown.classList.toggle('open');
+      cohortBtn.classList.toggle('open');
+    });
+
+    // 點擊外部關閉下拉
+    document.addEventListener('click', () => {
+      cohortDropdown.classList.remove('open');
+      cohortBtn.classList.remove('open');
+    });
+
+    // 班級選擇
+    cohortMenu.querySelectorAll('.nav-cohort-item').forEach(item => {
+      item.addEventListener('click', (e) => {
         e.stopPropagation();
-        sidebarDropdown.classList.toggle('open');
-      });
-    }
+        const cohortId = item.dataset.cohort;
+        if (cohortId === currentCohort) {
+          cohortDropdown.classList.remove('open');
+          cohortBtn.classList.remove('open');
+          return;
+        }
 
+        // 更新 localStorage
+        setCurrentCohort(cohortId);
+
+        // 根據頁面類型重載
+        const level = getCurrentLevel();
+        if (pageType === 'home') {
+          // 首頁：刷新頁面（會自動更新按鈕鏈接）
+          window.location.reload();
+        } else if (pageType === 'lesson') {
+          // 課程頁：更新 URL 參數並重載
+          const currentLesson = getParam('lesson') || 'L1';
+          window.location.href = `lesson-template-b.html?level=${level}&lesson=${currentLesson}&cohort=${cohortId}`;
+        } else if (pageType === 'review') {
+          // 複習頁：更新 URL 參數並重載
+          window.location.href = `bct-review.html?level=${level}&cohort=${cohortId}`;
+        }
+      });
+    });
+  };
+
+  // ================================================
+  // 側邊欄功能（僅 lesson-template-b.html）
+  // ================================================
+  const initSidebar = () => {
+    const pageType = getPageType();
+    if (pageType !== 'lesson') return;
+
+    const CONFIG = window.BCT_COURSE_CONFIG;
+    if (!CONFIG || !Array.isArray(CONFIG.classes)) return;
+
+    const currentLevel = getCurrentLevel();
+    const currentCohort = getCurrentCohort();
+    const currentLesson = getParam('lesson') || 'L1';
+
+    // 找到當前等級的課程
+    const currentClass = CONFIG.classes.find(c => c.id === currentLevel) || CONFIG.classes[0];
+
+    // 渲染側邊欄單元列表
     const sidebarList = document.getElementById('sidebar-unit-list');
     if (sidebarList && currentClass?.lessons?.length) {
       sidebarList.innerHTML = '';
@@ -313,72 +222,70 @@
         const item = document.createElement('a');
         item.className = 'b-unit-item';
         const num = lesson.id.replace('L', '').padStart(2, '0');
-        item.href = `${lessonPage}?class=${currentClass.id}&lesson=${lesson.id}`;
+        item.href = `lesson-template-b.html?level=${currentClass.id}&lesson=${lesson.id}&cohort=${currentCohort}`;
         item.innerHTML = `<span class="b-unit-num">L${num}</span><span>${lesson.title || ''}</span>`;
-        if (currentLessonId && lesson.id.toUpperCase() === currentLessonId.toUpperCase()) {
+        if (lesson.id.toUpperCase() === currentLesson.toUpperCase()) {
           item.classList.add('active');
         }
         sidebarList.appendChild(item);
       });
-      const normalizeLessonId = (id) => {
-        if (!id) return null;
-        if (/^L\d+$/i.test(id)) return `lesson${id.slice(1)}`;
-        return id;
-      };
-      const updateSidebarTitlesFromFirestore = async () => {
-        if (typeof firestoreService === 'undefined') return;
-        if (!firestoreService.isConnected()) {
-          await firestoreService.init();
-        }
-        const items = Array.from(sidebarList.querySelectorAll('.b-unit-item'));
-        await Promise.all(items.map(async (item) => {
-          const href = item.getAttribute('href') || '';
-          const match = href.match(/lesson=([^&]+)/i);
-          if (!match) return;
-          const lessonId = normalizeLessonId(match[1]);
-          if (!lessonId) return;
-          const data = await firestoreService.getLesson(lessonId, currentClass.id);
-          if (!data || !data.title) return;
-          const labelSpan = item.querySelector('span:nth-of-type(2)') || item.querySelector('span:last-child');
-          if (!labelSpan) return;
-          labelSpan.textContent = data.title;
-        }));
-      };
-      const waitForFirestore = (tries = 0) => {
-        if (typeof firestoreService !== 'undefined') {
-          updateSidebarTitlesFromFirestore();
-          return;
-        }
-        if (tries < 120) requestAnimationFrame(() => waitForFirestore(tries + 1));
-      };
-      waitForFirestore();
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          sessionId:'debug-session',
-          runId:'baseline',
-          hypothesisId:'H2',
-          location:'assets/js/nav.js:sidebarUnitRender',
-          message:'Sidebar units rendered',
-          data:{
-            classId:currentClass.id,
-            lessonsCount:currentClass.lessons.length,
-            firstLesson:currentClass.lessons[0]?.id,
-            lessonPage
-          },
-          timestamp:Date.now()
-        })
-      }).catch(()=>{});
-      // #endregion
 
-      const reviewLink = document.getElementById('sidebar-review-link');
-      if (reviewLink) {
-        const cohort = localStorage.getItem('bct-cohort') || 'taigen-a';
-        reviewLink.href = `bct-review.html?level=${currentClass.id}&cohort=${cohort}`;
-      }
+      // 從 Firestore 更新標題
+      updateSidebarTitlesFromFirestore(sidebarList, currentClass.id);
     }
+
+    // 更新側邊欄 Review 按鈕
+    const reviewLink = document.getElementById('sidebar-review-link');
+    if (reviewLink) {
+      reviewLink.href = `bct-review.html?level=${currentLevel}&cohort=${currentCohort}`;
+    }
+
+    // 隱藏側邊欄的課程下拉選單（已由導航欄處理）
+    const sidebarDropdown = document.getElementById('sidebar-course-dropdown');
+    if (sidebarDropdown) {
+      sidebarDropdown.style.display = 'none';
+    }
+  };
+
+  // 從 Firestore 獲取課程標題
+  const updateSidebarTitlesFromFirestore = async (sidebarList, classId) => {
+    if (typeof firestoreService === 'undefined') return;
+
+    const normalizeLessonId = (id) => {
+      if (!id) return null;
+      if (/^L\d+$/i.test(id)) return `lesson${id.slice(1)}`;
+      return id;
+    };
+
+    try {
+      if (!firestoreService.isConnected()) {
+        await firestoreService.init();
+      }
+
+      const items = Array.from(sidebarList.querySelectorAll('.b-unit-item'));
+      await Promise.all(items.map(async (item) => {
+        const href = item.getAttribute('href') || '';
+        const match = href.match(/lesson=([^&]+)/i);
+        if (!match) return;
+        const lessonId = normalizeLessonId(match[1]);
+        if (!lessonId) return;
+        const data = await firestoreService.getLesson(lessonId, classId);
+        if (!data || !data.title) return;
+        const labelSpan = item.querySelector('span:nth-of-type(2)') || item.querySelector('span:last-child');
+        if (!labelSpan) return;
+        labelSpan.textContent = data.title;
+      }));
+    } catch (err) {
+      console.warn('Failed to update sidebar titles:', err);
+    }
+  };
+
+  // ================================================
+  // 初始化
+  // ================================================
+  const init = () => {
+    renderNav();
+    initSidebar();
   };
 
   // 確保 DOM 已加載

@@ -1,5 +1,6 @@
-// Cohort Selector - 班级选择器
-// 用于首页选择学生班级
+// Cohort Selector - 班級選擇器
+// 用于首次访问时选择学生班级
+// 注意：導航欄中的班級切換由 nav.js 處理
 
 class CohortSelector {
     constructor() {
@@ -13,14 +14,12 @@ class CohortSelector {
     // 初始化
     init() {
         const currentCohort = this.getCurrentCohort();
-        
+
         if (!currentCohort) {
             // 首次使用，显示选择对话框
             this.showSelector();
-        } else {
-            // 已经选择过，显示班级标签
-            this.showCohortBadge(currentCohort);
         }
+        // 不再顯示固定位置的標籤，由統一導航欄處理
     }
 
     // 获取当前班级
@@ -34,7 +33,7 @@ class CohortSelector {
     }
 
     // 显示班级选择对话框
-    showSelector() {
+    showSelector(onSelect = null) {
         // 创建遮罩层
         const overlay = document.createElement('div');
         overlay.className = 'cohort-overlay';
@@ -178,15 +177,20 @@ class CohortSelector {
 
             const cohortId = selectedBtn.dataset.cohortId;
             this.setCurrentCohort(cohortId);
-            
+
             // 关闭对话框
             document.body.removeChild(overlay);
-            
-            // 显示班级标签
-            this.showCohortBadge(cohortId);
+
+            // 调用回调函数（如果有）
+            if (typeof onSelect === 'function') {
+                onSelect(cohortId);
+            }
 
             // 更新所有课程链接
             this.updateLessonLinks(cohortId);
+
+            // 刷新頁面以更新導航欄
+            window.location.reload();
         });
 
         // 组装对话框
@@ -200,68 +204,6 @@ class CohortSelector {
         document.body.appendChild(overlay);
     }
 
-    // 显示班级标签（右上角）
-    showCohortBadge(cohortId) {
-        const cohort = this.cohorts.find(c => c.id === cohortId);
-        if (!cohort) return;
-
-        // 检查是否在课程页面（lesson-template-b.html）
-        const isLessonPage = window.location.pathname.includes('lesson-template-b.html');
-        
-        if (isLessonPage) {
-            // 课程页面：更新现有的标签（链接到首页）
-            const badgeContainer = document.getElementById('cohort-badge-container');
-            if (badgeContainer) {
-                badgeContainer.textContent = `👤 ${cohort.name}`;
-                badgeContainer.title = '返回首页更换班级';
-            }
-        } else {
-            // 首页：创建固定位置的标签（可点击切换）
-            let badge = document.getElementById('cohort-badge');
-            
-            if (!badge) {
-                // 创建标签
-                badge = document.createElement('div');
-                badge.id = 'cohort-badge';
-                badge.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    background: #FF8C42;
-                    color: white;
-                    padding: 10px 20px;
-                    border-radius: 999px;
-                    font-weight: 600;
-                    font-size: 0.9rem;
-                    cursor: pointer;
-                    z-index: 1000;
-                    box-shadow: 0 4px 12px rgba(255, 140, 66, 0.3);
-                    transition: all 0.3s;
-                `;
-
-                badge.addEventListener('mouseenter', () => {
-                    badge.style.transform = 'translateY(-2px)';
-                    badge.style.boxShadow = '0 6px 16px rgba(255, 140, 66, 0.4)';
-                });
-
-                badge.addEventListener('mouseleave', () => {
-                    badge.style.transform = 'translateY(0)';
-                    badge.style.boxShadow = '0 4px 12px rgba(255, 140, 66, 0.3)';
-                });
-
-                badge.addEventListener('click', () => {
-                    if (confirm('要更换班级吗？')) {
-                        this.showSelector();
-                    }
-                });
-
-                document.body.appendChild(badge);
-            }
-
-            badge.textContent = `👤 ${cohort.name}`;
-        }
-    }
-
     // 更新所有课程链接，添加 cohort 参数
     updateLessonLinks(cohortId) {
         // 更新旧的 .lesson-link 类
@@ -270,14 +212,14 @@ class CohortSelector {
             url.searchParams.set('cohort', cohortId);
             link.href = url.toString();
         });
-        
+
         // 更新新的 .course-entry-btn 类（首页 BCT 按钮）
         document.querySelectorAll('.course-entry-btn').forEach(btn => {
             const url = new URL(btn.href, window.location.origin);
             url.searchParams.set('cohort', cohortId);
             btn.href = url.toString();
         });
-        
+
         console.log(`✅ 已更新所有课程链接为班级：${cohortId}`);
     }
 }
@@ -286,7 +228,7 @@ class CohortSelector {
 document.addEventListener('DOMContentLoaded', () => {
     const selector = new CohortSelector();
     selector.init();
-    
+
     // 如果已经选择过班级，更新链接
     const currentCohort = selector.getCurrentCohort();
     if (currentCohort) {
