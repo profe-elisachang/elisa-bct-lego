@@ -47,6 +47,32 @@ class FirestoreService {
             this.db = firebase.firestore();
             this.auth = firebase.auth();
 
+            // Anonymous sign-in (required for Firestore rules: request.auth != null)
+            // This ensures both lesson pages and review pages can access data
+            if (!this.auth.currentUser || !this.auth.currentUser.isAnonymous) {
+                try {
+                    await this.auth.signInAnonymously();
+                    // Wait for auth state to settle
+                    await new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => reject(new Error('Auth timeout')), 5000);
+                        const unsub = this.auth.onAuthStateChanged((user) => {
+                            if (user && user.isAnonymous) {
+                                clearTimeout(timeout);
+                                unsub();
+                                resolve(user);
+                            }
+                        }, (err) => {
+                            clearTimeout(timeout);
+                            unsub();
+                            reject(err);
+                        });
+                    });
+                } catch (authError) {
+                    console.warn('Anonymous sign-in failed (non-critical for read-only operations):', authError);
+                    // Don't throw - some pages might work without auth if rules allow
+                }
+            }
+
             this.initialized = true;
             console.log('✅ Firebase initialized successfully');
             // #region agent log

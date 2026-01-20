@@ -68,16 +68,47 @@ class BCTReviewSystem {
             console.log(`🎯 BCT Review 初始化：Level=${this.currentLevel}, Cohort=${currentCohort}`);
 
             // Anonymous auth (fixed uid per browser profile)
-            await auth.signInAnonymously();
-            await new Promise((resolve, reject) => {
-                const unsub = auth.onAuthStateChanged((user) => {
-                    if (!user) return;
-                    unsub && unsub();
-                    resolve(user);
-                }, reject);
-            });
-            this.currentUser = auth.currentUser;
-            if (!this.currentUser?.uid) throw new Error('Anonymous auth uid missing');
+            // Wait for auth to be ready before signing in
+            if (!auth) {
+                throw new Error('Firebase Auth is not initialized. Make sure Firebase SDK is loaded.');
+            }
+
+            try {
+                // Check if already signed in
+                if (auth.currentUser && auth.currentUser.isAnonymous) {
+                    this.currentUser = auth.currentUser;
+                } else {
+                    // Sign in anonymously (this may require Anonymous sign-in enabled in Firebase Console)
+                    await auth.signInAnonymously();
+                    // Wait for auth state to update
+                    await new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => {
+                            reject(new Error('Auth state change timeout'));
+                        }, 10000);
+                        const unsub = auth.onAuthStateChanged((user) => {
+                            if (!user) return;
+                            clearTimeout(timeout);
+                            unsub && unsub();
+                            resolve(user);
+                        }, (err) => {
+                            clearTimeout(timeout);
+                            unsub && unsub();
+                            reject(err);
+                        });
+                    });
+                    this.currentUser = auth.currentUser;
+                }
+            } catch (authError) {
+                // Provide more helpful error message
+                if (authError.code === 'auth/admin-restricted-operation') {
+                    throw new Error('Anonymous sign-in is disabled. Please enable it in Firebase Console: Authentication → Sign-in method → Anonymous → Enable.');
+                }
+                throw new Error('Failed to sign in anonymously: ' + (authError.message || authError.code || 'Unknown error'));
+            }
+
+            if (!this.currentUser?.uid) {
+                throw new Error('Anonymous auth failed: no user uid received');
+            }
             this.deviceCode = this.currentUser.uid.substring(0, 6).toUpperCase();
             document.getElementById('deviceCode').textContent = this.deviceCode;
 
