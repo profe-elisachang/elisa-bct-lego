@@ -1,4 +1,5 @@
 (function () {
+  const ENABLE_GROUP_UI = window.BCT_ENABLE_GROUP_UI !== false;
   const STORAGE_KEYS = {
     CLASS: 'bct-active-class',
     COHORT: 'bct-cohort'
@@ -19,6 +20,12 @@
   const reviewLink = mobileNav ? mobileNav.querySelector('#mobile-review-link') : null;
   const homeLink = mobileNav ? mobileNav.querySelector('#mobile-home-link') : null;
   const backToTopBtn = document.querySelector('.back-to-top');
+
+  // If group UI is disabled, remove the Group dropdown from the DOM (mobile).
+  if (mobileNav && !ENABLE_GROUP_UI) {
+    const groupDropdown = mobileNav.querySelector('.m-group-option')?.closest('.m-dropdown');
+    groupDropdown?.remove();
+  }
 
   const updateLinks = () => {
     const level = getCurrentLevel();
@@ -105,13 +112,15 @@
         navigateToCourse(button.dataset.level);
       });
     });
-    groupButtons.forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.stopPropagation();
-        closeDropdowns();
-        switchGroup(button.dataset.cohort);
+    if (ENABLE_GROUP_UI) {
+      groupButtons.forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          closeDropdowns();
+          switchGroup(button.dataset.cohort);
+        });
       });
-    });
+    }
     document.addEventListener('click', handleDocumentClick);
     document.addEventListener('keyup', (event) => {
       if (event.key === 'Escape') {

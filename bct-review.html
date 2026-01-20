@@ -250,6 +250,7 @@
                 <h3>📁 Data Management</h3>
                 <div class="data-info">
                     <div>Device Code: <strong id="deviceCode">------</strong></div>
+                    <div style="margin-top: 6px;">Student: <strong id="studentName">Not linked</strong></div>
                 </div>
                 <div class="data-actions">
                     <button class="btn btn-secondary" onclick="refreshData()">🔄 Refresh Data</button>
@@ -259,8 +260,40 @@
         </div>
     </div>
 
+    <!-- Student Link Modal (Name + PIN) -->
+    <div id="studentLinkModal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 10000; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 28px; border-radius: 16px; max-width: 520px; width: 92%; box-shadow: 0 20px 60px rgba(0,0,0,0.35);">
+            <div style="text-align:center; margin-bottom: 14px;">
+                <h2 style="margin: 0 0 6px; color: var(--primary-dark); font-size: 1.6rem;">Welcome back 👋</h2>
+                <p style="margin: 0; color: var(--text-secondary); line-height: 1.5;">
+                    Enter your <strong>Name</strong> and <strong>4-digit PIN</strong> to load your cloud progress on this browser.
+                </p>
+            </div>
+
+            <div style="display:grid; gap: 10px; margin-top: 16px;">
+                <input type="text" id="studentNameInput" placeholder="Name"
+                       autocomplete="name"
+                       style="width: 100%; padding: 12px 12px; font-size: 1rem; border: 2px solid var(--border); border-radius: 12px;">
+                <input type="password" id="studentPinInput" placeholder="4-digit PIN"
+                       inputmode="numeric" pattern="[0-9]*" maxlength="4"
+                       autocomplete="one-time-code"
+                       style="width: 100%; padding: 12px 12px; font-size: 1rem; border: 2px solid var(--border); border-radius: 12px;">
+                <div style="font-size: 0.85rem; color: var(--text-muted);">
+                    First time here? Use the same Name + PIN you used on another device.
+                </div>
+            </div>
+
+            <div style="display:flex; gap: 10px; margin-top: 16px;">
+                <button class="btn btn-secondary" id="studentLinkCancelBtn" style="flex:1;">Not now</button>
+                <button class="btn btn-primary" id="studentLinkConfirmBtn" style="flex:1;">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <button class="back-to-top" aria-label="回到頂端">↑</button>
 
+    <script src="assets/js/app-flags.js"></script>
+    <script src="assets/js/cohort-guard.js"></script>
     <script src="assets/js/course-config.js"></script>
     <script src="assets/js/nav.js"></script>
     <script src="assets/js/cohort-selector.js"></script>

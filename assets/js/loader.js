@@ -30,8 +30,12 @@ class LessonLoader {
         let lessonId = urlParams.get('lesson') || 'L1';
         this.currentClassId = classId;
         
-        // 读取学生班级（cohort）
-        this.currentCohort = urlParams.get('cohort') || localStorage.getItem('bct-cohort') || 'taigen-a';
+        // 读取学生班级（cohort）- enforced by cohort-guard if present
+        this.currentCohort =
+            window.BCT_ACTIVE_COHORT ||
+            urlParams.get('cohort') ||
+            localStorage.getItem('bct-cohort') ||
+            'taigen-a';
         
         // #region agent log
         const firestoreSrc = Array.from(document.querySelectorAll('script[src]'))

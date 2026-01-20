@@ -14,9 +14,11 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps || firebase.apps.length === 0) {
+    firebase.initializeApp(firebaseConfig);
+}
 const db = firebase.firestore();
-// const auth = firebase.auth(); // auth 改為非必要，避免 admin-restricted-error
+const auth = firebase.auth();
 
 // BCT Review System Class
 class BCTReviewSystem {
@@ -30,13 +32,20 @@ class BCTReviewSystem {
         this.reviewMode = 'pinyin-hint';
         this.reviewQueue = [];
         this.currentIndex = 0;
-        this.currentUser = null;
+        this.currentUser = null; // Firebase auth user (anonymous)
         this.deviceCode = null;
         this.isCardFlipped = false;
+        this.studentId = null;   // master student doc id
+        this.studentName = '';
     }
 
     async init() {
         try {
+            // Wait for cohort guard if present (ensures active cohort is enforced)
+            if (window.__cohortGuardReady && typeof window.__cohortGuardReady.then === 'function') {
+                try { await window.__cohortGuardReady; } catch (_) {}
+            }
+
             // 从 URL 读取参数
             const urlParams = new URLSearchParams(window.location.search);
             const urlLevel = urlParams.get('level');
@@ -52,18 +61,28 @@ class BCTReviewSystem {
                 this.currentLevel = localStorage.getItem('bct-current-level') || 'btc1';
             }
             
-            // 保存 cohort 到 localStorage（供其他功能使用）
-            if (urlCohort) {
-                localStorage.setItem('bct-cohort', urlCohort);
-            }
-            
-            const currentCohort = localStorage.getItem('bct-cohort') || 'taigen-a';
+            // Cohort is enforced by cohort-guard (active-only). Keep localStorage consistent.
+            const enforcedCohort = window.BCT_ACTIVE_COHORT || urlCohort || localStorage.getItem('bct-cohort') || 'taigen-a';
+            localStorage.setItem('bct-cohort', enforcedCohort);
+            const currentCohort = enforcedCohort;
             console.log(`🎯 BCT Review 初始化：Level=${this.currentLevel}, Cohort=${currentCohort}`);
-            
-            // 無需 Auth：直接載入資料，deviceCode 用訪客隨機碼
-            this.currentUser = { uid: 'guest-' + Math.random().toString(36).slice(2, 8) };
+
+            // Anonymous auth (fixed uid per browser profile)
+            await auth.signInAnonymously();
+            await new Promise((resolve, reject) => {
+                const unsub = auth.onAuthStateChanged((user) => {
+                    if (!user) return;
+                    unsub && unsub();
+                    resolve(user);
+                }, reject);
+            });
+            this.currentUser = auth.currentUser;
+            if (!this.currentUser?.uid) throw new Error('Anonymous auth uid missing');
             this.deviceCode = this.currentUser.uid.substring(0, 6).toUpperCase();
             document.getElementById('deviceCode').textContent = this.deviceCode;
+
+            await this.resolveOrLinkStudent(currentCohort);
+            document.getElementById('studentName').textContent = this.studentName || 'Not linked';
 
             await this.loadAllVocabulary();
             await this.loadUserProgress();
@@ -77,6 +96,141 @@ class BCTReviewSystem {
             console.error('Initialization failed:', error);
             alert('Failed to initialize: ' + error.message);
         }
+    }
+
+    // -------------------- Student master model --------------------
+    progressDocRef() {
+        const level = this.currentLevel || 'btc1';
+        if (!this.studentId) return null;
+        return db.collection('students').doc(this.studentId).collection('progress').doc(level);
+    }
+
+    async resolveOrLinkStudent(cohortId) {
+        // 1) If this browser already linked, use it
+        const anonUid = this.currentUser?.uid;
+        if (!anonUid) throw new Error('resolveOrLinkStudent: missing anon uid');
+
+        const linkRef = db.collection('device_links').doc(anonUid);
+        const linkSnap = await linkRef.get();
+        if (linkSnap.exists) {
+            const link = linkSnap.data() || {};
+            this.studentId = link.studentId || null;
+            if (this.studentId) {
+                const stu = await db.collection('students').doc(this.studentId).get();
+                if (stu.exists) {
+                    const data = stu.data() || {};
+                    this.studentName = data.displayName || '';
+                    // keep lastSeenAt fresh
+                    await db.collection('students').doc(this.studentId).set({
+                        lastSeenAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        cohort: cohortId
+                    }, { merge: true });
+                    return;
+                }
+            }
+            // Broken link: continue to re-link
+            this.studentId = null;
+        }
+
+        // 2) Not linked: prompt Name + PIN to link to an existing student master
+        const { name, pin } = await this.promptNameAndPin();
+        const trimmedName = (name || '').trim();
+        if (!trimmedName) throw new Error('Name is required');
+
+        // Search candidates by displayName; small cohort so client-side filtering is OK.
+        const candSnap = await db.collection('students').where('displayName', '==', trimmedName).get();
+        const candidates = [];
+        candSnap.forEach((doc) => {
+            const data = doc.data() || {};
+            // Only allow enforced cohort (frozen cohorts blocked upstream anyway)
+            if ((data.cohort || cohortId) !== cohortId) return;
+            candidates.push({ id: doc.id, data });
+        });
+
+        const pinHash = (studentId) => this.hashPinForStudent(pin, studentId);
+        let matchId = null;
+        for (const c of candidates) {
+            const expected = c.data.pinHash || '';
+            if (!expected) continue;
+            const got = await pinHash(c.id);
+            if (got === expected) {
+                matchId = c.id;
+                break;
+            }
+        }
+
+        if (!matchId) {
+            // No match: create new student master
+            const newRef = db.collection('students').doc();
+            const newId = newRef.id;
+            const newHash = await pinHash(newId);
+            await newRef.set({
+                displayName: trimmedName,
+                cohort: cohortId,
+                pinHash: newHash,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                lastSeenAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            matchId = newId;
+        }
+
+        // Link this browser uid -> studentId
+        await linkRef.set({
+            studentId: matchId,
+            cohort: cohortId,
+            linkedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        this.studentId = matchId;
+        this.studentName = trimmedName;
+    }
+
+    async promptNameAndPin() {
+        const modal = document.getElementById('studentLinkModal');
+        const nameEl = document.getElementById('studentNameInput');
+        const pinEl = document.getElementById('studentPinInput');
+        const okBtn = document.getElementById('studentLinkConfirmBtn');
+        const cancelBtn = document.getElementById('studentLinkCancelBtn');
+        if (!modal || !nameEl || !pinEl || !okBtn || !cancelBtn) {
+            throw new Error('Student link modal elements missing');
+        }
+
+        modal.style.display = 'flex';
+        nameEl.focus();
+
+        return await new Promise((resolve, reject) => {
+            const cleanup = () => {
+                okBtn.removeEventListener('click', onOk);
+                cancelBtn.removeEventListener('click', onCancel);
+                modal.style.display = 'none';
+            };
+            const onOk = () => {
+                const name = String(nameEl.value || '').trim();
+                const pin = String(pinEl.value || '').trim();
+                if (!/^\d{4}$/.test(pin)) {
+                    alert('PIN must be 4 digits.');
+                    pinEl.focus();
+                    return;
+                }
+                cleanup();
+                resolve({ name, pin });
+            };
+            const onCancel = () => {
+                cleanup();
+                reject(new Error('Student linking cancelled'));
+            };
+            okBtn.addEventListener('click', onOk);
+            cancelBtn.addEventListener('click', onCancel);
+        });
+    }
+
+    async hashPinForStudent(pin, studentId) {
+        // pinHash = SHA-256(`${pin}:${studentId}`), stored as hex string.
+        const text = `${pin}:${studentId}`;
+        const enc = new TextEncoder().encode(text);
+        const digest = await crypto.subtle.digest('SHA-256', enc);
+        const bytes = Array.from(new Uint8Array(digest));
+        return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
     async loadAllVocabulary() {
@@ -125,7 +279,7 @@ class BCTReviewSystem {
         // 2. Load from Timeline (新数据结构)
         try {
             // 获取学生班级
-            const studentCohort = localStorage.getItem('bct-cohort') || 'taigen-a';
+            const studentCohort = window.BCT_ACTIVE_COHORT || localStorage.getItem('bct-cohort') || 'taigen-a';
             console.log(`Loading timeline data for ${this.currentLevel}, cohort: ${studentCohort}`);
             
             // Load components (所有班共用)
@@ -204,11 +358,32 @@ class BCTReviewSystem {
     }
 
     async loadUserProgress() {
-        if (!this.currentUser?.uid) return;
+        const ref = this.progressDocRef();
+        if (!ref) return;
         try {
-            const doc = await db.collection('user_progress').doc(this.currentUser.uid).get();
+            const doc = await ref.get();
             if (doc.exists) {
-                this.userProgress = doc.data().characterProgress || {};
+                const data = doc.data() || {};
+                this.userProgress = data.characterProgress || {};
+                return;
+            }
+
+            // One-time legacy import (old schema: user_progress/{anonUid})
+            const legacy = await db.collection('user_progress').doc(this.currentUser.uid).get();
+            if (legacy.exists) {
+                const legacyData = legacy.data() || {};
+                const imported = legacyData.characterProgress || {};
+                if (imported && Object.keys(imported).length) {
+                    this.userProgress = imported;
+                    await ref.set({
+                        characterProgress: this.userProgress,
+                        lastReview: legacyData.lastReview || new Date().toISOString(),
+                        importedFromLegacy: true,
+                        importedAt: new Date().toISOString(),
+                        deviceCode: this.deviceCode,
+                        studentName: this.studentName || ''
+                    }, { merge: true });
+                }
             }
         } catch (error) {
             console.error('Error loading progress:', error);
@@ -216,13 +391,15 @@ class BCTReviewSystem {
     }
 
     async saveUserProgress() {
-        if (!this.currentUser?.uid) return;
+        const ref = this.progressDocRef();
+        if (!ref) return;
         try {
-            await db.collection('user_progress').doc(this.currentUser.uid).set({
+            await ref.set({
                 characterProgress: this.userProgress,
                 lastReview: new Date().toISOString(),
-                deviceCode: this.deviceCode
-            });
+                deviceCode: this.deviceCode,
+                studentName: this.studentName || ''
+            }, { merge: true });
         } catch (error) {
             console.error('Error saving progress:', error);
         }

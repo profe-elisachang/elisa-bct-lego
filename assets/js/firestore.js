@@ -41,7 +41,9 @@ class FirestoreService {
             };
 
             // 初始化 Firebase
-            const app = firebase.initializeApp(firebaseConfig);
+            if (!firebase.apps || firebase.apps.length === 0) {
+                firebase.initializeApp(firebaseConfig);
+            }
             this.db = firebase.firestore();
             this.auth = firebase.auth();
 

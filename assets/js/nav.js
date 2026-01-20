@@ -7,6 +7,7 @@
   // ================================================
   // 配置
   // ================================================
+  const ENABLE_GROUP_UI = window.BCT_ENABLE_GROUP_UI !== false;
   const STORAGE_KEYS = {
     CLASS: 'bct-active-class',
     COHORT: 'bct-cohort'
@@ -95,6 +96,7 @@
             🧠 Review
           </a>
 
+          ${ENABLE_GROUP_UI ? `
           <!-- 班級選擇器 -->
           <div class="nav-cohort-dropdown">
             <button type="button" class="nav-cohort-btn">
@@ -111,6 +113,7 @@
               `).join('')}
             </div>
           </div>
+          ` : ``}
         </div>
       </div>
     `;
@@ -144,10 +147,14 @@
       });
     });
 
-    // 班級選擇器下拉
+    // 班級選擇器下拉（可選功能）
+    if (!ENABLE_GROUP_UI) return;
+
     const cohortDropdown = nav.querySelector('.nav-cohort-dropdown');
     const cohortBtn = nav.querySelector('.nav-cohort-btn');
     const cohortMenu = nav.querySelector('.nav-cohort-menu');
+
+    if (!cohortDropdown || !cohortBtn || !cohortMenu) return;
 
     cohortBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -278,14 +285,18 @@
   // ================================================
   // 初始化
   // ================================================
-  const init = () => {
+  const init = async () => {
+    // If cohort guard exists, wait for enforcement so nav links don't briefly show frozen cohort.
+    if (window.__cohortGuardReady && typeof window.__cohortGuardReady.then === 'function') {
+      try { await window.__cohortGuardReady; } catch (_) {}
+    }
     renderNav();
     initSidebar();
   };
 
   // 確保 DOM 已加載
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', () => { init(); });
   } else {
     init();
   }

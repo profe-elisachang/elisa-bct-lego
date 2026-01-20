@@ -1,0 +1,2119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chinese Character Review System - Cloud Sync</title>
+    <link rel="stylesheet" href="../../assets/css/nav-global.css">
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+    <!-- Marked.js for Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+   <style>
+    
+    :root {
+        /* 主色调：清爽海洋蓝绿（纯色！无渐变） */
+        --primary: #00acc1;      /* 主蓝绿 cyan-600 */
+        --primary-dark: #0589aa; /* 深蓝绿 cyan-900 */
+        --primary-light: #b2ebf2; /* 浅蓝绿 cyan-300（用于浅背景） */
+        
+        /* 辅助色 */
+        --success: #4caf50;
+        --danger: #ef4444;
+        
+        /* 中性色 */
+        --text-primary: #1e293b;
+        --text-secondary: #475569;
+        --text-muted: #64748b;
+        --bg-page: #ffffff;       /* 纯白主背景 */
+        --bg-card: #ffffff;
+        --bg-hover: #f0fdfd;      /* 极浅蓝绿悬停 */
+        --bg-light: #ecfdfd;      /* 浅蓝绿背景块 */
+        --border: #b2ebf2;
+        --shadow: rgba(0, 105, 115, 0.12);
+        
+/* Leitner 盒子纯色（无渐变） */
+--forgot: #ef4444;
+--hard: #d97706;
+--good: #059669;
+--easy: #0891b2;
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; }
+    body { background: linear-gradient(135deg, #f0f9fa 0%, #e0f7fa 100%); color: var(--text-primary); min-height: 100vh; }
+
+    /* Top Navigation styles are now in nav-global.css */
+
+    .container {
+        max-width: 1000px;
+        margin: 20px auto;
+        background: var(--bg-card);
+        border-radius: 20px;
+        box-shadow: 0 10px 40px var(--shadow);
+        padding: 24px;
+        border: 1px solid #e0f7fa;
+    }
+
+    @media (max-width: 640px) {
+        .container {
+            margin: 10px;
+            padding: 16px;
+            border-radius: 16px;
+        }
+    }
+
+    /* ==================== Header ==================== */
+    header { text-align: center; margin-bottom: 32px; }
+    h1 { color: var(--primary-dark); font-size: 2.3rem; font-weight: 700; margin-bottom: 8px; }
+    .subtitle { color: var(--text-secondary); font-size: 1.1rem; }
+
+    @media (max-width: 640px) {
+        header { margin-bottom: 20px; }
+        h1 { font-size: 1.6rem; }
+        .subtitle { font-size: 0.95rem; }
+    }
+    
+    .device-code-display {
+        margin-top: 20px;
+        padding: 16px 24px;
+        background: var(--bg-light);
+        border-radius: 14px;
+        display: inline-block;
+        border: 1px solid var(--border);
+        min-width: 280px;
+    }
+    .device-code-display strong {
+        color: var(--primary);
+        font-size: 1.8rem;
+        letter-spacing: 4px;
+        font-weight: bold;
+    }
+
+    @media (max-width: 640px) {
+        .device-code-display {
+            min-width: auto;
+            padding: 12px 16px;
+        }
+        .device-code-display strong {
+            font-size: 1.3rem;
+            letter-spacing: 2px;
+        }
+    }
+
+    /* ==================== Loading ==================== */
+    .loader {
+        border: 5px solid #f0f7fa;
+        border-top: 5px solid var(--primary);
+        border-radius: 50%;
+        width: 50px; height: 50px;
+        animation: spin 1s linear infinite;
+        margin: 40px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ==================== Tab System ==================== */
+    .tab-system { margin: 24px 0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px var(--shadow); }
+    .tab-buttons { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-light); }
+    .tab-btn {
+        padding: 18px;
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        position: relative;
+    }
+    .tab-btn:hover { background: rgba(0,172,193,0.15); color: var(--primary); }
+    .tab-btn.active { color: var(--primary); background: white; }
+    .tab-btn.active::after {
+        content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 4px;
+        background: var(--primary);
+    }
+
+    @media (max-width: 640px) {
+        .tab-system { margin: 16px 0; }
+        .tab-btn {
+            padding: 14px 8px;
+            font-size: 0.95rem;
+        }
+    }
+
+    /* ==================== Lesson Selection ==================== */
+   /* ==================== Lesson Selection - Modern Card Style (方案 C) ==================== */
+.lesson-selector {
+    background: transparent;
+    box-shadow: none;
+    border: none;
+    padding: 0;
+    margin: 32px 0;
+}
+
+.selector-header {
+    background: var(--primary);
+    color: white;
+    border-radius: 20px;
+    box-shadow: 0 8px 25px rgba(0,172,193,0.28);
+    padding: 20px 28px;
+    margin-bottom: 16px;
+    font-size: 1.3rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.selector-header:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+.selector-content {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+    padding: 24px 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 110px);
+    justify-content: center;
+    gap: 16px;
+    max-height: none;
+    overflow-y: visible;
+    overflow-x: hidden;
+    transition: all 0.4s ease;
+}
+
+@media (max-width: 640px) {
+    .selector-content {
+        grid-template-columns: repeat(3, 1fr);
+        max-height: 360px;
+        overflow-y: auto;
+        padding: 16px 12px;
+        gap: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .selector-content {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.selector-content.collapsed {
+    display: none;
+    max-height: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+#lessonCheckboxes {
+    display: contents; /* 让子元素直接参与父级的 grid 布局 */
+}
+
+.lesson-checkbox {
+    background: #f8fdff;
+    border: 2px solid transparent;
+    border-radius: 16px;
+    padding: 18px 22px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.lesson-checkbox:hover {
+    background: var(--bg-hover);
+    border-color: var(--primary-light);
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0,172,193,0.18);
+}
+
+.lesson-checkbox input[type="checkbox"] {
+    width: 24px;
+    height: 24px;
+    margin-right: 16px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.lesson-info {
+    font-weight: 600;
+    font-size: 1.1rem;
+    flex: 1;
+}
+
+.lesson-count {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    background: rgba(0,172,193,0.15);
+    padding: 4px 12px;
+    border-radius: 20px;
+}
+
+/* ==================== Circle Cards (Grid Layout) ==================== */
+.circle-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 12px;
+    border-radius: 16px;
+}
+
+.circle-card:hover:not(.locked) {
+    transform: translateY(-4px);
+}
+
+.circle-card.locked {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Circle Progress Ring */
+.circle-progress {
+    position: relative;
+    width: 100px;
+    height: 100px;
+}
+
+.progress-ring {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.progress-ring-bg {
+    fill: none;
+    stroke: #e0e0e0;
+    stroke-width: 6;
+}
+
+.progress-ring-circle {
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.5s ease, stroke 0.3s ease;
+}
+
+/* Selected state - fill the circle */
+.circle-card[data-selected="true"] .progress-ring-circle {
+    stroke: var(--primary);
+}
+
+.circle-card[data-selected="true"] .circle-content {
+    background: var(--primary);
+    color: white;
+}
+
+.circle-card[data-selected="true"] .progress-text,
+.circle-card[data-selected="true"] .char-count {
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.circle-card[data-selected="true"] .circle-label {
+    color: var(--primary);
+    font-weight: 700;
+}
+/* Circle Content (center of the ring) */
+.circle-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.lesson-num {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.progress-text {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.circle-card[data-selected="true"] .lesson-num,
+.circle-card[data-selected="true"] .progress-text {
+    color: white;
+}
+
+/* Lock icon for coming soon */
+.lock-icon {
+    font-size: 2rem;
+}
+
+/* Labels below circle */
+.circle-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.circle-sublabel {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+@media (max-width: 640px) {
+    .circle-progress {
+        width: 80px;
+        height: 80px;
+    }
+
+    .circle-content {
+        width: 64px;
+        height: 64px;
+    }
+
+    .progress-text {
+        font-size: 1.1rem;
+    }
+
+    .circle-label {
+        font-size: 0.85rem;
+    }
+}
+
+
+
+.selector-actions {
+    padding: 20px 0 0;
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    background: transparent;
+    border-top: none;
+}
+
+@media (max-width: 640px) {
+    .selector-actions {
+        flex-direction: column;
+        gap: 10px;
+        padding: 16px 0 0;
+    }
+    .selector-actions .btn {
+        width: 100%;
+    }
+}
+    /* ==================== Smart Recommendation ==================== */
+    .recommended-section {
+        background: var(--primary-light);   /* 纯色浅蓝绿 */
+        border-radius: 20px;
+        padding: 32px;
+        margin: 32px 0;
+        box-shadow: 0 10px 35px rgba(0,172,193,0.22);
+        transition: 0.3s;
+        cursor: pointer;
+        border: 1px solid var(--border);
+    }
+
+    @media (max-width: 640px) {
+        .recommended-section {
+            padding: 20px 16px;
+            margin: 20px 0;
+            border-radius: 16px;
+        }
+    }
+
+            /* 控制 Smart Review 和 By Difficulty 的顯示/隱藏 */
+        #recommendedSection {
+            display: none;  /* 預設隱藏 */
+        }
+
+        #recommendedSection.show {
+            display: block;  /* Tab 點選時顯示 */
+        }
+
+        #difficultySection {
+            display: none;  /* 預設隱藏 */
+        }
+
+        #difficultySection.show {
+            display: block;  /* Tab 點選時顯示 */
+        }
+    .recommended-section:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(0,172,193,0.28); }
+    
+    .recommended-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .recommended-title-group { display: flex; align-items: center; gap: 14px; }
+    .recommended-icon { font-size: 36px; }
+    .recommended-title { font-size: 26px; font-weight: 700; color: var(--primary-dark); }
+    .collapse-arrow { font-size: 1.8rem; transition: 0.3s; color: var(--primary-dark); }
+    .recommended-section.collapsed .collapse-arrow { transform: rotate(180deg); }
+    .recommended-section.collapsed .recommended-content { display: none; }
+
+    .recommended-subtitle { text-align: center; color: var(--text-secondary); margin-bottom: 24px; font-size: 15px; }
+
+    @media (max-width: 640px) {
+        .recommended-icon { font-size: 28px; }
+        .recommended-title { font-size: 1.3rem; }
+        .recommended-subtitle { font-size: 0.85rem; margin-bottom: 16px; }
+        .recommended-header { margin-bottom: 16px; }
+    }
+    .due-info {
+        text-align: center;
+        background: white;
+        padding: 16px;
+        border-radius: 14px;
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--primary-dark);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+    
+    .recommended-breakdown {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 16px;
+        margin: 28px 0;
+    }
+        .breakdown-item {
+            background: white;
+            padding: 18px;
+            border-radius: 14px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border: 3px solid var(--border); /* 预设边框 */
+        }
+    .breakdown-item.forgot { background: white; color: var(--text-primary); border: 3px solid var(--forgot); }
+    .breakdown-item.hard   { background: white; color: var(--text-primary); border: 3px solid var(--hard); }
+    .breakdown-item.good   { background: white; color: var(--text-primary); border: 3px solid var(--good); }
+    .breakdown-item.easy   { background: white; color: var(--text-primary); border: 3px solid var(--easy); }
+   .breakdown-count { font-size: 36px; font-weight: bold; }
+    .breakdown-label { font-size: 14px; color: var(--text-secondary); }
+
+    @media (max-width: 640px) {
+        .recommended-breakdown {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+        }
+        .breakdown-item {
+            padding: 14px 10px;
+        }
+        .breakdown-count { font-size: 28px; }
+        .breakdown-label { font-size: 0.8rem; }
+    }
+    
+    .amount-selector { text-align: center; margin: 28px 0; }
+    .amount-selector label { font-size: 17px; color: var(--text-primary); display: block; margin-bottom: 12px; }
+    .amount-selector select {
+        padding: 14px 20px;
+        font-size: 17px;
+        border: 2px solid var(--primary);
+        border-radius: 14px;
+        background: white;
+        color: var(--primary-dark);
+        min-width: 320px;
+        cursor: pointer;
+    }
+
+    @media (max-width: 640px) {
+        .amount-selector { margin: 20px 0; }
+        .amount-selector label { font-size: 0.95rem; }
+        .amount-selector select {
+            min-width: auto;
+            width: 100%;
+            max-width: 100%;
+            padding: 12px 16px;
+            font-size: 0.9rem;
+        }
+    }
+    
+    .recommended-btn {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 18px 48px;
+        border-radius: 30px;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+        display: block;
+        margin: 0 auto;
+        box-shadow: 0 8px 25px rgba(0,172,193,0.35);
+        transition: 0.3s;
+    }
+    .recommended-btn:hover { background: var(--primary-dark); transform: translateY(-4px); }
+
+    @media (max-width: 640px) {
+        .recommended-btn {
+            padding: 14px 32px;
+            font-size: 1rem;
+        }
+    }
+
+    /* ==================== Mastery Boxes ==================== */
+    .mastery-boxes {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 18px;
+        margin: 32px 0;
+    }
+    @media (min-width: 768px) { .mastery-boxes { grid-template-columns: repeat(4, 1fr); } }
+    
+    .mastery-box {
+        background:transparent;
+        border-radius: 20px;
+        padding: 32px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: 0.3s;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        border: 3px solid rgba(0,0,0,0.1);;
+    }
+    .mastery-box.forgot { background: var(--forgot); }
+    .mastery-box.hard   { background: var(--hard); }
+    .mastery-box.good   { background: var(--good); }
+    .mastery-box.easy   { background: var(--easy); }
+    
+    .mastery-box:hover { transform: translateY(-8px); box-shadow: 0 14px 30px rgba(0,0,0,0.18); }
+    
+    .box-title { font-size: 18px; font-weight: 600; color: #ffffff; margin-bottom: 8px; }
+    .box-count { font-size: 42px; font-weight: bold; color: #ffffff; margin: 12px 0; }
+    .box-description { font-size: 14px; color:#ffffff; }
+
+    @media (max-width: 640px) {
+        .mastery-box {
+            padding: 24px 16px;
+        }
+        .box-title { font-size: 1rem; }
+        .box-count { font-size: 32px; }
+        .box-description { font-size: 0.8rem; }
+    }
+
+    /* ==================== Review Area (你原本的卡片区保持完美) ==================== */
+    .review-area { text-align: center; margin: 30px 0; }
+    .current-session { font-size: 20px; color: var(--text-secondary); font-weight: bold; margin: 20px 0; }
+
+    .card {
+        perspective: 1000px;
+        height: 600px;
+        margin: 20px auto;
+        cursor: pointer;
+        max-width: 700px;
+        width: 100%;
+    }
+
+    @media (max-width: 640px) {
+        .review-area { margin: 20px 0; }
+        .current-session { font-size: 1.1rem; margin: 16px 0; }
+        .card {
+            height: 550px;
+            margin: 16px auto;
+        }
+    }
+    .card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
+    .card.flipped .card-inner { transform: rotateY(180deg); }
+    
+    .card-front, .card-back {
+        position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
+        border-radius: 20px; padding: 24px; display: flex; flex-direction: column;
+        justify-content: flex-start; align-items: center; box-shadow: 0 10px 30px var(--shadow);
+        overflow-y: auto;
+    }
+
+    @media (max-width: 640px) {
+        .card-front, .card-back {
+            padding: 16px 12px;
+            justify-content: flex-start;
+            overflow-y: auto;
+        }
+    }
+    .card-front { background: white; border: 3px solid var(--border); }
+    .card-back { background: var(--bg-light); border: 3px solid var(--primary); transform: rotateY(180deg); }
+
+    .character { font-size: 140px; color: var(--primary-dark); font-weight: bold; }
+    .back-character { font-size: 80px; color: var(--primary-dark); }
+    .pinyin { font-size: 30px; color: var(--primary); margin: 10px 0; font-weight: bold; }
+    .meaning { font-size: 22px; color: var(--text-primary); line-height: 1.5; }
+
+    @media (max-width: 640px) {
+        .character { font-size: 100px; }
+        .back-character { font-size: 50px; }
+        .pinyin { font-size: 20px; margin: 6px 0; }
+        .meaning { font-size: 1rem; }
+    }
+        .meaning {
+            font-size: 20px;
+            color: var(--secondary-color);
+            line-height: 1.4;
+            margin: 8px 0;
+        }
+        
+        .card-image {
+            max-width: 100%;
+            max-height: 300px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 8px;
+            margin: 12px 0;
+        }
+
+        @media (max-width: 640px) {
+            .card-image {
+                max-height: 150px;
+            }
+        }
+        
+        .card-content {
+            text-align: left;
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 8px;
+            margin-top: 8px;
+        }
+        
+        .content-label {
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+        
+        /* ==================== Markdown Image Styles (Alt-based) ==================== */
+        .card-content img.img-comp {
+            height: 1.8em;
+            width: auto;
+            display: inline-block;
+            vertical-align: middle;
+            margin: 0 4px;
+        }
+        
+        .card-content img.img-origin {
+            max-width: 100%;
+            height: 200px;
+            object-fit: contain;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            padding: 8px;
+            display: block;
+            margin: 12px auto;
+        }
+        
+        .card-content img.img-story {
+            max-width: 100%;
+            height: 250px;
+            object-fit: contain;
+            border-radius: 8px;
+            display: block;
+            margin: 12px auto;
+        }
+        
+        .speak-btn {
+            background: var(--primary-dark);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 8px 0;
+            transition: all 0.3s;
+        }
+
+        .speak-btn:hover {
+            background: var(--success);
+        }
+
+        @media (max-width: 640px) {
+            .speak-btn {
+                padding: 8px 16px;
+                font-size: 0.85rem;
+                margin: 6px 0;
+            }
+        }
+    .review-buttons {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        max-width: 600px;
+        margin: 30px auto;
+    }
+    @media (min-width: 768px) { .review-buttons { grid-template-columns: repeat(4, 1fr); } }
+
+    .review-btn {
+        padding: 18px;
+        border: none;
+        border-radius: 16px;
+        font-weight: bold;
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+    .btn-forgot { background: var(--forgot); }
+    .btn-hard   { background: var(--hard); }
+    .btn-good   { background: var(--good); }
+    .btn-easy   { background: var(--easy); }
+    .review-btn:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
+
+    @media (max-width: 640px) {
+        .review-buttons {
+            gap: 12px;
+            margin: 20px auto;
+        }
+        .review-btn {
+            padding: 14px 8px;
+            font-size: 0.9rem;
+        }
+    }
+
+    /* Progress Bar */
+    .progress-bar {
+        height: 36px;
+        background: var(--bg-light);
+        border-radius: 18px;
+        overflow: hidden;
+        margin: 24px 0;
+        border: 2px solid var(--border);
+    }
+    .progress-fill {
+        height: 100%;
+        background: var(--primary);
+        width: 0%;
+        transition: width 0.5s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 16px;
+    }
+
+    /* Buttons */
+    .btn {
+        padding: 12px 28px;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-secondary { background: #94a3b8; color: white; }
+
+    @media (max-width: 640px) {
+        .btn {
+            padding: 10px 20px;
+            font-size: 0.9rem;
+        }
+    }
+
+    /* Messages & Data Section */
+    .message { padding: 18px; border-radius: 14px; margin: 20px 0; text-align: center; font-weight: bold; }
+    .message.success { background: #d1fae5; color: #065f46; border: 1px solid #34d399; }
+    .message.error { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
+
+    .data-section {
+        margin: 32px 0 16px;
+        padding: 24px;
+        background: var(--bg-light);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+    }
+    .data-section h3 { color: var(--primary-dark); margin-bottom: 16px; font-size: 1.3rem; }
+    .data-actions { display: flex; flex-wrap: wrap; gap: 14px; justify-content: flex-start; }
+
+    @media (max-width: 640px) {
+        .data-section {
+            margin: 20px 0 12px;
+            padding: 16px;
+        }
+        .data-section h3 { font-size: 1.1rem; margin-bottom: 12px; }
+        .data-actions {
+            gap: 10px;
+        }
+    }
+
+    .hidden { display: none !important; }
+
+
+       /* Data Management */
+        .data-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: var(--bg-light);
+            border-radius: 12px;
+        }
+        
+        .data-section h3 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+        
+        .data-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        /* Responsive */
+        @media (min-width: 768px) {
+            .mastery-boxes {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            .review-buttons {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            .character {
+                font-size: 150px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .character {
+                font-size: 80px;
+            }
+
+            .card {
+                height: 500px;
+            }
+
+            .card-image {
+                max-height: 100px;
+            }
+
+            .back-character {
+                font-size: 38px;
+            }
+
+            .pinyin {
+                font-size: 16px;
+            }
+
+            .meaning {
+                font-size: 0.85rem;
+            }
+
+            .card-content {
+                padding: 6px;
+                font-size: 0.8rem;
+            }
+        }
+</style>
+</head>
+<body>
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <!-- Desktop Navigation -->
+        <div class="nav-content">
+            <a href="../../index.html" class="nav-link">Home</a>
+            <span class="nav-separator">|</span>
+            <a href="../bct/lessons/lesson.html" class="nav-link">Lessons</a>
+            <span class="nav-separator">|</span>
+            <a href="lesson.html" class="nav-link">Literacy</a>
+            <span class="nav-separator">|</span>
+            <a href="review.html" class="nav-link active">Review Lit.</a>
+            <span class="nav-separator group-separator">•</span>
+            <a href="../../pages/grammar.html" class="nav-link">Grammar</a>
+            <span class="nav-separator">|</span>
+            <a href="../../pages/extras.html" class="nav-link">Extras</a>
+            <span class="nav-separator">|</span>
+            <a href="../../pages/mini-story.html" class="nav-link">Mini Story</a>
+            <span class="nav-separator">|</span>
+            <a href="../../pages/music.html" class="nav-link">Music</a>
+            <span class="nav-separator group-separator">•</span>
+            <a href="../../pages/timeline.html" class="nav-link">Timeline</a>
+        </div>
+
+        <!-- Mobile Navigation -->
+        <div class="mobile-nav">
+            <button class="hamburger-btn" aria-label="Open menu">☰</button>
+            <span class="site-title">Chinese with Elisa</span>
+        </div>
+    </nav>
+
+    <!-- Mobile Sidebar -->
+    <div class="mobile-sidebar">
+        <button class="close-sidebar" aria-label="Close menu">✕</button>
+
+        <a href="../../index.html" class="mobile-menu-single">
+            <span class="icon">🏠</span>
+            <span>Home</span>
+        </a>
+
+        <div class="mobile-menu-group">
+            <div class="mobile-menu-title">
+                <span class="icon">📚</span>
+                <span>Courses</span>
+            </div>
+            <a href="../bct/lessons/lesson.html" class="mobile-menu-item">Lessons</a>
+            <a href="lesson.html" class="mobile-menu-item">Literacy</a>
+            <a href="review.html" class="mobile-menu-item active">Review Lit.</a>
+        </div>
+
+        <div class="mobile-menu-group">
+            <div class="mobile-menu-title">
+                <span class="icon">📖</span>
+                <span>Resources</span>
+            </div>
+            <a href="../../pages/grammar.html" class="mobile-menu-item">Grammar</a>
+            <a href="../../pages/extras.html" class="mobile-menu-item">Extras</a>
+            <a href="../../pages/mini-story.html" class="mobile-menu-item">Mini Story</a>
+            <a href="../../pages/music.html" class="mobile-menu-item">Music</a>
+        </div>
+
+        <a href="../../pages/timeline.html" class="mobile-menu-single">
+            <span class="icon">📅</span>
+            <span>Timeline</span>
+        </a>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>📚 Chinese Character Review System</h1>
+            <div class="subtitle">Cloud Sync • Spaced Repetition</div>
+        </header>
+
+        <!-- Loading -->
+        <div id="loadingContainer">
+            <div class="loader"></div>
+            <p style="text-align: center; color: var(--text-secondary);">Loading...</p>
+        </div>
+        
+        <!-- Main Content -->
+        <div id="mainContent" class="hidden">
+            <!-- Tab System -->
+            <div class="tab-system">
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="components">Radical Components</button>
+                    <button class="tab-btn" data-tab="characters">Character Lessons</button>
+                </div>
+            </div>
+            
+            <!-- Lesson Selection -->
+            <div class="lesson-selector">
+            <div style="padding: 20px 0; font-size: 1.3rem; font-weight: bold; color: var(--text-primary);">
+                📚 Select Lessons <span class="selector-count" id="selectedCount">(0/25)</span>
+            </div>
+            <div style="text-align: center; color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 16px; line-height: 1.5;">
+                Select lessons to review the due cards<br>
+                <span style="font-size: 0.85rem; opacity: 0.9;">(click multiple lessons to combine)</span>
+            </div>
+                <div class="selector-content" id="selectorContent">
+                    <div id="lessonCheckboxes"></div>
+                </div>
+                <div class="selector-actions">
+                    <button class="btn btn-primary" onclick="selectAllLessons()">Select All</button>
+                    <button class="btn btn-secondary" onclick="clearAllLessons()">Clear All</button>
+                </div>
+            </div>
+
+                        <!-- Layer 3: Review Method Tab -->
+            <div class="tab-system" id="reviewMethodTabs">
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="smart-review">🎯 Smart Review</button>
+                    <button class="tab-btn" data-tab="by-difficulty">⚙️ By Difficulty</button>
+                </div>
+            </div>
+            
+            <!-- Smart Recommendation -->
+            <div class="recommended-section" id="recommendedSection">
+
+
+                <div class="recommended-header">
+                    <div class="recommended-title-group">
+                        <span class="recommended-icon">🎯</span>
+                        <div class="recommended-title">Smart Review Recommendation</div>
+                    </div>                    
+                </div>
+                
+                <div class="recommended-content">
+                    <div class="recommended-subtitle">
+                        📅 Spaced Repetition: Forgotten (daily) • Hard (1 day) • Good (3 days) • Easy (7 days)
+                    </div>
+                    
+                    <div class="due-info" id="dueInfo">
+                        Due Today: <span id="totalDue">0</span> characters
+                    </div>
+                    
+                    <div class="amount-selector">
+                        <label>Select Review Amount:</label>
+                        <select id="reviewAmount">
+                            <option value="20">20 (Quick Daily Review)</option>
+                            <option value="30">30 (Standard)</option>
+                            <option value="50">50 (Intensive Practice)</option>
+                            <option value="all">All Due Characters (When you have time!)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="recommended-breakdown" id="recommendedBreakdown"></div>
+                    
+                    <button class="recommended-btn" onclick="startRecommendedReview()">
+                        🧠 Start Smart Review
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Difficulty Section (By Difficulty Tab) -->
+            <div id="difficultySection" style="display: none;">
+                <!-- Mastery Boxes -->
+                <div class="mastery-boxes" id="masteryBoxes" style="display: grid;">
+                    <div class="mastery-box forgot" onclick="startBoxReview('forgot')">
+                        <div class="box-title">Forgotten</div>
+                        <div class="box-count" id="count-forgot">0</div>
+                        <div class="box-description">Needs frequent review</div>
+                    </div>
+                    <div class="mastery-box hard" onclick="startBoxReview('hard')">
+                        <div class="box-title">Hard</div>
+                        <div class="box-count" id="count-hard">0</div>
+                        <div class="box-description">Still challenging</div>
+                    </div>
+                    <div class="mastery-box good" onclick="startBoxReview('good')">
+                        <div class="box-title">Good</div>
+                        <div class="box-count" id="count-good">0</div>
+                        <div class="box-description">Doing well</div>
+                    </div>
+                    <div class="mastery-box easy" onclick="startBoxReview('easy')">
+                        <div class="box-title">Easy</div>
+                        <div class="box-count" id="count-easy">0</div>
+                        <div class="box-description">Mastered</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Review Area -->
+            <div class="review-area hidden" id="reviewArea">
+                <div class="current-session" id="currentSession">Review in Progress</div>
+                
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%;">0%</div>
+                    </div>
+                    <div class="progress-text" id="progressText">0/0 Reviewed</div>
+                </div>
+                
+                <div class="card" id="card">
+                    <div class="card-inner">
+                        <div class="card-front">
+                            <div class="character" id="character">一</div>
+                            <div style="margin-top: 20px; color: var(--text-secondary);">Click to flip</div>
+                        </div>
+                        <div class="card-back">
+                            <div class="back-character" id="backCharacter">一</div>
+                            <div class="pinyin" id="pinyin">yī</div>
+                            <button class="speak-btn" onclick="speakPinyin(event)">🔊 Read</button>
+                            <div class="meaning" id="meaning">one</div>
+                            <img id="cardImage" class="card-image hidden">
+                            <div id="cardBookExplanation" class="card-content hidden">
+                                <div class="content-label">📖 解释:</div>
+                                <div id="bookExplanationContent"></div>
+                            </div>
+                            <div id="cardStory" class="card-content hidden">
+                                <div class="content-label">记忆故事:</div>
+                                <div id="storyContent"></div>
+                            </div>
+                            <div id="cardPhrases" class="card-content hidden">
+                                <div class="content-label">词组范例:</div>
+                                <div id="phrasesContent"></div>
+                            </div>
+                            <div style="margin-top: 12px; color: var(--text-secondary);">Click to return</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="review-buttons">
+                    <button class="review-btn btn-forgot" onclick="handleCardMove('forgot')">
+                        Forgotten<br>忘记
+                    </button>
+                    <button class="review-btn btn-hard" onclick="handleCardMove('hard')">
+                        Hard<br>困难
+                    </button>
+                    <button class="review-btn btn-good" onclick="handleCardMove('good')">
+                        Good<br>良好
+                    </button>
+                    <button class="review-btn btn-easy" onclick="handleCardMove('easy')">
+                        Easy<br>简单
+                    </button>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="endReview()" style="margin-top: 20px;">
+                    End Review
+                </button>
+            </div>
+            
+            <!-- Completion Message -->
+            <div id="completionMessage" class="message hidden"></div>
+            
+<!-- Data Management -->            
+<div class="data-section">
+    <h3>📁 Data Management</h3>
+    
+    <!-- 按钮组 -->
+    <div class="data-actions">
+        <button class="btn btn-primary" onclick="exportProgress()">📥 Export Progress</button>
+        <button class="btn btn-primary" onclick="document.getElementById('importFile').click()">📤 Import Data</button>
+         <button class="btn btn-secondary" onclick="showDeviceCodeInput()">🔄 Sync Another Device</button>
+        <button class="btn btn-secondary" onclick="refreshData()" style="background: white; color: var(--primary); border: 2px solid var(--primary);">
+            🔄 Refresh Data
+        </button>
+    </div>
+    
+    <input type="file" id="importFile" accept=".json" style="display: none;">
+
+    <!-- Device Code & Student Name Display -->
+    <div style="margin-top: 20px; padding: 16px; background: rgba(0,172,193,0.1); border-radius: 10px; text-align: center;">
+        <div style="margin-bottom: 8px;">
+            <span style="font-size: 0.9em; color: var(--text-secondary);">Device Code:</span>
+            <strong style="font-size: 1.5em; color: var(--primary); margin: 0 10px;" id="deviceCode">------</strong>
+        </div>
+        <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 12px;">
+            (Enter this code on another device to sync progress)
+        </div>
+        <div style="margin-bottom: 8px;">
+            <span style="font-size: 0.9em; color: var(--text-secondary);">Student Name:</span>
+            <strong style="font-size: 1.2em; color: var(--primary-dark); margin: 0 10px;" id="studentNameDisplay">Not set</strong>
+        </div>
+        <button class="btn btn-secondary" onclick="editStudentName()" style="padding: 8px 20px; font-size: 0.9rem;">
+            📝 <span id="editNameBtnText">Set Name</span>
+        </button>
+    </div>
+
+<style>
+@media (max-width: 640px) {
+    .data-section > div[style*="padding: 16px"] {
+        padding: 12px !important;
+    }
+    .data-section > div[style*="padding: 16px"] span {
+        font-size: 0.8rem !important;
+    }
+    .data-section > div[style*="padding: 16px"] strong {
+        font-size: 1.2em !important;
+        display: block;
+        margin: 8px 0 !important;
+    }
+}
+</style>
+    
+    
+    <!-- 说明文字 -->
+    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 14px; line-height: 1.5; text-align: center;" class="sync-info">
+        💡 Your progress is automatically synced to the cloud.<br>
+        To continue on another device, simply enter the Device Code shown above.
+    </div>
+
+<style>
+@media (max-width: 640px) {
+    .sync-info {
+        font-size: 0.75rem !important;
+    }
+}
+</style>
+</div>
+            </div>
+        </div> <!-- end of #mainContent -->
+    </div> <!-- end of .container -->
+
+    <!-- Student Name Modal -->
+    <div id="nameModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.7); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 40px; border-radius: 20px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <h2 style="color: var(--primary-dark); font-size: 2rem; margin-bottom: 8px;">Welcome! 👋</h2>
+                <p style="color: var(--text-secondary); font-size: 1.1rem; line-height: 1.6;">
+                    Please enter your name so we can save and restore your learning progress.
+                </p>
+            </div>
+
+            <input type="text" id="studentNameInput" placeholder="Your name"
+                   style="width: 100%; padding: 14px; font-size: 1.1rem; border: 2px solid var(--border); border-radius: 12px; margin-bottom: 20px;">
+
+            <div style="display: flex; gap: 12px;">
+                <button class="btn btn-secondary" onclick="skipNameInput()" style="flex: 1;">Skip for now</button>
+                <button class="btn btn-primary" onclick="saveStudentName()" style="flex: 1;">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== Firebase Configuration ====================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDMDTDwDP0mEXwgJdwsXVMB2IFi9Q5zfyU",
+            authDomain: "shizi-with-elisa.firebaseapp.com",
+            projectId: "shizi-with-elisa",
+            storageBucket: "shizi-with-elisa.firebasestorage.app",
+            messagingSenderId: "46368268308",
+            appId: "1:46368268308:web:5847aeb7b239b16d624701"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        
+        // ==================== Global Variables ====================
+        let currentUser = null;
+        let deviceCode = null;
+        let studentName = '';
+        let allCharacters = [];
+        let componentCharacters = [];
+        let targetCharacters = [];
+        let userProgress = {};
+        let currentTab = 'components';
+        let reviewQueue = [];
+        let currentReviewIndex = 0;
+        let isCardFlipped = false;
+        
+        // ==================== Initialization ====================
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Anonymous login
+                await auth.signInAnonymously();
+                auth.onAuthStateChanged(async (user) => {
+                    if (user) {
+                        currentUser = user;
+                        deviceCode = user.uid.substring(0, 6).toUpperCase();
+                        document.getElementById('deviceCode').textContent = deviceCode;
+                        
+                        // Load data in correct order
+                        await loadLessonsFromFirebase();
+                        await loadUserProgress();
+
+                        // Update student name display
+                        updateStudentNameDisplay();
+
+                        // Render with progress data
+                        renderLessonCheckboxes();
+
+                        // Show main content
+                        document.getElementById('loadingContainer').classList.add('hidden');
+                        document.getElementById('mainContent').classList.remove('hidden');
+
+                        updateStats();
+
+                        // Check if we need to show name input modal
+                        checkAndShowNameModal();
+                    }
+                });
+            } catch (error) {
+                showMessage('初始化失败: ' + error.message, 'error');
+            }
+        });
+        
+        // ==================== Load Lessons from Firebase ====================
+        async function loadLessonsFromFirebase() {
+            try {
+            console.time('Loading');  // ← 加这行
+
+            // ========== 緩存檢查（含版本控制）==========
+        const CACHE_VERSION = 2;  // 發布機制版本
+        const MAX_CACHE_AGE = 1000 * 60 * 30;  // 30 分鐘緩存過期
+        const cached = localStorage.getItem('lessons_cache');
+        if (cached) {
+            const data = JSON.parse(cached);
+            const cacheAge = Date.now() - (data.cacheTime || 0);
+            // 檢查版本和時效
+            if (data.version === CACHE_VERSION && cacheAge < MAX_CACHE_AGE) {
+                componentCharacters = data.components;
+                targetCharacters = data.targets;
+                console.log('✅ Loaded from cache!');
+                console.timeEnd('Loading');
+                return;
+            } else {
+                console.log('🔄 Cache expired or version mismatch, reloading...');
+                localStorage.removeItem('lessons_cache');
+            }
+        }
+                componentCharacters = [];
+                targetCharacters = [];
+                
+// Load lessons 1-25
+for (let i = 1; i <= 25; i++) {
+    try {
+        const doc = await db.collection('lessons').doc(`lesson${i}`).get();
+        if (doc.exists) {
+            const data = doc.data();
+
+            // Components - 只載入已發布的 (is_published !== false，undefined 視為已發布以向後兼容)
+            if (data.components && data.components.length > 0) {
+                data.components
+                    .filter(comp => comp.is_published !== false)
+                    .forEach(comp => {
+                        componentCharacters.push({
+                            ...comp,
+                            lesson: `lesson${i}`,
+                            type: 'component'
+                        });
+                    });
+            }
+
+            // Target characters - 只載入已發布的
+            if (data.target_characters && data.target_characters.length > 0) {
+                data.target_characters
+                    .filter(target => target.is_published !== false)
+                    .forEach(target => {
+                        targetCharacters.push({
+                            ...target,
+                            lesson: `lesson${i}`,
+                            type: 'target'
+                        });
+                    });
+            }
+        }
+    } catch (error) {
+        console.log(`Lesson ${i} not found, skipping...`);
+    }
+}
+                
+                console.log(`Loaded ${componentCharacters.length} components, ${targetCharacters.length} targets`);
+                // ========== 存緩存（含版本和時間戳）==========
+                    localStorage.setItem('lessons_cache', JSON.stringify({
+                        components: componentCharacters,
+                        targets: targetCharacters,
+                        version: 2,  // 發布機制版本
+                        cacheTime: Date.now()
+                    }));
+                    console.log('💾 Saved to cache!');
+                    // ========== 到这里 ==========
+                 console.timeEnd('Loading');  // ← 加这行
+                
+            } catch (error) {
+                console.error('Error loading lessons:', error);
+                showMessage('加载课程失败: ' + error.message, 'error');
+            }
+        }
+        
+        // ==================== Reset Layer 3 ====================
+        function resetLayer3() {
+            document.getElementById('reviewMethodTabs').style.display = 'none';
+            document.getElementById('recommendedSection').style.display = 'none';
+            document.getElementById('difficultySection').style.display = 'none';
+        }
+        function renderLessonCheckboxes() {
+        console.time('Rendering');  // ← 加这行
+            const container = document.getElementById('lessonCheckboxes');
+            const lessons = [];
+            
+            for (let i = 1; i <= 25; i++) {
+                const lessonId = `lesson${i}`;
+                const chars = currentTab === 'components' 
+                    ? componentCharacters.filter(c => c.lesson === lessonId)
+                    : targetCharacters.filter(c => c.lesson === lessonId);
+                
+                        // ✅ 計算進度：Easy 字數 / 總字數
+        let easyCount = 0;
+        if (chars.length > 0) {
+            easyCount = chars.filter(char => {
+                const progress = userProgress[char.character];
+                return progress && progress.box === 'easy';
+            }).length;
+        }
+        const progress = chars.length > 0 ? Math.round((easyCount / chars.length) * 100) : 0;
+                
+                if (chars.length > 0) {
+                    lessons.push({ 
+                        id: lessonId, 
+                        num: i, 
+                        count: chars.length,
+                        progress: progress
+                    });
+                } else {
+                    lessons.push({ 
+                        id: lessonId, 
+                        num: i, 
+                        count: 0, 
+                        comingSoon: true 
+                    });
+                }
+            }
+            
+            container.innerHTML = lessons.map(lesson => {
+                const lessonType = currentTab === 'components' ? 'Components' : 'Characters';
+                
+                if (lesson.comingSoon) {
+                    return `
+<div class="circle-card locked" data-lesson="${lesson.id}">
+    <div class="circle-progress">
+        <svg viewBox="0 0 120 120" class="progress-ring">
+            <circle cx="60" cy="60" r="54" class="progress-ring-bg"/>
+            <circle cx="60" cy="60" r="54" class="progress-ring-circle" 
+                    style="stroke-dasharray: 339.292; stroke-dashoffset: 339.292"/>
+        </svg>
+        <div class="circle-content">
+            <div class="lock-icon">🔒</div>
+        </div>
+    </div>
+    <div class="circle-label">Lesson ${lesson.num}</div>
+
+</div>`;
+                } else {
+                    const circumference = 2 * Math.PI * 54;
+                    const offset = circumference - (lesson.progress / 100) * circumference;
+                    
+                    return `
+<div class="circle-card" data-lesson="${lesson.id}" data-selected="false" onclick="toggleLessonSelection('${lesson.id}')">
+    <div class="circle-progress">
+        <svg viewBox="0 0 120 120" class="progress-ring">
+            <circle cx="60" cy="60" r="54" class="progress-ring-bg"/>
+            <circle cx="60" cy="60" r="54" class="progress-ring-circle" 
+                    style="stroke-dasharray: ${circumference}; stroke-dashoffset: ${offset}"/>
+        </svg>
+        <div class="circle-content">
+    <div class="progress-text">${lesson.progress}%</div>
+    <div class="char-count" style="font-size: 0.75rem;">${lesson.count}字</div>
+        </div>
+            </div>
+            <div class="circle-label">Lesson ${lesson.num}</div>
+        </div>`;
+                }
+            }).join('');
+              console.timeEnd('Rendering');  // ← 加这行
+        }
+        
+        // Toggle lesson selection
+        function toggleLessonSelection(lessonId) {
+            const card = document.querySelector(`[data-lesson="${lessonId}"]`);
+            if (card.classList.contains('locked')) return;
+            
+            const isSelected = card.dataset.selected === 'true';
+            card.dataset.selected = !isSelected;
+            
+            updateSelectedCount();
+            updateLayer3Visibility();
+        }
+        
+        // ==================== Update Layer 3 Visibility ====================
+        function updateLayer3Visibility() {
+            const selectedLessons = getSelectedLessons();
+            const layer3 = document.getElementById('reviewMethodTabs');
+            
+            if (selectedLessons.length > 0) {
+                // 顯示層 3 Tab
+                layer3.style.display = 'block';
+                
+                // 重設為 Smart Review（預設）
+                document.querySelectorAll('#reviewMethodTabs .tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector('#reviewMethodTabs .tab-btn[data-tab="smart-review"]').classList.add('active');
+                
+                // 只顯示 Smart Review 內容
+                document.getElementById('recommendedSection').style.display = 'block';
+                document.getElementById('difficultySection').style.display = 'none';
+            } else {
+                // 沒選課程時隱藏層 3 及其內容
+                layer3.style.display = 'none';
+                document.getElementById('recommendedSection').style.display = 'none';
+                document.getElementById('difficultySection').style.display = 'none';
+            }
+        }
+        
+        // Get selected lessons
+        function getSelectedLessons() {
+            const selected = [];
+            document.querySelectorAll('.circle-card[data-selected="true"]').forEach(card => {
+                selected.push(card.dataset.lesson);
+            });
+            return selected;
+        }
+        
+        // ==================== Layer 1: Tab Switching (Components vs Characters) ====================
+        document.querySelectorAll('.tab-system:first-of-type .tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove active from all Layer 1 buttons
+                document.querySelectorAll('.tab-system:first-of-type .tab-btn').forEach(b => b.classList.remove('active'));
+                // Add active to clicked button
+                btn.classList.add('active');
+                currentTab = btn.dataset.tab;
+                
+                // Render and reset
+                renderLessonCheckboxes();
+                clearAllLessons();
+                updateStats();
+            });
+        });
+        
+
+        
+
+
+        // ==================== Select/Clear All Lessons ====================
+        function selectAllLessons() {
+            document.querySelectorAll('.circle-card:not(.locked)').forEach(card => {
+                card.dataset.selected = 'true';
+            });
+            updateSelectedCount();
+        }
+        
+        function clearAllLessons() {
+            document.querySelectorAll('.circle-card').forEach(card => {
+                card.dataset.selected = 'false';
+            });
+            updateSelectedCount();
+            resetLayer3();
+        }
+        
+        function updateSelectedCount() {
+            const checked = document.querySelectorAll('.circle-card[data-selected="true"]').length;
+            const total = document.querySelectorAll('.circle-card:not(.locked)').length;
+            document.getElementById('selectedCount').textContent = `(${checked}/${total})`;
+            updateStats();
+        }
+        
+        // ==================== Get Selected Characters ====================
+        function getSelectedCharacters() {
+            const selectedLessons = getSelectedLessons();
+            
+            const sourceChars = currentTab === 'components' ? componentCharacters : targetCharacters;
+            return sourceChars.filter(char => selectedLessons.includes(char.lesson));
+        }
+        
+        // ==================== Update Statistics ====================
+        function updateStats() {
+            const chars = getSelectedCharacters();
+            const boxes = { forgot: 0, hard: 0, good: 0, easy: 0 };
+            
+            chars.forEach(char => {
+                const progress = userProgress[char.character];
+                const box = progress ? progress.box : 'forgot';
+                boxes[box]++;
+            });
+            
+            document.getElementById('count-forgot').textContent = boxes.forgot;
+            document.getElementById('count-hard').textContent = boxes.hard;
+            document.getElementById('count-good').textContent = boxes.good;
+            document.getElementById('count-easy').textContent = boxes.easy;
+            
+            // Update due count
+            const dueChars = getDueCharacters(chars);
+            document.getElementById('totalDue').textContent = dueChars.length;
+            
+            updateRecommendedBreakdown();
+        }
+        
+        // ==================== Get Due Characters ====================
+        function getDueCharacters(characters) {
+            const today = new Date().setHours(0, 0, 0, 0);
+            
+            return characters.filter(char => {
+                const progress = userProgress[char.character];
+                if (!progress) return true; // New character
+                
+                const lastReviewed = progress.lastReviewed ? new Date(progress.lastReviewed).setHours(0, 0, 0, 0) : null;
+                if (!lastReviewed) return true;
+                
+                const daysSince = Math.floor((today - lastReviewed) / (1000 * 60 * 60 * 24));
+                
+                switch (progress.box) {
+                    case 'forgot': return daysSince >= 0; // Daily
+                    case 'hard': return daysSince >= 1;
+                    case 'good': return daysSince >= 3;
+                    case 'easy': return daysSince >= 7;
+                    default: return true;
+                }
+            });
+        }
+        
+        // ==================== Update Recommended Breakdown ====================
+        function updateRecommendedBreakdown() {
+            const chars = getSelectedCharacters();
+            const dueChars = getDueCharacters(chars);
+            const amount = document.getElementById('reviewAmount').value;
+            
+            let selectedChars = dueChars;
+            if (amount !== 'all') {
+                selectedChars = dueChars.slice(0, parseInt(amount));
+            }
+            
+            const breakdown = { forgot: 0, hard: 0, good: 0, easy: 0 };
+            selectedChars.forEach(char => {
+                const progress = userProgress[char.character];
+                const box = progress ? progress.box : 'forgot';
+                breakdown[box]++;
+            });
+            
+            document.getElementById('recommendedBreakdown').innerHTML = `
+                <div class="breakdown-item" style="border-color: var(--forgot); color: var(--forgot);">
+                    <span class="breakdown-count">${breakdown.forgot}</span>
+                    <span class="breakdown-label">Forgotten</span>
+                </div>
+                <div class="breakdown-item" style="border-color: var(--hard); color: var(--hard);">
+                    <span class="breakdown-count">${breakdown.hard}</span>
+                    <span class="breakdown-label">Hard</span>
+                </div>
+                <div class="breakdown-item" style="border-color: var(--good); color: var(--good);">
+                    <span class="breakdown-count">${breakdown.good}</span>
+                    <span class="breakdown-label">Good</span>
+                </div>
+                <div class="breakdown-item" style="border-color: var(--easy); color: var(--easy);">
+                    <span class="breakdown-count">${breakdown.easy}</span>
+                    <span class="breakdown-label">Easy</span>
+                </div>
+            `;
+        }
+        
+        document.getElementById('reviewAmount').addEventListener('change', updateRecommendedBreakdown);
+        
+        // ==================== Start Reviews ====================
+        function startRecommendedReview() {
+            const chars = getSelectedCharacters();
+            const dueChars = getDueCharacters(chars);
+            const amount = document.getElementById('reviewAmount').value;
+            
+            if (dueChars.length === 0) {
+                showMessage('No characters are due for review!没有到期的字需要复习！', 'info');
+                return;
+            }
+            
+            reviewQueue = amount === 'all' ? dueChars : dueChars.slice(0, parseInt(amount));
+            shuffleArray(reviewQueue);
+            startReview();
+        }
+        
+        function startBoxReview(box) {
+            const chars = getSelectedCharacters();
+            reviewQueue = chars.filter(char => {
+                const progress = userProgress[char.character];
+                return progress ? progress.box === box : box === 'forgot';
+            });
+            
+            if (reviewQueue.length === 0) {
+                showMessage(`没有 ${box} 难度的字！`, 'info');
+                return;
+            }
+            
+            shuffleArray(reviewQueue);
+            startReview();
+        }
+        
+function startReview() {
+    currentReviewIndex = 0;
+    // Hide all controls during review
+    document.querySelectorAll('.tab-system').forEach(tab => tab.style.display = 'none');
+    document.querySelector('.lesson-selector').style.display = 'none';
+    document.querySelector('.recommended-section').style.display = 'none';
+    document.querySelector('#difficultySection').style.display = 'none';
+    // Show review area
+    document.getElementById('reviewArea').classList.remove('hidden');
+    showCard();
+}
+        
+        function endReview() {
+            document.getElementById('reviewArea').classList.add('hidden');
+            document.querySelectorAll('.tab-system').forEach(tab => tab.style.display = 'block');
+            document.querySelector('.lesson-selector').style.display = 'block';
+            document.getElementById('reviewMethodTabs').style.display = 'block';
+            
+            // Reset to Smart Review tab
+            document.querySelectorAll('#reviewMethodTabs .tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('#reviewMethodTabs .tab-btn[data-tab="smart-review"]').classList.add('active');
+            document.getElementById('recommendedSection').style.display = 'block';
+            document.getElementById('difficultySection').style.display = 'none';
+            
+            updateStats();
+        }
+        
+        // ==================== Show Card ====================
+        function showCard() {
+            if (currentReviewIndex >= reviewQueue.length) {
+                showCompletion();
+                return;
+            }
+            
+            const char = reviewQueue[currentReviewIndex];
+            isCardFlipped = false;
+            document.getElementById('card').classList.remove('flipped');
+            
+            // Front
+            document.getElementById('character').textContent = char.character;
+            
+            // Back
+            document.getElementById('backCharacter').textContent = char.character;
+            document.getElementById('pinyin').textContent = char.pinyin;
+            document.getElementById('meaning').textContent = char.meaning;
+            
+            // Image
+            const cardImage = document.getElementById('cardImage');
+            if (char.image) {
+                cardImage.src = char.image;
+                cardImage.classList.remove('hidden');
+            } else {
+                cardImage.classList.add('hidden');
+            }
+            
+            // Book Explanation
+            const cardBookExplanation = document.getElementById('cardBookExplanation');
+            if (char.book_explanation && char.book_explanation.trim()) {
+                const processedExplanation = processMarkdownImages(marked.parse(char.book_explanation));
+                document.getElementById('bookExplanationContent').innerHTML = processedExplanation;
+                cardBookExplanation.classList.remove('hidden');
+            } else {
+                cardBookExplanation.classList.add('hidden');
+            }
+            
+            // Story
+            const cardStory = document.getElementById('cardStory');
+            if (char.story && char.story.trim()) {
+                const processedStory = processMarkdownImages(marked.parse(char.story));
+                document.getElementById('storyContent').innerHTML = processedStory;
+                cardStory.classList.remove('hidden');
+            } else {
+                cardStory.classList.add('hidden');
+            }
+            
+            // Phrases
+            const cardPhrases = document.getElementById('cardPhrases');
+            if (char.phrases && char.phrases.trim()) {
+                const processedPhrases = processMarkdownImages(marked.parse(char.phrases));
+                document.getElementById('phrasesContent').innerHTML = processedPhrases;
+                cardPhrases.classList.remove('hidden');
+            } else {
+                cardPhrases.classList.add('hidden');
+            }
+            
+            // Update progress
+            updateProgress();
+        }
+        
+        // ==================== Card Flip ====================
+        document.getElementById('card').addEventListener('click', (e) => {
+            if (e.target.classList.contains('speak-btn')) return;
+            document.getElementById('card').classList.toggle('flipped');
+        });
+        
+        // ==================== Handle Card Move ====================
+        async function handleCardMove(box) {
+            const char = reviewQueue[currentReviewIndex];
+            
+            // Update progress
+            userProgress[char.character] = {
+                character: char.character,
+                lesson: char.lesson,
+                box: box,
+                reviews: (userProgress[char.character]?.reviews || 0) + 1,
+                lastReviewed: new Date().toISOString()
+            };
+            
+            // Save to Firebase
+            await saveUserProgress();
+            
+            // Next card
+            currentReviewIndex++;
+            showCard();
+        }
+        
+        // ==================== Update Progress Bar ====================
+        function updateProgress() {
+            const total = reviewQueue.length;
+            const current = currentReviewIndex;
+            const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+            
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressFill').textContent = percent + '%';
+            document.getElementById('progressText').textContent = `${current}/${total} 已复习`;
+        }
+        
+        // ==================== Show Completion ====================
+        function showCompletion() {
+            document.getElementById('reviewArea').classList.add('hidden');
+            const msg = document.getElementById('completionMessage');
+            
+            // 改成顯示完成訊息 + 按鈕，不要自動跳回
+            msg.innerHTML = `
+                <div style="text-align: center;">
+                    <div style="font-size: 3rem; margin-bottom: 16px;">🎉</div>
+                    <div style="font-size: 1.3rem; font-weight: bold; margin-bottom: 8px;">Great job!</div>
+                    <div style="font-size: 1rem; margin-bottom: 24px;">You've reviewed ${reviewQueue.length} characters</div>
+                    <button class="btn btn-primary" onclick="returnToReviewHome()" style="padding: 14px 32px; font-size: 1rem;">
+                        ← Back to Review Home
+                    </button>
+                </div>
+            `;
+            msg.className = 'message success';
+            msg.classList.remove('hidden');
+        }
+        
+        // ==================== Return to Review Home ====================
+        function returnToReviewHome() {
+            document.getElementById('completionMessage').classList.add('hidden');
+            endReview();
+        }
+        
+        function speakPinyin(event) {
+            event.stopPropagation();
+            const character = document.getElementById('backCharacter').textContent;
+            const utterance = new SpeechSynthesisUtterance(character);
+            
+            // 强制使用中文声音
+            const voices = speechSynthesis.getVoices();
+            const chineseVoice = voices.find(v => v.lang.includes('zh'));
+            if (chineseVoice) utterance.voice = chineseVoice;
+            
+            utterance.lang = 'zh-CN';
+            utterance.rate = 0.8;
+            speechSynthesis.speak(utterance);
+        }
+        
+        // ==================== Process Markdown Images ====================
+        function processMarkdownImages(html) {
+            // Parse HTML and add classes based on alt text
+            const div = document.createElement('div');
+            div.innerHTML = html;
+            
+            const images = div.querySelectorAll('img');
+            images.forEach(img => {
+                const alt = img.getAttribute('alt') || '';
+                
+                if (alt === 'comp') {
+                    img.classList.add('img-comp');
+                } else if (alt === 'origin') {
+                    img.classList.add('img-origin');
+                } else if (alt === 'story') {
+                    img.classList.add('img-story');
+                }
+            });
+            
+            return div.innerHTML;
+        }
+        
+        // ==================== User Progress (Firebase) ====================
+        async function loadUserProgress() {
+            try {
+                const doc = await db.collection('user_progress').doc(currentUser.uid).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    userProgress = data.characterProgress || {};
+                    studentName = data.studentName || '';
+                }
+            } catch (error) {
+                console.error('Error loading progress:', error);
+            }
+        }
+        
+        async function saveUserProgress() {
+            try {
+                await db.collection('user_progress').doc(currentUser.uid).set({
+                    characterProgress: userProgress,
+                    lastReview: new Date().toISOString(),
+                    deviceCode: deviceCode,
+                    studentName: studentName
+                });
+            } catch (error) {
+                console.error('Error saving progress:', error);
+            }
+        }
+        
+        // ==================== Import/Export ====================
+        function exportProgress() {
+            const data = {
+                characterProgress: userProgress,
+                lastReview: new Date().toISOString(),
+                deviceCode: deviceCode
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `shizi-progress-${deviceCode}-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+        }
+        
+        document.getElementById('importFile').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                
+                if (data.characterProgress) {
+                    userProgress = data.characterProgress;
+                    await saveUserProgress();
+                    showMessage('导入成功！', 'success');
+                    updateStats();
+                }
+            } catch (error) {
+                showMessage('导入失败: ' + error.message, 'error');
+            }
+        });
+        
+        // ==================== Device Code Sync ====================
+        function showDeviceCodeInput() {
+            const code = prompt('Enter device code from another device (6 digits):');
+            if (!code) return;
+            
+            syncFromDeviceCode(code.toUpperCase());
+        }
+        
+        async function syncFromDeviceCode(code) {
+            try {
+                // Search for user with this device code
+                const snapshot = await db.collection('user_progress')
+                    .where('deviceCode', '==', code)
+                    .limit(1)
+                    .get();
+                
+                if (snapshot.empty) {
+                    showMessage('Device code not found!', 'error');
+                    return;
+                }
+                
+                const data = snapshot.docs[0].data();
+                userProgress = data.characterProgress || {};
+                await saveUserProgress();
+                
+                showMessage('同步成功！', 'success');
+                updateStats();
+            } catch (error) {
+                showMessage('同步失败: ' + error.message, 'error');
+            }
+        }
+        
+        // ==================== Utilities ====================
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+        
+        function showMessage(text, type = 'info') {
+            const msg = document.createElement('div');
+            msg.className = `message ${type}`;
+            msg.textContent = text;
+            document.querySelector('.container').appendChild(msg);
+            
+            setTimeout(() => msg.remove(), 4000);
+        }
+
+        // ========== 加这段（刷新数据功能）==========
+            function refreshData() {
+                if (confirm('🔄 This will reload fresh data from the server. Continue?\n\n这将重新加载最新数据，确定吗？')) {
+                    localStorage.removeItem('lessons_cache');
+                    location.reload();
+                }
+            }
+            // ========== 到这里 ==========
+            
+// ==================== Layer 3: Tab Switching (Smart Review vs By Difficulty) ====================
+document.querySelectorAll('#reviewMethodTabs .tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        const tab = e.target.dataset.tab;
+        
+        // Remove active from all Layer 3 buttons
+        document.querySelectorAll('#reviewMethodTabs .tab-btn').forEach(b => {
+            b.classList.remove('active');
+        });
+        
+        // Add active to clicked button
+        e.target.classList.add('active');
+        
+        // Hide all content first
+        document.getElementById('recommendedSection').style.display = 'none';
+        document.getElementById('difficultySection').style.display = 'none';
+        
+        // Show selected content
+        if (tab === 'smart-review') {
+            document.getElementById('recommendedSection').style.display = 'block';
+        } else if (tab === 'by-difficulty') {
+            document.getElementById('difficultySection').style.display = 'block';
+        }
+    });
+});
+
+// 頁面載入時，預設顯示 Smart Review（但層 3 Tab 應該隱藏，除非層 2 有選課程）
+window.addEventListener('load', () => {
+    document.getElementById('reviewMethodTabs').style.display = 'none';
+    document.getElementById('recommendedSection').style.display = 'none';
+    document.getElementById('difficultySection').style.display = 'none';
+});
+
+// ==================== Student Name Management ====================
+function updateStudentNameDisplay() {
+    const displayElement = document.getElementById('studentNameDisplay');
+    const btnTextElement = document.getElementById('editNameBtnText');
+
+    if (studentName && studentName.trim() !== '') {
+        displayElement.textContent = studentName;
+        btnTextElement.textContent = 'Edit Name';
+    } else {
+        displayElement.textContent = 'Not set';
+        btnTextElement.textContent = 'Set Name';
+    }
+}
+
+function checkAndShowNameModal() {
+    // Show modal if student name is not set
+    if (!studentName || studentName.trim() === '') {
+        const modal = document.getElementById('nameModal');
+        modal.style.display = 'flex';
+    }
+}
+
+function editStudentName() {
+    const modal = document.getElementById('nameModal');
+    const input = document.getElementById('studentNameInput');
+    input.value = studentName || '';
+    modal.style.display = 'flex';
+    input.focus();
+}
+
+async function saveStudentName() {
+    const input = document.getElementById('studentNameInput');
+    const name = input.value.trim();
+
+    if (name) {
+        studentName = name;
+        await saveUserProgress();
+        updateStudentNameDisplay();
+        showMessage('Name saved successfully! 姓名保存成功！', 'success');
+    }
+
+    closeNameModal();
+}
+
+function skipNameInput() {
+    closeNameModal();
+}
+
+function closeNameModal() {
+    const modal = document.getElementById('nameModal');
+    modal.style.display = 'none';
+    document.getElementById('studentNameInput').value = '';
+}
+
+// Allow Enter key to submit name
+document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('studentNameInput');
+    if (input) {
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                saveStudentName();
+            }
+        });
+    }
+});
+
+    </script>
+    <script src="../../assets/js/nav-global.js"></script>
+</body>
+</html>

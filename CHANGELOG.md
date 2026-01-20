@@ -1,5 +1,22 @@
 # 更新日志
 
+## 版本号规则（SemVer：MAJOR.MINOR.PATCH）
+
+- **MAJOR（X.0.0）**：有破坏性变更（旧链接/旧流程/旧数据读取可能失效）。
+- **MINOR（x.Y.0）**：新增功能或明显改版，但保持向后兼容（旧用法仍可用）。
+- **PATCH（x.y.Z）**：修 bug / 文案 / 样式 / 小优化，不改变对外行为契约。
+
+## [3.2.0] - 2026-01-20
+
+### 🧊 Cohort freeze guard + 简化导航（移除 Group UI）
+
+- ✅ **新增 cohort 凍結机制（active / frozen）**：前台初始化时读取 Firestore `cohorts`，若 URL / localStorage 的 cohort 非 `active`，自动 fallback 到 `taigen-a`，并同步修正 URL（`replaceState`）与 `localStorage['bct-cohort']`。
+- ✅ **新增开关式隐藏 Group UI**：加入 `assets/js/app-flags.js`（`window.BCT_ENABLE_GROUP_UI = false`），让 desktop + mobile 导航完全移除 Group（cohort）相关 UI，但保留未来可一键开启的能力。
+- ✅ **所有关键入口改用 enforced cohort**：`assets/js/loader.js`、`assets/js/bct-review.js` 优先读取 `window.BCT_ACTIVE_COHORT`，避免用户手动改 URL 访问 frozen cohort 的资料。
+- ✅ **避免 Firebase 重复初始化**：在 `assets/js/firestore.js`、`assets/js/bct-review.js`、`assets/js/cohort-guard.js` 加入 `firebase.apps.length` 防重入。
+- ✅ **首页补齐 Firebase SDK**：`index.html` 新增 Firebase app/firestore SDK，供 `cohort-guard` 在首页也能执行拦截与校正。
+- 📝 **文档更新**：`docs/USER_FLOW_GUIDE.md` 追加「日后新增班级」与「凍結机制」操作说明。
+
 ## [3.1.0] - 2026-01-19
 
 ### 📱 Mobile navigation polish

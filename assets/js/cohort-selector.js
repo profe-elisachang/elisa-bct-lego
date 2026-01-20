@@ -13,6 +13,14 @@ class CohortSelector {
 
     // 初始化
     init() {
+        const enableGroupUi = window.BCT_ENABLE_GROUP_UI !== false;
+        if (!enableGroupUi) {
+            // Group UI disabled: force default cohort and never show selector UI.
+            localStorage.setItem(this.storageKey, 'taigen-a');
+            this.updateLessonLinks('taigen-a');
+            return;
+        }
+
         const currentCohort = this.getCurrentCohort();
 
         if (!currentCohort) {

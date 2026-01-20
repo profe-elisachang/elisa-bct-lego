@@ -1278,6 +1278,11 @@ timeline/btc1/vocab/taigen-b/*  // Taigen B 班的生词
 - ✅ Review 页面自动过滤该班级的补充内容
 - ✅ 界面文字简洁清晰
 
+> 🔧 **2026-01 更新（班级凍结机制上线）**  
+> 目前前台默认固定使用 `taigen-a`，并且可通过开关隐藏 Group UI（原因：手机导航太窄 + `taigen-b` 已冻结）。  
+> - 当 `window.BCT_ENABLE_GROUP_UI = false` 时：学生端不会看到/操作班级切换，但系统仍会带/用 `cohort=taigen-a`。  
+> - 即使用户手动改 URL 带入冻结班级（例如 `?cohort=taigen-b`），也会被前台 guard 自动改回 active cohort。
+
 **教师端：**
 - ✅ 新增内容时，自动判断是否需要选择班级
   - 部件 → 不需要选班级（自动存到共用区）
@@ -1314,9 +1319,32 @@ timeline/btc1/vocab/taigen-b/*  // Taigen B 班的生词
 - 前端自动支持（等级选择器可配置化）
 
 **新增班级：**
-- 只需在选班对话框新增按钮
-- 数据路径自动对应（例如：`taigen-c`）
-- 后端结构不需要改变
+- ✅ **推荐做法（新）：用 Firestore 的 `cohorts` collection 管控班级状态**  
+  - 建立/更新：`cohorts/{cohortId}`  
+  - 字段：`status`（目前只用 `active` / `frozen`）  
+  - 前台会在初始化时读取并强制使用 active cohort（见下方「班级凍结机制」）
+
+- ✅ **新增班级（老师操作手册）**
+  - **步骤 A：先在 Firestore 建 cohort**
+    - 新增文件：`cohorts/taigen-c`
+    - 设置：`status = "active"`（要开放给学生使用就设 active；暂时不开就设 frozen）
+  - **步骤 B：新增 Timeline 路径（按需求）**
+    - 生词：`timeline/{level}/vocab/taigen-c/items/*`
+    - 笔记：`timeline/{level}/notes/taigen-c/items/*`
+    - 部件：仍是共用 `timeline/{level}/components/*`（无需新增班级路径）
+  - **步骤 C：决定要不要开放前台「Group UI」**
+    - 若你目前仍想维持「固定 A / 不显示 Group」：不用改 UI，新增 cohort 也不会影响学生端（但 teacher admin 仍可写入新 cohort 路径）。
+    - 若你要让学生端可以切换班级：把 `assets/js/app-flags.js` 里的开关打开：
+      - `window.BCT_ENABLE_GROUP_UI = true;`
+    - （打开后）如需让下拉/弹窗显示新班级，再更新前端列表：
+      - `assets/js/nav.js`（桌面导航 cohort 下拉）
+      - `assets/js/mobile-nav.js`（手机 Group 下拉）
+      - `assets/js/cohort-selector.js`（首次选择班级弹窗）
+      - 以及任何写死的显示标签（例如 `Vocab A/B` 的地方）
+
+- ✅ **冻结班级（让学生端不可访问）**
+  - 把 `cohorts/{cohortId}.status` 设为 `"frozen"`  
+  - 学生端会被 guard 自动 fallback 到 `taigen-a`，并且不会读/写冻结班级的数据路径
 
 **新增课程类型：**
 - 在 Timeline Admin 新增类型选项
@@ -1391,6 +1419,28 @@ const cohort = urlParams.get('cohort') || 'taigen-a';
 ```
 
 ---
+
+### 班级凍结机制（active / frozen）
+
+**目标：**
+- 页面初始化时，从 URL/localStorage 取得 cohortId 后，去 Firestore 检查 `cohorts/{cohortId}.status`
+- 若不是 `active`（包含 `frozen` 或文件不存在），就强制改用 `taigen-a`
+- 该机制会拦截用户手动改 URL 的行为，避免读取/写入冻结班级的数据
+
+**前端实现文件：**
+- `assets/js/cohort-guard.js`
+  - 会读取 Firestore `cohorts` collection
+  - 计算并写入：
+    - `window.BCT_ACTIVE_COHORT`
+    - `window.BCT_ALLOWED_COHORTS`（只包含 active cohorts）
+  - 会同步修正：
+    - `localStorage['bct-cohort']`
+    - URL query `cohort=...`（使用 `history.replaceState`，不重载页面）
+
+**相关开关：**
+- `assets/js/app-flags.js`
+  - `window.BCT_ENABLE_GROUP_UI = false`：隐藏 Group UI（桌面+手机+首次选班）
+  - 未来要开回班级切换：改成 `true`
 
 ### Firestore 查询范例
 
