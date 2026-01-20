@@ -89,9 +89,8 @@ class LessonLoader {
         await this.loadLesson(lessonId);
         this.setupTabSystem();
         
-        // 更新 Vocab tab 标签和复习按钮（在 DOM 和数据都加载完成后）
+        // 更新 Vocab tab 标签（在 DOM 和数据都加载完成后）
         this.updateVocabTabLabel();
-        this.updateReviewLink();
         
         // ⏱️ 性能测试：计算总耗时
         const endTime = performance.now();
@@ -833,17 +832,6 @@ class LessonLoader {
         vocabTab.textContent = `Vocab ${cohortLabel}`;
     }
 
-    // 更新复习按钮链接
-    updateReviewLink() {
-        const reviewLink = document.getElementById('sidebar-review-link');
-        if (!reviewLink) return;
-
-        // 添加 level 和 cohort 参数
-        const level = new URLSearchParams(window.location.search).get('level') || 'btc1';
-        reviewLink.href = `bct-review.html?level=${level}&cohort=${this.currentCohort}`;
-        
-        console.log(`✅ 复习链接已更新：level=${level}, cohort=${this.currentCohort}`);
-    }
 }
 
 // 頁面載入完成後初始化

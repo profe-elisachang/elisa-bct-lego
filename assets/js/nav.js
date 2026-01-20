@@ -236,12 +236,6 @@
       updateSidebarTitlesFromFirestore(sidebarList, currentClass.id);
     }
 
-    // 更新側邊欄 Review 按鈕
-    const reviewLink = document.getElementById('sidebar-review-link');
-    if (reviewLink) {
-      reviewLink.href = `bct-review.html?level=${currentLevel}&cohort=${currentCohort}`;
-    }
-
     // 隱藏側邊欄的課程下拉選單（已由導航欄處理）
     const sidebarDropdown = document.getElementById('sidebar-course-dropdown');
     if (sidebarDropdown) {
