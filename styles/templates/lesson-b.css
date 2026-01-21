@@ -638,16 +638,32 @@
     margin: 10px 0;
 }
 
-.timeline-notes.markdown-body h1,
-.timeline-notes.markdown-body h2,
+/* 標題顏色樣式（從 h3 開始） */
 .timeline-notes.markdown-body h3,
+.markdown-body h3 {
+    margin: 18px 0 10px 0;
+    font-weight: 700;
+    font-size: 1.3em;
+    color: var(--primary);
+    border-bottom: 2px solid var(--primary-border);
+    padding-bottom: 8px;
+}
+
 .timeline-notes.markdown-body h4,
-.markdown-body h1,
-.markdown-body h2,
-.markdown-body h3,
 .markdown-body h4 {
     margin: 15px 0 10px 0;
     font-weight: 600;
+    font-size: 1.15em;
+    color: var(--primary-dark);
+}
+
+/* 粗體字顏色樣式 */
+.timeline-notes.markdown-body strong,
+.timeline-notes.markdown-body b,
+.markdown-body strong,
+.markdown-body b {
+    color: #212529;
+    font-weight: 700;
 }
 
 .timeline-notes.markdown-body ul,
