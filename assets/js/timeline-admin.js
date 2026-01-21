@@ -37,14 +37,33 @@ let allItems = [];
 const lessons = Array.from({length:25}, (_,i)=>`lesson${i+1}`);
 
 window.addEventListener('DOMContentLoaded', async () => {
-    initDateDefaults();
-    renderLessonOptions();
-    setupTypeToggle();
-    setupFilters();
-    await ensureAuth();
-    await initFirebase();
-    bindActions();
-    await refreshList();
+    try {
+        initDateDefaults();
+        renderLessonOptions();
+        setupTypeToggle();
+        setupFilters();
+        await ensureAuth();
+        
+        // Initialize Firebase and ensure Anonymous Sign-in
+        await initFirebase();
+        
+        // Verify auth state before proceeding
+        const auth = firebase.auth();
+        if (!auth.currentUser) {
+            console.error('❌ Auth failed - no user after initFirebase');
+            alert('無法連接到資料庫。請檢查 Firebase 設定或重新整理頁面。');
+            document.getElementById('adminStatus').textContent = '連接失敗';
+            return;
+        }
+        console.log('✅ Auth verified:', auth.currentUser.uid, auth.currentUser.isAnonymous ? '(anonymous)' : '(email)');
+        
+        bindActions();
+        await refreshList();
+    } catch (error) {
+        console.error('❌ Initialization error:', error);
+        alert('初始化失敗：' + error.message);
+        document.getElementById('adminStatus').textContent = '錯誤';
+    }
 });
 
 function initDateDefaults() {
@@ -121,28 +140,46 @@ async function initFirebase() {
     
     // Anonymous sign-in (required for Firestore rules: request.auth != null)
     const auth = firebase.auth();
-    if (!auth.currentUser || !auth.currentUser.isAnonymous) {
-        try {
-            await auth.signInAnonymously();
-            // Wait for auth state to settle
-            await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => reject(new Error('Auth timeout')), 5000);
-                const unsub = auth.onAuthStateChanged((user) => {
-                    if (user && user.isAnonymous) {
-                        clearTimeout(timeout);
-                        unsub();
-                        resolve(user);
-                    }
-                }, (err) => {
+    
+    // Check if already signed in
+    if (auth.currentUser && auth.currentUser.isAnonymous) {
+        console.log('✅ Already signed in anonymously:', auth.currentUser.uid);
+        dlog('TA1','timeline-admin:init','Firebase init (already authed)',{projectId: firebaseConfig.projectId, uid: auth.currentUser.uid});
+        return;
+    }
+    
+    // Need to sign in anonymously
+    try {
+        console.log('🔄 Signing in anonymously...');
+        await auth.signInAnonymously();
+        
+        // Wait for auth state to settle
+        await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error('Auth timeout')), 10000);
+            const unsub = auth.onAuthStateChanged((user) => {
+                if (user && user.isAnonymous) {
                     clearTimeout(timeout);
                     unsub();
-                    reject(err);
-                });
+                    console.log('✅ Anonymous sign-in successful:', user.uid);
+                    resolve(user);
+                } else if (user && !user.isAnonymous) {
+                    clearTimeout(timeout);
+                    unsub();
+                    reject(new Error('Signed in but not anonymous (user: ' + user.uid + ')'));
+                }
+            }, (err) => {
+                clearTimeout(timeout);
+                unsub();
+                reject(err);
             });
-        } catch (authError) {
-            console.warn('Anonymous sign-in failed:', authError);
-            // Don't throw - allow page to continue (may fail later on Firestore access)
+        });
+    } catch (authError) {
+        console.error('❌ Anonymous sign-in failed:', authError);
+        if (authError.code === 'auth/admin-restricted-operation') {
+            console.error('❌ Anonymous sign-in is disabled. Enable it in Firebase Console: Authentication → Sign-in method → Anonymous');
         }
+        // Re-throw so caller knows auth failed
+        throw new Error('Cannot proceed without authentication: ' + (authError.message || authError.code || 'Unknown error'));
     }
     
     dlog('TA1','timeline-admin:init','Firebase init',{projectId: firebaseConfig.projectId});
