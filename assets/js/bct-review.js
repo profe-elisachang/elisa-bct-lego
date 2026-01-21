@@ -357,11 +357,36 @@ class BCTReviewSystem {
             } catch (error) {
                 console.log(`No timeline vocab for ${this.currentLevel}/${studentCohort}:`, error.message);
             }
+
+            // 3. Load Character Cards (字卡) - 載入所有課次的已發布字卡
+            try {
+                // 載入目標字（Target Characters）- Collection 結構
+                const targetCharsCollection = db.collection(`timeline/${this.currentLevel}/target-characters`);
+                const targetCharsSnapshot = await targetCharsCollection.get();
+                console.log(`Found ${targetCharsSnapshot.size} target character documents for ${this.currentLevel}`);
+                
+                targetCharsSnapshot.forEach(doc => {
+                    const cardData = doc.data();
+                    
+                    // 只載入已發布的目標字
+                    if (cardData.is_published !== false) {
+                        this.characterVocab.push({
+                            ...cardData,
+                            source: 'timeline',
+                            lesson: cardData.lesson || 'unknown',
+                            isCharacterCard: true,
+                            firestoreId: doc.id
+                        });
+                    }
+                });
+            } catch (error) {
+                console.log(`No character cards for ${this.currentLevel}:`, error.message);
+            }
         } catch (error) {
             console.error('Error loading timeline:', error);
         }
 
-        console.log(`Loaded ${this.componentVocab.length} components, ${this.characterVocab.length} characters`);
+        console.log(`Loaded ${this.componentVocab.length} components, ${this.characterVocab.length} characters, ${this.lessonVocab.length} lesson vocab`);
         // #region agent log
         fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
             method:'POST',
@@ -795,22 +820,44 @@ class BCTReviewSystem {
         const frontCharacter = document.getElementById('frontCharacter');
         const pinyinToggle = document.getElementById('pinyinToggle');
         const frontPinyin = document.getElementById('frontPinyin');
+        
+        // 字（優先顯示文字，否則顯示字形補丁圖片）
+        let charDisplay = '';
+        let isImage = false;
+        if (vocab.character && vocab.character.trim()) {
+            charDisplay = vocab.character;
+        } else if (vocab.display_image && vocab.display_image.trim()) {
+            charDisplay = `<img src="${vocab.display_image}" class="img-comp" alt="comp" style="height: 1.8em; width: auto; vertical-align: middle;">`;
+            isImage = true;
+        }
 
         if (this.currentTab === 'vocab') {
             // 詞組模式：預設顯示拼音為主，漢字隱藏
-            frontCharacter.textContent = vocab.pinyin || vocab.character;
+            if (isImage) {
+                frontCharacter.innerHTML = charDisplay;
+            } else {
+                frontCharacter.textContent = vocab.pinyin || vocab.character;
+            }
             frontCharacter.classList.add('pinyin-large');
             pinyinToggle.classList.add('hidden');
             frontPinyin.classList.add('hidden');
         } else if (this.reviewMode === 'character') {
             // Character mode: show character only
-            frontCharacter.textContent = vocab.character;
+            if (isImage) {
+                frontCharacter.innerHTML = charDisplay;
+            } else {
+                frontCharacter.textContent = vocab.character || '';
+            }
             frontCharacter.classList.remove('pinyin-large');
             pinyinToggle.classList.add('hidden');
             frontPinyin.classList.add('hidden');
         } else if (this.reviewMode === 'pinyin-hint') {
             // Pinyin-hint mode: character + optional pinyin
-            frontCharacter.textContent = vocab.character;
+            if (isImage) {
+                frontCharacter.innerHTML = charDisplay;
+            } else {
+                frontCharacter.textContent = vocab.character || '';
+            }
             frontCharacter.classList.remove('pinyin-large');
             pinyinToggle.classList.remove('hidden');
             pinyinToggle.textContent = '👁️ Show Pinyin';
@@ -826,14 +873,28 @@ class BCTReviewSystem {
     }
 
     renderCardBack(vocab) {
-        document.getElementById('backCharacter').textContent = vocab.character || '';
+        // 字（優先顯示文字，否則顯示字形補丁圖片）
+        const backCharacter = document.getElementById('backCharacter');
+        let charDisplay = '';
+        if (vocab.character && vocab.character.trim()) {
+            charDisplay = vocab.character;
+            backCharacter.textContent = charDisplay;
+        } else if (vocab.display_image && vocab.display_image.trim()) {
+            backCharacter.innerHTML = `<img src="${vocab.display_image}" class="img-comp" alt="comp" style="height: 1.8em; width: auto; vertical-align: middle;">`;
+        } else {
+            backCharacter.textContent = '';
+        }
+        
         document.getElementById('backPinyin').textContent = vocab.pinyin || '';
         document.getElementById('backMeaning').textContent = vocab.meaning ||
             `${vocab.english || ''} | ${vocab.spanish || ''}`;
 
         // Source tag
         const sourceTag = document.getElementById('sourceTag');
-        if (vocab.source === 'timeline') {
+        if (vocab.isCharacterCard) {
+            sourceTag.textContent = `字卡 Card`;
+            sourceTag.className = 'source-tag timeline';
+        } else if (vocab.source === 'timeline') {
             sourceTag.textContent = `Timeline ${vocab.sourceDate?.replace('timeline-', '') || ''}`;
             sourceTag.className = 'source-tag timeline';
         } else {
@@ -841,13 +902,37 @@ class BCTReviewSystem {
             sourceTag.className = 'source-tag lesson';
         }
 
-        // Notes
+        // Notes（支援 Markdown 和圖片）
         const notesDiv = document.getElementById('backNotes');
         if (vocab.notes && vocab.notes.trim()) {
-            notesDiv.innerHTML = marked.parse(vocab.notes);
+            let notesHtml = marked.parse(vocab.notes);
+            // 處理圖片分類
+            notesHtml = notesHtml.replace(
+                /<img src="([^"]+)" alt="([^"]+)"/g,
+                (match, src, alt) => {
+                    if (alt === 'comp') {
+                        return `<img src="${src}" class="img-comp" alt="comp" loading="lazy" style="height: 1.6em; width: auto; vertical-align: middle; margin: 0 2px;">`;
+                    } else if (alt === 'origin') {
+                        return `<img src="${src}" class="img-origin" alt="origin" loading="lazy" style="width: 55%; min-width: 180px; margin: 15px auto; display: block; border: 1px solid #eee; padding: 8px; background: #fff; border-radius: 6px;">`;
+                    } else if (alt === 'story') {
+                        return `<img src="${src}" class="img-story" alt="story" loading="lazy" style="width: 90%; margin: 20px auto; display: block; border-radius: 10px;">`;
+                    }
+                    return `<img src="${src}" alt="${alt}" loading="lazy" style="max-width: 100%; height: auto; display: block;">`;
+                }
+            );
+            notesDiv.innerHTML = notesHtml;
             notesDiv.classList.remove('hidden');
         } else {
             notesDiv.classList.add('hidden');
+        }
+        
+        // 輔助插圖（如果有的話）
+        if (vocab.image && vocab.image.trim()) {
+            const imageDiv = document.createElement('div');
+            imageDiv.style.marginTop = '15px';
+            imageDiv.style.textAlign = 'center';
+            imageDiv.innerHTML = `<img src="${vocab.image}" style="max-width: 100%; border-radius: 8px;" onerror="this.style.display='none';">`;
+            notesDiv.appendChild(imageDiv);
         }
     }
 

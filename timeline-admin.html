@@ -7,6 +7,10 @@
     <link rel="stylesheet" href="assets/css/nav-global.css">
     <link rel="stylesheet" href="assets/css/timeline.css">
     <link rel="stylesheet" href="assets/css/timeline-admin.css">
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Cloudinary Upload Widget -->
+    <script src="https://widget.cloudinary.com/v2.0/global/all.js"></script>
 </head>
 <body>
     <nav class="top-nav">
@@ -23,6 +27,14 @@
             </div>
         </header>
 
+        <!-- Tab 切換系統 -->
+        <div class="admin-tabs">
+            <button class="admin-tab-btn active" data-tab="supplement">📝 補充管理</button>
+            <button class="admin-tab-btn" data-tab="character-cards">🧩 部件與目標字管理</button>
+        </div>
+
+        <!-- Tab 1: 補充管理（現有內容） -->
+        <div id="supplement-tab" class="admin-tab-pane active">
         <section class="panel">
             <h2>新增补充</h2>
             <p class="form-hint" style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">
@@ -151,6 +163,112 @@
                 <button id="nextPage" class="btn btn-secondary" disabled>下一页</button>
             </div>
         </section>
+        </div>
+
+        <!-- Tab 2: 部件與目標字管理 -->
+        <div id="character-cards-tab" class="admin-tab-pane">
+            <section class="panel">
+                <h2>📝 新增/編輯</h2>
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label>等级</label>
+                        <div class="type-group">
+                            <label><input type="radio" name="cardLevel" value="btc1" checked> BCT 1</label>
+                            <label><input type="radio" name="cardLevel" value="btc2"> BCT 2</label>
+                            <label><input type="radio" name="cardLevel" value="btc3"> BCT 3</label>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label>类型</label>
+                        <div class="type-group">
+                            <label><input type="radio" name="cardType" value="component" checked> 部件</label>
+                            <label><input type="radio" name="cardType" value="target-character"> 目標字</label>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label>课次</label>
+                        <select id="cardLessonInput">
+                            <option value="">选择课次...</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label for="cardCharacter" class="required">字</label>
+                        <input type="text" id="cardCharacter" placeholder="例如：夬">
+                        <small style="color:#666;">如果字無法正常顯示，請使用下方的字形補丁圖片</small>
+                    </div>
+                    <div class="form-row">
+                        <label for="cardDisplayImage">字形補丁圖片（display_image）</label>
+                        <input type="text" id="cardDisplayImage" placeholder="https://res.cloudinary.com/... （上傳後自動填入）">
+                        <div style="margin-top:12px;">
+                            <button type="button" class="btn btn-secondary" id="uploadCardDisplayImageBtn">
+                                🖼️ 上傳字形補丁圖片到 Cloudinary
+                            </button>
+                            <div id="cardDisplayImageUploadProgress" style="margin-top:10px;display:none;">
+                                <div style="background:#eee;height:8px;border-radius:4px;overflow:hidden;">
+                                    <div id="cardDisplayImageProgressBar" style="height:100%;background:var(--primary);width:0%;transition:width 0.3s;"></div>
+                                </div>
+                                <small id="cardDisplayImageProgressText" style="color:var(--primary);font-weight:bold;">上傳中 0%</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label for="cardPinyin" class="required">拼音</label>
+                        <input type="text" id="cardPinyin" placeholder="例如：guài">
+                    </div>
+                    <div class="form-row">
+                        <label for="cardMeaning" class="required">意思（英文）</label>
+                        <input type="text" id="cardMeaning" placeholder="例如：cut apart / separate">
+                    </div>
+                    <div class="form-row">
+                        <label for="cardImage">輔助插圖（image）</label>
+                        <input type="text" id="cardImage" placeholder="https://res.cloudinary.com/... （上傳後自動填入）">
+                        <div style="margin-top:12px;">
+                            <button type="button" class="btn btn-secondary" id="uploadCardImageBtn">
+                                🖼️ 上傳輔助插圖到 Cloudinary
+                            </button>
+                            <div id="cardImageUploadProgress" style="margin-top:10px;display:none;">
+                                <div style="background:#eee;height:8px;border-radius:4px;overflow:hidden;">
+                                    <div id="cardImageProgressBar" style="height:100%;background:var(--primary);width:0%;transition:width 0.3s;"></div>
+                                </div>
+                                <small id="cardImageProgressText" style="color:var(--primary);font-weight:bold;">上傳中 0%</small>
+                            </div>
+                        </div>
+                        <small style="color:#666; display:block; margin-top:6px;">
+                            提示：上傳後可在 notes 中使用 <code>![origin](圖片網址)</code> 或 <code>![story](圖片網址)</code>
+                        </small>
+                    </div>
+                    <div class="form-row" style="grid-column: 1 / -1;">
+                        <label for="cardNotes">補充說明（notes，支援 Markdown）</label>
+                        <textarea id="cardNotes" rows="8" placeholder="可使用 Markdown 格式，例如：&#10;&#10;## 記憶故事&#10;這是一個關於切割的故事...&#10;&#10;![story](圖片網址)&#10;&#10;## 象形演變&#10;![origin](圖片網址)&#10;&#10;## 例句&#10;COW needs a TOWEL"></textarea>
+                        <small style="color:#666; display:block; margin-top:6px;">
+                            Markdown 圖片分類：<br>
+                            • <code>![comp](url)</code>：字形補丁（行內顯示）<br>
+                            • <code>![origin](url)</code>：象形演變圖（55% 寬度，置中）<br>
+                            • <code>![story](url)</code>：故事插圖（90% 寬度，置中）<br>
+                            • 其他：自適應圖片
+                        </small>
+                    </div>
+                    <div class="form-row" style="grid-column: 1 / -1;">
+                        <button id="addCardBtn" class="btn btn-primary">➕ 新增</button>
+                        <button id="clearCardFormBtn" class="btn btn-secondary">🔄 清空表單</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <h2>📚 已新增的內容</h2>
+                <div id="cardLoader" class="loader" style="display:none;"></div>
+                
+                <div class="batch-publish-buttons" style="display:flex;gap:10px;margin-bottom:15px;">
+                    <button class="btn btn-success" id="batchPublishCardsBtn">✅ 本課全部發布</button>
+                    <button class="btn btn-secondary" id="batchUnpublishCardsBtn">⛔ 本課全部取消發布</button>
+                </div>
+
+                <div id="cardList" class="entry-list">
+                    <div class="no-data">尚未新增任何內容</div>
+                </div>
+            </section>
+        </div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>

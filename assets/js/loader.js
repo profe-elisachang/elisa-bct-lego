@@ -4,6 +4,7 @@
 class LessonLoader {
     constructor() {
         this.currentLesson = null;
+        this.currentLevel = null; // BCT Level (btc1, btc2, btc3)
         this.lessonData = {
             dialogue: [], // 改為存 5 組對話，每組包含多個句子
             vocabulary: [],
@@ -12,6 +13,7 @@ class LessonLoader {
             timeline: [], // Timeline 補充內容
             timelineComponents: [],
             timelineVocab: [],
+            timelineTargetCharacters: [], // 目標字
             timelineNotes: []
         };
         this.currentGroup = null;
@@ -29,6 +31,12 @@ class LessonLoader {
         const classId = urlParams.get('class') || rememberedClass || window?.BCT_COURSE_CONFIG?.defaultClassId || null;
         let lessonId = urlParams.get('lesson') || 'L1';
         this.currentClassId = classId;
+        
+        // 读取 BCT Level（優先 URL 參數，其次 localStorage，最後默認 btc1）
+        this.currentLevel = urlParams.get('level') || 
+                            localStorage.getItem('bct-active-class') || 
+                            localStorage.getItem('bct-current-level') || 
+                            'btc1';
         
         // 读取学生班级（cohort）- enforced by cohort-guard if present
         this.currentCohort =
@@ -159,6 +167,7 @@ class LessonLoader {
                 this.lessonData.timeline = [];
                 this.lessonData.timelineComponents = [];
                 this.lessonData.timelineVocab = [];
+                this.lessonData.timelineTargetCharacters = [];
                 this.lessonData.timelineNotes = [];
                 document.getElementById('lesson-title').textContent = '暂无课程';
                 this.render();
@@ -183,10 +192,15 @@ class LessonLoader {
                 timelineLessonId = lessonId.toLowerCase();
             }
             console.log('🔄 转换 lessonId：', lessonId, '→', timelineLessonId);
-            const timeline = await firestoreService.getTimelineForLesson(timelineLessonId, this.currentCohort, 'btc1');
+            console.log('🔄 当前 Level：', this.currentLevel);
+            const timeline = await firestoreService.getTimelineForLesson(timelineLessonId, this.currentCohort, this.currentLevel);
             this.lessonData.timeline = timeline;
+            // Components：只包含 component 類型
             this.lessonData.timelineComponents = timeline.filter(t => t.type === 'component');
+            // Vocab：只包含 vocab 類型（生詞補充，不包括目標字）
             this.lessonData.timelineVocab = timeline.filter(t => t.type === 'vocab');
+            // Target Characters：目標字
+            this.lessonData.timelineTargetCharacters = timeline.filter(t => t.type === 'target-character');
             this.lessonData.timelineNotes = timeline.filter(t => t.type === 'note');
 
             // 設置課程標題
@@ -364,6 +378,7 @@ class LessonLoader {
         this.renderPractice();
         this.renderTimelineComponents();
         this.renderTimelineVocab();
+        this.renderTimelineTargetCharacters();
         this.renderTimelineNotes();
     }
 
@@ -703,7 +718,7 @@ class LessonLoader {
         });
     }
 
-    // 渲染 Timeline 字詞
+    // 渲染 Timeline 字詞（生詞補充）
     renderTimelineVocab() {
         const container = document.getElementById('timeline-vocab-content');
         container.innerHTML = '';
@@ -714,6 +729,24 @@ class LessonLoader {
         }
 
         this.lessonData.timelineVocab.forEach((item, index) => {
+            const card = this.createTimelineCard(item, index);
+            container.appendChild(card);
+        });
+    }
+
+    // 渲染 Timeline 目標字
+    renderTimelineTargetCharacters() {
+        const container = document.getElementById('timeline-target-characters-content');
+        if (!container) return;
+        
+        container.innerHTML = '';
+
+        if (!this.lessonData.timelineTargetCharacters.length) {
+            container.innerHTML = '<p class="placeholder">暫無內容 Nothing here yet.</p>';
+            return;
+        }
+
+        this.lessonData.timelineTargetCharacters.forEach((item, index) => {
             const card = this.createTimelineCard(item, index);
             container.appendChild(card);
         });
@@ -759,19 +792,34 @@ class LessonLoader {
     // 創建 Timeline 卡片（用於 components 和 vocabulary）
     createTimelineCard(data) {
         const card = document.createElement('div');
-        card.className = 'timeline-card';
+        // 為字卡添加特殊標記
+        if (data.isCharacterCard) {
+            card.className = 'timeline-card character-card';
+            card.setAttribute('data-card-type', 'character-card');
+        } else {
+            card.className = 'timeline-card';
+        }
 
-        // 漢字
+        // 字（優先顯示文字，否則顯示字形補丁圖片）
         const charDiv = document.createElement('div');
         charDiv.className = 'line-character';
-        charDiv.innerHTML = data.character || '';
+        
+        let charDisplay = '';
+        if (data.character && data.character.trim()) {
+            charDisplay = data.character;
+        } else if (data.display_image && data.display_image.trim()) {
+            charDisplay = `<img src="${data.display_image}" class="img-comp" alt="comp" style="height: 1.8em; width: auto; vertical-align: middle;">`;
+        }
+        charDiv.innerHTML = charDisplay;
 
-        // 加入發音按鈕
-        const audioBtn = document.createElement('button');
-        audioBtn.className = 'audio-btn';
-        audioBtn.textContent = '🔊';
-        audioBtn.onclick = () => audioController.speak(data.character || '');
-        charDiv.appendChild(audioBtn);
+        // 加入發音按鈕（只有文字時才顯示）
+        if (data.character && data.character.trim()) {
+            const audioBtn = document.createElement('button');
+            audioBtn.className = 'audio-btn';
+            audioBtn.textContent = '🔊';
+            audioBtn.onclick = () => audioController.speak(data.character || '');
+            charDiv.appendChild(audioBtn);
+        }
 
         card.appendChild(charDiv);
 
@@ -791,15 +839,50 @@ class LessonLoader {
             card.appendChild(meaningDiv);
         }
 
-        // 補充說明
+        // 輔助插圖（如果有的話）
+        if (data.image && data.image.trim()) {
+            const imageDiv = document.createElement('div');
+            imageDiv.style.marginTop = '10px';
+            imageDiv.innerHTML = `<img src="${data.image}" style="max-width:100%;border-radius:6px;" onerror="this.style.display='none';">`;
+            card.appendChild(imageDiv);
+        }
+
+        // 補充說明（支援 Markdown）
         if (data.notes) {
             const notesDiv = document.createElement('div');
-            notesDiv.className = 'timeline-notes';
-            notesDiv.textContent = data.notes;
+            notesDiv.className = 'timeline-notes markdown-body';
+            notesDiv.innerHTML = this.renderMarkdown(data.notes);
             card.appendChild(notesDiv);
         }
 
         return card;
+    }
+
+    // Markdown 渲染函數（支援圖片分類）
+    renderMarkdown(text) {
+        if (!text || typeof marked === 'undefined') {
+            return text || '';
+        }
+        
+        let html = marked.parse(text);
+        
+        // 處理圖片分類：根據 Alt 文字自動分配 CSS Class
+        html = html.replace(
+            /<img src="([^"]+)" alt="([^"]+)"/g,
+            (match, src, alt) => {
+                if (alt === 'comp') {
+                    return `<img src="${src}" class="img-comp" alt="comp" loading="lazy" style="height: 1.6em; width: auto; vertical-align: middle; margin: 0 2px;">`;
+                } else if (alt === 'origin') {
+                    return `<img src="${src}" class="img-origin" alt="origin" loading="lazy" style="width: 55%; min-width: 180px; margin: 15px auto; display: block; border: 1px solid #eee; padding: 8px; background: #fff; border-radius: 6px;">`;
+                } else if (alt === 'story') {
+                    return `<img src="${src}" class="img-story" alt="story" loading="lazy" style="width: 90%; margin: 20px auto; display: block; border-radius: 10px;">`;
+                }
+                // 其他圖片：自適應
+                return `<img src="${src}" alt="${alt}" loading="lazy" style="max-width: 100%; height: auto; display: block;">`;
+            }
+        );
+        
+        return html;
     }
 
     // 設置 Tab 切換系統

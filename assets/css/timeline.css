@@ -347,3 +347,42 @@ body {
         max-width: calc(100% - 2rem);
     }
 }
+
+/* ==================== 圖片格式樣式 ==================== */
+/* 字形補丁 (comp)：嵌入行內，高度與文字對齊 */
+.img-comp {
+    height: 1.6em !important;
+    width: auto !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+    margin: 0 2px !important;
+    object-fit: contain;
+}
+
+/* 象形演變圖 (origin)：縮小並置中 */
+.img-origin {
+    width: 55% !important;
+    min-width: 180px;
+    margin: 15px auto !important;
+    display: block !important;
+    border: 1px solid #eee;
+    padding: 8px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* 故事插圖 (story)：較大尺寸，視覺中心 */
+.img-story {
+    width: 90% !important;
+    margin: 20px auto !important;
+    display: block !important;
+    border-radius: 10px;
+}
+
+/* 一般圖片：自適應 */
+.timeline-notes img,
+.timeline-card img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block;
+}

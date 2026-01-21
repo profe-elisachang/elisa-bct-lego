@@ -83,6 +83,7 @@
             <button class="tab-btn" data-tab="reading">Reading</button>
             <button class="tab-btn" data-tab="vocabulary">Vocabulary</button>
             <button class="tab-btn" data-tab="components">Components</button>
+            <button class="tab-btn" data-tab="target-characters">汉字</button>
             <button class="tab-btn" data-tab="vocab" id="vocabTab">Vocab A</button>
             <button class="tab-btn" data-tab="practice">Practice</button>
             <button class="tab-btn" data-tab="grammar">Grammar</button>
@@ -124,6 +125,11 @@
                   <p class="placeholder">暫無內容 Nothing here yet.</p>
                 </div>
               </div>
+              <div id="target-characters" class="tab-pane">
+                <div id="timeline-target-characters-content" class="content-group">
+                  <p class="placeholder">暫無內容 Nothing here yet.</p>
+                </div>
+              </div>
               <div id="vocab" class="tab-pane">
                 <div id="timeline-vocab-content" class="content-group">
                   <p class="placeholder">暫無內容 Nothing here yet.</p>
@@ -161,6 +167,8 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <!-- Marked.js for Markdown parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
   <script src="assets/js/app-flags.js"></script>
   <script src="assets/js/cohort-guard.js"></script>

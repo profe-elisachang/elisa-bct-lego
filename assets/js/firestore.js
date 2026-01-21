@@ -715,6 +715,41 @@ class FirestoreService {
                 console.warn('❌ Error loading timeline notes:', error);
             }
 
+            // 4. 載入目標字（Target Characters）- 只載入已發布的
+            try {
+                console.log('🎯 [目標字載入] 開始讀取目標字，路徑：timeline/' + level + '/target-characters/');
+                console.log('🎯 [目標字載入] 參數：', { level, lessonId, cohort });
+                
+                const targetCharsSnapshot = await this.db
+                    .collection('timeline')
+                    .doc(level)
+                    .collection('target-characters')
+                    .get();
+
+                console.log('🎯 [目標字載入] 原始數量：', targetCharsSnapshot.size);
+                
+                let targetCharCount = 0;
+                targetCharsSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    // 客戶端過濾（去除空格）
+                    if ((data.lesson || '').trim() === lessonId.trim()) {
+                        // 只載入已發布的目標字
+                        if (data.is_published !== false) {
+                            timelineItems.push({
+                                id: doc.id,
+                                type: 'target-character', // 目標字類型
+                                ...data
+                            });
+                            targetCharCount++;
+                        }
+                    }
+                });
+                
+                console.log('🎯 [目標字載入] 已發布目標字：', targetCharCount, '个');
+            } catch (error) {
+                console.warn('❌ Error loading target characters:', error);
+            }
+
             timelineItems.sort((a, b) => {
                 const dateA = a.date || a.timestamp || '';
                 const dateB = b.date || b.timestamp || '';

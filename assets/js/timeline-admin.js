@@ -42,6 +42,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         renderLessonOptions();
         setupTypeToggle();
         setupFilters();
+        setupTabSystem();
         await ensureAuth();
         
         // Initialize Firebase and ensure Anonymous Sign-in
@@ -58,6 +59,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         console.log('✅ Auth verified:', auth.currentUser.uid, auth.currentUser.isAnonymous ? '(anonymous)' : '(email)');
         
         bindActions();
+        setupCharacterCardSystem();
         await refreshList();
     } catch (error) {
         console.error('❌ Initialization error:', error);
@@ -103,6 +105,7 @@ function setupFilters() {
 function renderLessonOptions() {
     const lessonSelect = document.getElementById('lessonInput');
     const filterSelect = document.getElementById('filterLesson');
+    const cardLessonSelect = document.getElementById('cardLessonInput');
     lessons.forEach(id => {
         const opt1 = document.createElement('option');
         opt1.value = id;
@@ -113,6 +116,13 @@ function renderLessonOptions() {
         opt2.value = id;
         opt2.textContent = id.replace('lesson','Lesson ');
         filterSelect.appendChild(opt2);
+
+        if (cardLessonSelect) {
+            const opt3 = document.createElement('option');
+            opt3.value = id;
+            opt3.textContent = id.replace('lesson','Lesson ');
+            cardLessonSelect.appendChild(opt3);
+        }
     });
 }
 
@@ -469,5 +479,478 @@ async function deleteItem(id, level, type, cohort) {
         dlog('TA4','timeline-admin:delete','delete failed',{message:error.message});
         alert('删除失败：' + error.message);
     }
+}
+
+// ==================== Tab 切換系統 ====================
+function setupTabSystem() {
+    const tabBtns = document.querySelectorAll('.admin-tab-btn');
+    const tabPanes = document.querySelectorAll('.admin-tab-pane');
+    
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetTab = btn.dataset.tab;
+            
+            // 移除所有 active 狀態
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabPanes.forEach(p => p.classList.remove('active'));
+            
+            // 添加 active 到當前選擇
+            btn.classList.add('active');
+            document.getElementById(`${targetTab}-tab`).classList.add('active');
+        });
+    });
+}
+
+// ==================== 字卡管理系統 ====================
+let characterCards = []; // 用於儲存當前選擇類型的項目（部件或目標字）
+let currentEditCardIndex = null;
+let currentCardType = 'component'; // 當前選擇的類型：'component' 或 'target-character'
+
+function setupCharacterCardSystem() {
+    // 綁定事件
+    document.getElementById('addCardBtn')?.addEventListener('click', addCharacterCard);
+    document.getElementById('clearCardFormBtn')?.addEventListener('click', clearCardForm);
+    document.getElementById('batchPublishCardsBtn')?.addEventListener('click', () => batchPublishCards(true));
+    document.getElementById('batchUnpublishCardsBtn')?.addEventListener('click', () => batchPublishCards(false));
+    
+    // 類型選擇變更時切換顯示
+    const cardTypeRadios = document.querySelectorAll('input[name="cardType"]');
+    cardTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            currentCardType = this.value;
+            const lessonId = document.getElementById('cardLessonInput')?.value;
+            if (lessonId) {
+                loadCharacterCards(lessonId);
+            } else {
+                characterCards = [];
+                renderCharacterCardList();
+            }
+        });
+    });
+    
+    // 課次選擇變更時載入資料
+    const cardLessonSelect = document.getElementById('cardLessonInput');
+    if (cardLessonSelect) {
+        cardLessonSelect.addEventListener('change', function() {
+            const lessonId = this.value;
+            if (lessonId) loadCharacterCards(lessonId);
+            else {
+                characterCards = [];
+                renderCharacterCardList();
+            }
+        });
+    }
+    
+    // 初始化 Cloudinary 上傳
+    initCloudinaryUpload();
+}
+
+async function loadCharacterCards(lessonId) {
+    const level = document.querySelector('input[name="cardLevel"]:checked')?.value;
+    const cardType = document.querySelector('input[name="cardType"]:checked')?.value || 'component';
+    
+    if (!level) {
+        alert('請先選擇等級');
+        return;
+    }
+    
+    showCardLoader();
+    try {
+        if (cardType === 'component') {
+            // 部件：從 timeline/{level}/components/ collection 載入，過濾 lesson
+            const snapshot = await db.collection(`timeline/${level}/components`).get();
+            characterCards = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                if ((data.lesson || '').trim() === lessonId.trim()) {
+                    characterCards.push({
+                        id: doc.id,
+                        ...data
+                    });
+                }
+            });
+        } else {
+            // 目標字：從 timeline/{level}/target-characters/ collection 載入，過濾 lesson
+            const snapshot = await db.collection(`timeline/${level}/target-characters`).get();
+            characterCards = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                if ((data.lesson || '').trim() === lessonId.trim()) {
+                    characterCards.push({
+                        id: doc.id,
+                        ...data
+                    });
+                }
+            });
+        }
+        renderCharacterCardList();
+    } catch (error) {
+        console.error('載入失敗:', error);
+        alert('載入失敗：' + error.message);
+    }
+    hideCardLoader();
+}
+
+async function addCharacterCard() {
+    const level = document.querySelector('input[name="cardLevel"]:checked')?.value;
+    const lessonId = document.getElementById('cardLessonInput')?.value;
+    const cardType = document.querySelector('input[name="cardType"]:checked')?.value || 'component';
+    
+    if (!level || !lessonId) {
+        alert('請選擇等級和課次');
+        return;
+    }
+    
+    const character = document.getElementById('cardCharacter')?.value.trim();
+    const pinyin = document.getElementById('cardPinyin')?.value.trim();
+    const meaning = document.getElementById('cardMeaning')?.value.trim();
+    
+    if (!character && !document.getElementById('cardDisplayImage')?.value.trim()) {
+        alert('請填寫字或上傳字形補丁圖片');
+        return;
+    }
+    if (!pinyin || !meaning) {
+        alert('請填寫拼音和意思');
+        return;
+    }
+    
+    const cardData = {
+        type: cardType,
+        lesson: lessonId,
+        character: character || '',
+        display_image: document.getElementById('cardDisplayImage')?.value.trim() || '',
+        pinyin,
+        meaning,
+        image: document.getElementById('cardImage')?.value.trim() || '',
+        notes: document.getElementById('cardNotes')?.value.trim() || '',
+        is_published: false,
+        published_at: null,
+        created_at: new Date().toISOString(),
+        timestamp: new Date().toISOString()
+    };
+    
+    showCardLoader();
+    try {
+        if (currentEditCardIndex !== null) {
+            // 編輯模式：更新現有文檔
+            const original = characterCards[currentEditCardIndex];
+            cardData.is_published = original.is_published;
+            cardData.published_at = original.published_at;
+            
+            const collectionPath = cardType === 'component' 
+                ? `timeline/${level}/components`
+                : `timeline/${level}/target-characters`;
+            
+            await db.collection(collectionPath).doc(original.id).set(cardData, { merge: true });
+            
+            characterCards[currentEditCardIndex] = { ...cardData, id: original.id };
+            currentEditCardIndex = null;
+            alert('更新成功！');
+        } else {
+            // 新增模式：建立新文檔
+            const collectionPath = cardType === 'component' 
+                ? `timeline/${level}/components`
+                : `timeline/${level}/target-characters`;
+            
+            const docRef = await db.collection(collectionPath).add(cardData);
+            cardData.id = docRef.id;
+            characterCards.push(cardData);
+            alert('新增成功！（預設未發布）');
+        }
+        
+        renderCharacterCardList();
+        clearCardForm();
+    } catch (error) {
+        console.error('儲存失敗:', error);
+        alert('儲存失敗：' + error.message);
+    }
+    hideCardLoader();
+}
+
+function clearCardForm() {
+    document.getElementById('cardCharacter').value = '';
+    document.getElementById('cardDisplayImage').value = '';
+    document.getElementById('cardPinyin').value = '';
+    document.getElementById('cardMeaning').value = '';
+    document.getElementById('cardImage').value = '';
+    document.getElementById('cardNotes').value = '';
+    currentEditCardIndex = null;
+}
+
+function renderCharacterCardList() {
+    const container = document.getElementById('cardList');
+    if (!container) return;
+    
+    const cardType = document.querySelector('input[name="cardType"]:checked')?.value || 'component';
+    const typeLabel = cardType === 'component' ? '部件' : '目標字';
+    
+    if (characterCards.length === 0) {
+        container.innerHTML = `<div class="no-data">尚未新增任何${typeLabel}</div>`;
+        return;
+    }
+    
+    container.innerHTML = characterCards.map((card, index) => {
+        const charDisplay = card.character || 
+            (card.display_image ? `<img src="${card.display_image}" class="img-comp" alt="comp">` : '');
+        const isPublished = card.is_published !== false;
+        const notesHtml = card.notes ? renderMarkdown(card.notes) : '';
+        
+        return `
+            <div class="character-card ${isPublished ? '' : 'unpublished'}">
+                <div class="char-display">${charDisplay}</div>
+                <div class="char-pinyin-display">${card.pinyin || ''}</div>
+                <div class="char-meaning-display">${card.meaning || ''}</div>
+                ${card.image ? `<img src="${card.image}" style="max-width:100%;margin:10px 0;border-radius:6px;" onerror="this.style.display='none';">` : ''}
+                ${notesHtml ? `<div class="char-notes-display">${notesHtml}</div>` : ''}
+                <div class="publish-toggle">
+                    <label class="toggle-switch">
+                        <input type="checkbox" ${isPublished ? 'checked' : ''} onchange="toggleCardPublish(${index}, this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="publish-status ${isPublished ? 'published' : 'unpublished'}">
+                        ${isPublished ? '已發布' : '未發布'}
+                    </span>
+                </div>
+                <div class="card-actions">
+                    <button class="btn btn-secondary btn-small" onclick="editCharacterCard(${index})">✏️ 編輯</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteCharacterCard(${index})">🗑️ 刪除</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderMarkdown(text) {
+    if (!text) return '';
+    let html = marked.parse(text);
+    // 處理圖片分類
+    html = html.replace(
+        /<img src="([^"]+)" alt="([^"]+)"/g,
+        (match, src, alt) => {
+            if (alt === 'comp') {
+                return `<img src="${src}" class="img-comp" alt="comp" loading="lazy">`;
+            } else if (alt === 'origin') {
+                return `<img src="${src}" class="img-origin" alt="origin" loading="lazy">`;
+            } else if (alt === 'story') {
+                return `<img src="${src}" class="img-story" alt="story" loading="lazy">`;
+            }
+            return match;
+        }
+    );
+    return html;
+}
+
+function editCharacterCard(index) {
+    const card = characterCards[index];
+    document.getElementById('cardCharacter').value = card.character || '';
+    document.getElementById('cardDisplayImage').value = card.display_image || '';
+    document.getElementById('cardPinyin').value = card.pinyin || '';
+    document.getElementById('cardMeaning').value = card.meaning || '';
+    document.getElementById('cardImage').value = card.image || '';
+    document.getElementById('cardNotes').value = card.notes || '';
+    
+    // 設定類型選擇
+    if (card.type) {
+        const typeRadio = document.querySelector(`input[name="cardType"][value="${card.type}"]`);
+        if (typeRadio) {
+            typeRadio.checked = true;
+            currentCardType = card.type;
+        }
+    }
+    
+    currentEditCardIndex = index;
+    alert('進入編輯模式，修改後點擊「新增」即可更新');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function deleteCharacterCard(index) {
+    const card = characterCards[index];
+    const cardType = card.type || document.querySelector('input[name="cardType"]:checked')?.value || 'component';
+    const typeLabel = cardType === 'component' ? '部件' : '目標字';
+    
+    if (!confirm(`確定要刪除此${typeLabel}？`)) return;
+    
+    const level = document.querySelector('input[name="cardLevel"]:checked')?.value;
+    if (!level || !card.id) {
+        alert('無法刪除：缺少必要資訊');
+        return;
+    }
+    
+    showCardLoader();
+    try {
+        const collectionPath = cardType === 'component' 
+            ? `timeline/${level}/components`
+            : `timeline/${level}/target-characters`;
+        
+        await db.collection(collectionPath).doc(card.id).delete();
+        characterCards.splice(index, 1);
+        renderCharacterCardList();
+        alert('刪除成功！');
+    } catch (error) {
+        console.error('刪除失敗:', error);
+        alert('刪除失敗：' + error.message);
+    }
+    hideCardLoader();
+}
+
+async function toggleCardPublish(index, isPublished) {
+    const card = characterCards[index];
+    const level = document.querySelector('input[name="cardLevel"]:checked')?.value;
+    const cardType = card.type || document.querySelector('input[name="cardType"]:checked')?.value || 'component';
+    
+    if (!level || !card.id) {
+        alert('請先選擇等級');
+        return;
+    }
+    
+    showCardLoader();
+    try {
+        const collectionPath = cardType === 'component' 
+            ? `timeline/${level}/components`
+            : `timeline/${level}/target-characters`;
+        
+        const updateData = {
+            is_published: isPublished
+        };
+        
+        if (isPublished && !card.published_at) {
+            updateData.published_at = new Date().toISOString();
+        }
+        
+        await db.collection(collectionPath).doc(card.id).update(updateData);
+        
+        characterCards[index].is_published = isPublished;
+        if (isPublished && !characterCards[index].published_at) {
+            characterCards[index].published_at = updateData.published_at;
+        }
+        
+        renderCharacterCardList();
+    } catch (error) {
+        console.error('更新失敗:', error);
+        alert('更新失敗：' + error.message);
+    }
+    hideCardLoader();
+}
+
+async function batchPublishCards(publish) {
+    const level = document.querySelector('input[name="cardLevel"]:checked')?.value;
+    const lessonId = document.getElementById('cardLessonInput')?.value;
+    const cardType = document.querySelector('input[name="cardType"]:checked')?.value || 'component';
+    
+    if (!level || !lessonId) {
+        alert('請先選擇等級和課次');
+        return;
+    }
+    
+    if (characterCards.length === 0) {
+        const typeLabel = cardType === 'component' ? '部件' : '目標字';
+        alert(`沒有${typeLabel}可操作`);
+        return;
+    }
+    
+    const typeLabel = cardType === 'component' ? '部件' : '目標字';
+    const action = publish ? '發布' : '取消發布';
+    if (!confirm(`確定要${action}本課所有${typeLabel}嗎？`)) return;
+    
+    showCardLoader();
+    try {
+        const collectionPath = cardType === 'component' 
+            ? `timeline/${level}/components`
+            : `timeline/${level}/target-characters`;
+        
+        const now = new Date().toISOString();
+        const batch = db.batch();
+        
+        characterCards.forEach(card => {
+            if (!card.id) return;
+            
+            const updateData = {
+                is_published: publish
+            };
+            
+            if (publish && !card.published_at) {
+                updateData.published_at = now;
+            }
+            
+            const docRef = db.collection(collectionPath).doc(card.id);
+            batch.update(docRef, updateData);
+            
+            card.is_published = publish;
+            if (publish && !card.published_at) {
+                card.published_at = now;
+            }
+        });
+        
+        await batch.commit();
+        renderCharacterCardList();
+        alert(publish ? `✅ 本課所有${typeLabel}已發布！` : `⛔ 本課所有${typeLabel}已取消發布`);
+    } catch (error) {
+        console.error('批量操作失敗:', error);
+        alert('批量操作失敗：' + error.message);
+    }
+    hideCardLoader();
+}
+
+// 已移除：saveCharacterCardsToFirebase 函數，現在直接在 addCharacterCard 中儲存
+
+
+function showCardLoader() {
+    const loader = document.getElementById('cardLoader');
+    if (loader) loader.style.display = 'block';
+}
+
+function hideCardLoader() {
+    const loader = document.getElementById('cardLoader');
+    if (loader) loader.style.display = 'none';
+}
+
+// ==================== Cloudinary 上傳整合 ====================
+function initCloudinaryUpload() {
+    if (typeof cloudinary === 'undefined') {
+        console.warn('Cloudinary widget not loaded');
+        return;
+    }
+    
+    // 字形補丁圖片上傳
+    const displayImageWidget = cloudinary.createUploadWidget({
+        cloudName: 'dxc8rcjuh',
+        uploadPreset: 'Elisa-BCT',
+        folder: 'bct-lego/display-images',
+        cropping: false,
+        multiple: false,
+        clientAllowedFormats: ['png', 'jpg', 'jpeg', 'webp'],
+        maxFileSize: 10000000
+    }, (error, result) => {
+        if (!error && result && result.event === "success") {
+            document.getElementById('cardDisplayImage').value = result.info.secure_url;
+            document.getElementById('cardDisplayImageUploadProgress').style.display = 'none';
+            alert('🖼️ 字形補丁圖片上傳成功！');
+        }
+    });
+    
+    document.getElementById('uploadCardDisplayImageBtn')?.addEventListener('click', () => {
+        displayImageWidget.open();
+    });
+    
+    // 輔助插圖上傳
+    const imageWidget = cloudinary.createUploadWidget({
+        cloudName: 'dxc8rcjuh',
+        uploadPreset: 'Elisa-BCT',
+        folder: 'bct-lego/images',
+        cropping: false,
+        multiple: false,
+        clientAllowedFormats: ['png', 'jpg', 'jpeg', 'webp'],
+        maxFileSize: 10000000
+    }, (error, result) => {
+        if (!error && result && result.event === "success") {
+            document.getElementById('cardImage').value = result.info.secure_url;
+            document.getElementById('cardImageUploadProgress').style.display = 'none';
+            alert('🖼️ 輔助插圖上傳成功！');
+        }
+    });
+    
+    document.getElementById('uploadCardImageBtn')?.addEventListener('click', () => {
+        imageWidget.open();
+    });
 }
 
