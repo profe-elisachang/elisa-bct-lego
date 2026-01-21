@@ -118,6 +118,33 @@ async function initFirebase() {
         firebase.initializeApp(firebaseConfig);
     }
     db = firebase.firestore();
+    
+    // Anonymous sign-in (required for Firestore rules: request.auth != null)
+    const auth = firebase.auth();
+    if (!auth.currentUser || !auth.currentUser.isAnonymous) {
+        try {
+            await auth.signInAnonymously();
+            // Wait for auth state to settle
+            await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => reject(new Error('Auth timeout')), 5000);
+                const unsub = auth.onAuthStateChanged((user) => {
+                    if (user && user.isAnonymous) {
+                        clearTimeout(timeout);
+                        unsub();
+                        resolve(user);
+                    }
+                }, (err) => {
+                    clearTimeout(timeout);
+                    unsub();
+                    reject(err);
+                });
+            });
+        } catch (authError) {
+            console.warn('Anonymous sign-in failed:', authError);
+            // Don't throw - allow page to continue (may fail later on Firestore access)
+        }
+    }
+    
     dlog('TA1','timeline-admin:init','Firebase init',{projectId: firebaseConfig.projectId});
 }
 
