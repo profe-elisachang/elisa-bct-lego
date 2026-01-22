@@ -638,15 +638,15 @@
     margin: 10px 0;
 }
 
-/* 標題顏色樣式（從 h3 開始） */
+/* 標題樣式（移除多餘的顏色配置） */
 .timeline-notes.markdown-body h3,
 .markdown-body h3 {
     margin: 18px 0 10px 0;
     font-weight: 700;
     font-size: 1.3em;
-    color: var(--primary);
-    border-bottom: 2px solid var(--primary-border);
-    padding-bottom: 8px;
+    color: inherit;
+    border-bottom: none;
+    padding-bottom: 0;
 }
 
 .timeline-notes.markdown-body h4,
@@ -654,15 +654,15 @@
     margin: 15px 0 10px 0;
     font-weight: 600;
     font-size: 1.15em;
-    color: var(--primary-dark);
+    color: inherit;
 }
 
-/* 粗體字顏色樣式 */
+/* 粗體字樣式（移除多餘的顏色配置） */
 .timeline-notes.markdown-body strong,
 .timeline-notes.markdown-body b,
 .markdown-body strong,
 .markdown-body b {
-    color: #212529;
+    color: inherit;
     font-weight: 700;
 }
 

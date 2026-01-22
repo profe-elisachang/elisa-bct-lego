@@ -902,7 +902,19 @@ class BCTReviewSystem {
             sourceTag.className = 'source-tag lesson';
         }
 
-        // Notes（支援 Markdown 和圖片）
+        // 輔助插圖（如果有的話）- 放在形音义之後，補充說明之前
+        const imageDiv = document.getElementById('backImage');
+        if (vocab.image && vocab.image.trim()) {
+            imageDiv.style.marginTop = '15px';
+            imageDiv.style.textAlign = 'center';
+            imageDiv.innerHTML = `<img src="${vocab.image}" style="max-width: 100%; border-radius: 8px;" onerror="this.style.display='none';">`;
+            imageDiv.classList.remove('hidden');
+        } else {
+            imageDiv.innerHTML = '';
+            imageDiv.classList.add('hidden');
+        }
+        
+        // Notes（支援 Markdown 和圖片）- 放在圖片之後
         const notesDiv = document.getElementById('backNotes');
         if (vocab.notes && vocab.notes.trim()) {
             let notesHtml = marked.parse(vocab.notes);
@@ -924,15 +936,6 @@ class BCTReviewSystem {
             notesDiv.classList.remove('hidden');
         } else {
             notesDiv.classList.add('hidden');
-        }
-        
-        // 輔助插圖（如果有的話）
-        if (vocab.image && vocab.image.trim()) {
-            const imageDiv = document.createElement('div');
-            imageDiv.style.marginTop = '15px';
-            imageDiv.style.textAlign = 'center';
-            imageDiv.innerHTML = `<img src="${vocab.image}" style="max-width: 100%; border-radius: 8px;" onerror="this.style.display='none';">`;
-            notesDiv.appendChild(imageDiv);
         }
     }
 

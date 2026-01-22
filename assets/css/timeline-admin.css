@@ -21,7 +21,7 @@ body {
 }
 
 .admin-container {
-    max-width: 1200px;
+    width: 100%;
     margin: 30px auto;
     padding: 0 16px 60px;
 }
@@ -425,6 +425,390 @@ body {
 .required::after {
     content: " *";
     color: var(--danger);
+}
+
+/* ==================== 左右分欄布局 ==================== */
+.supplement-layout,
+.character-cards-layout {
+    display: grid;
+    grid-template-columns: 45% 55%;
+    gap: 20px;
+    min-height: 600px;
+}
+
+.supplement-left,
+.supplement-right,
+.character-cards-left,
+.character-cards-right {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.supplement-right .panel,
+.character-cards-right .panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.supplement-right .entry-list,
+.character-cards-right .entry-list {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+}
+
+/* 移除響應式設計 - 因為筆電投影到大螢幕時應該使用大螢幕布局 */
+/* 不再根據螢幕尺寸切換布局，始終使用左右分欄 */
+
+/* ==================== Studio 專屬樣式 ==================== */
+.studio-layout {
+    display: grid;
+    grid-template-columns: var(--studio-sidebar-width, 40%) 4px 1fr;
+    gap: 0;
+    min-height: 600px;
+    position: relative;
+}
+
+/* 最小化側邊欄（而不是完全隱藏） */
+.studio-layout.sidebar-hidden {
+    grid-template-columns: 60px 4px 1fr;
+}
+
+.studio-layout.sidebar-hidden .studio-editor {
+    width: 60px;
+    overflow: hidden;
+}
+
+.studio-layout.sidebar-hidden .editor-header {
+    padding: 8px;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    justify-content: center;
+}
+
+.studio-layout.sidebar-hidden .editor-header h2 {
+    font-size: 12px;
+    transform: rotate(180deg);
+}
+
+.studio-layout.sidebar-hidden .editor-header .btn {
+    display: none;
+}
+
+.studio-layout.sidebar-hidden .editor-content {
+    display: none;
+}
+
+.studio-layout.sidebar-hidden .resizer {
+    display: block;
+}
+
+.studio-editor {
+    background: #fff;
+    border: 1px solid var(--gray);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+}
+
+.editor-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--gray);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f9fafb;
+}
+
+.editor-header h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.editor-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+.form-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-item {
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 16px;
+    border: 2px solid var(--gray);
+    transition: all 0.2s;
+}
+
+.form-item:hover {
+    border-color: var(--primary);
+}
+
+.form-item.active {
+    border-color: var(--primary);
+    background: #fff7ed;
+}
+
+.form-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.form-group {
+    margin-bottom: 12px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--gray);
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+    font-family: 'Courier New', monospace;
+}
+
+.studio-preview {
+    background: #fff;
+    border: 1px solid var(--gray);
+    border-radius: 12px;
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+    min-width: 0;
+    width: 100%;
+}
+
+.preview-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--gray);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f9fafb;
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.preview-header h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.preview-header > div {
+    display: flex !important;
+    gap: 10px;
+    align-items: center;
+    visibility: visible !important;
+}
+
+/* 確保預覽面板和按鈕始終可見 */
+.studio-preview {
+    display: flex !important;
+    visibility: visible !important;
+}
+
+/* 確保按鈕始終可見，即使在側邊欄隱藏時 */
+.preview-header #studio-sidebar-toggle {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.preview-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+}
+
+.preview-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.sidebar-toggle-btn {
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 16px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.sidebar-toggle-btn:hover {
+    background: var(--gray);
+    color: var(--dark);
+}
+
+/* Studio 側邊欄切換按鈕 - 確保始終可見 */
+#studio-sidebar-toggle {
+    position: relative;
+    min-width: 32px;
+    padding: 8px 12px;
+    font-size: 16px;
+    line-height: 1;
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 100;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+#studio-sidebar-toggle:hover {
+    background: var(--gray);
+    color: var(--dark);
+}
+
+/* 可調整寬度的拉條 */
+.resizer {
+    width: 4px;
+    background: var(--gray);
+    cursor: col-resize;
+    position: relative;
+    transition: background 0.2s;
+    z-index: 10;
+}
+
+.resizer:hover {
+    background: var(--primary);
+}
+
+.resizer::before {
+    content: '';
+    position: absolute;
+    left: -2px;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: col-resize;
+}
+
+.resizer.dragging {
+    background: var(--primary);
+}
+
+.btn-icon {
+    padding: 4px 8px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 14px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    background: var(--gray);
+    color: var(--dark);
+}
+
+.btn-icon.delete:hover {
+    background: var(--danger);
+    color: #fff;
+}
+
+.drag-handle {
+    cursor: move;
+    color: var(--muted);
+    font-size: 18px;
+    padding: 4px;
+}
+
+.drag-handle:hover {
+    color: var(--dark);
+}
+
+.form-item.dragging,
+.timeline-card.dragging {
+    opacity: 0.5;
+}
+
+/* 教學模態框 */
+.teaching-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.teaching-modal.active {
+    display: flex;
+}
+
+.teaching-modal-content {
+    width: 60%;
+    max-height: 90vh;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.teaching-modal-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--gray);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f9fafb;
+}
+
+.teaching-modal-header h3 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.teaching-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
 }
 
 

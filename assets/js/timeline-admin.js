@@ -43,6 +43,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         setupTypeToggle();
         setupFilters();
         setupTabSystem();
+        setupStudioSystem();
         await ensureAuth();
         
         // Initialize Firebase and ensure Anonymous Sign-in
@@ -952,5 +953,491 @@ function initCloudinaryUpload() {
     document.getElementById('uploadCardImageBtn')?.addEventListener('click', () => {
         imageWidget.open();
     });
+}
+
+// ==================== Studio 管理系統 ====================
+let studioComponents = [];
+let studioDebounceTimers = new Map();
+let studioSortableFormList = null;
+let studioSortablePreviewList = null;
+
+function setupStudioSystem() {
+    const levelSelect = document.getElementById('studio-level-select');
+    const addBtn = document.getElementById('studio-add-btn');
+    const sidebarToggle = document.getElementById('studio-sidebar-toggle');
+    
+    if (levelSelect) {
+        levelSelect.addEventListener('change', (e) => {
+            loadStudioComponents(e.target.value);
+        });
+    }
+    
+    if (addBtn) {
+        addBtn.addEventListener('click', addStudioComponent);
+    }
+    
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            const layout = document.getElementById('studio-layout');
+            if (layout) {
+                const isHidden = layout.classList.contains('sidebar-hidden');
+                layout.classList.toggle('sidebar-hidden');
+                // 更新按鈕文字和標題
+                if (isHidden) {
+                    sidebarToggle.textContent = '◀';
+                    sidebarToggle.title = '隱藏編輯面板';
+                } else {
+                    sidebarToggle.textContent = '▶';
+                    sidebarToggle.title = '顯示編輯面板';
+                }
+            }
+        });
+    }
+    
+    // 添加可調整寬度的拉條功能
+    const resizer = document.getElementById('studio-resizer');
+    if (resizer) {
+        let isResizing = false;
+        let startX = 0;
+        let startWidth = 0;
+        
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            startX = e.clientX;
+            const layout = document.getElementById('studio-layout');
+            if (layout) {
+                const computedStyle = window.getComputedStyle(layout);
+                const currentWidth = parseFloat(computedStyle.getPropertyValue('--studio-sidebar-width')) || 40;
+                startWidth = currentWidth;
+                resizer.classList.add('dragging');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+            }
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            
+            const layout = document.getElementById('studio-layout');
+            if (layout) {
+                const layoutRect = layout.getBoundingClientRect();
+                const deltaX = e.clientX - startX;
+                const percentage = (deltaX / layoutRect.width) * 100;
+                let newWidth = startWidth + percentage;
+                
+                // 限制寬度範圍：5% - 60%（可以拉到極小）
+                newWidth = Math.max(5, Math.min(60, newWidth));
+                
+                layout.style.setProperty('--studio-sidebar-width', `${newWidth}%`);
+                
+                // 如果寬度小於 10%，自動切換到最小化模式
+                if (newWidth < 10 && !layout.classList.contains('sidebar-hidden')) {
+                    layout.classList.add('sidebar-hidden');
+                    const sidebarToggle = document.getElementById('studio-sidebar-toggle');
+                    if (sidebarToggle) {
+                        sidebarToggle.textContent = '▶';
+                        sidebarToggle.title = '顯示編輯面板';
+                    }
+                } else if (newWidth >= 10 && layout.classList.contains('sidebar-hidden')) {
+                    layout.classList.remove('sidebar-hidden');
+                    const sidebarToggle = document.getElementById('studio-sidebar-toggle');
+                    if (sidebarToggle) {
+                        sidebarToggle.textContent = '◀';
+                        sidebarToggle.title = '隱藏編輯面板';
+                    }
+                }
+            }
+        });
+        
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                resizer.classList.remove('dragging');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        });
+    }
+    
+    // 初始化時載入數據（等待 Firebase 初始化完成）
+    setTimeout(() => {
+        if (levelSelect && db) {
+            loadStudioComponents(levelSelect.value);
+        }
+    }, 500);
+}
+
+async function loadStudioComponents(level) {
+    if (!db) {
+        console.warn('Firebase 尚未初始化');
+        return;
+    }
+    
+    try {
+        const snapshot = await db.collection(`timeline/${level}/components`).get();
+        studioComponents = [];
+        
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            studioComponents.push({
+                id: doc.id,
+                order: data.order !== undefined ? data.order : 999999,
+                ...data
+            });
+        });
+        
+        // 按 order 排序
+        studioComponents.sort((a, b) => {
+            if (a.order !== b.order) return a.order - b.order;
+            return a.id.localeCompare(b.id);
+        });
+        
+        // 確保所有項目都有 order 字段
+        studioComponents.forEach((comp, index) => {
+            if (comp.order === undefined || comp.order === 999999) {
+                comp.order = index;
+            }
+        });
+        
+        renderStudioFormList();
+        renderStudioPreviewList();
+        initStudioSortable();
+    } catch (error) {
+        console.error('載入 Studio components 失敗:', error);
+        const formList = document.getElementById('studio-form-list');
+        const previewList = document.getElementById('studio-preview-list');
+        if (formList) {
+            formList.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--danger);">載入失敗：${error.message}</div>`;
+        }
+        if (previewList) {
+            previewList.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--danger);">載入失敗</div>`;
+        }
+    }
+}
+
+function renderStudioFormList() {
+    const formList = document.getElementById('studio-form-list');
+    if (!formList) return;
+    
+    formList.innerHTML = '';
+    
+    if (studioComponents.length === 0) {
+        formList.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--muted);">尚無數據</div>';
+        return;
+    }
+    
+    studioComponents.forEach((comp, index) => {
+        const formItem = createStudioFormItem(comp, index);
+        formList.appendChild(formItem);
+    });
+}
+
+function createStudioFormItem(comp, index) {
+    const item = document.createElement('div');
+    item.className = 'form-item';
+    item.dataset.id = comp.id;
+    
+    item.innerHTML = `
+        <div class="form-item-header">
+            <span class="drag-handle">☰</span>
+            <span>項目 #${index + 1}</span>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-icon" onclick="openStudioTeachingModal(${index})" title="教學視圖">👁️</button>
+                <button class="btn-icon delete" onclick="deleteStudioComponent(${index})" title="刪除">🗑️</button>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Character</label>
+            <input type="text" data-field="character" value="${escapeHtml(comp.character || '')}" 
+                   oninput="debounceStudioUpdate('${comp.id}', 'character', this.value)">
+        </div>
+        <div class="form-group">
+            <label>Pinyin</label>
+            <input type="text" data-field="pinyin" value="${escapeHtml(comp.pinyin || '')}" 
+                   oninput="debounceStudioUpdate('${comp.id}', 'pinyin', this.value)">
+        </div>
+        <div class="form-group">
+            <label>Markdown Content</label>
+            <textarea data-field="notes" oninput="debounceStudioUpdate('${comp.id}', 'notes', this.value)" 
+                      style="min-height: 100px; font-family: monospace;">${escapeHtml(comp.notes || '')}</textarea>
+        </div>
+        <div class="form-group">
+            <label>Image URL</label>
+            <input type="text" data-field="image" value="${escapeHtml(comp.image || '')}" 
+                   oninput="debounceStudioUpdate('${comp.id}', 'image', this.value)">
+        </div>
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" ${comp.published !== false ? 'checked' : ''} 
+                       onchange="updateStudioField('${comp.id}', 'published', this.checked)">
+                Published (發布給 Review 系統)
+            </label>
+        </div>
+    `;
+    
+    return item;
+}
+
+function renderStudioPreviewList() {
+    const previewList = document.getElementById('studio-preview-list');
+    if (!previewList) return;
+    
+    previewList.innerHTML = '';
+    
+    if (studioComponents.length === 0) {
+        previewList.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--muted);">尚無預覽內容</div>';
+        return;
+    }
+    
+    studioComponents.forEach((comp, index) => {
+        const card = createStudioPreviewCard(comp, index);
+        previewList.appendChild(card);
+    });
+}
+
+function createStudioPreviewCard(comp, index) {
+    const card = document.createElement('div');
+    card.className = 'timeline-card';
+    if (comp.isCharacterCard) card.classList.add('character-card');
+    card.style.cursor = 'pointer';
+    card.onclick = () => openStudioTeachingModal(index);
+    
+    // 字
+    const charDiv = document.createElement('div');
+    charDiv.className = 'line-character';
+    if (comp.character && comp.character.trim()) {
+        charDiv.innerHTML = comp.character;
+    } else if (comp.display_image && comp.display_image.trim()) {
+        charDiv.innerHTML = `<img src="${comp.display_image}" class="img-comp" alt="comp" style="height: 1.8em; width: auto; vertical-align: middle;">`;
+    }
+    card.appendChild(charDiv);
+    
+    // 拼音
+    if (comp.pinyin) {
+        const pinyinDiv = document.createElement('div');
+        pinyinDiv.className = 'line-pinyin';
+        pinyinDiv.textContent = comp.pinyin;
+        card.appendChild(pinyinDiv);
+    }
+    
+    // 意思
+    if (comp.meaning) {
+        const meaningDiv = document.createElement('div');
+        meaningDiv.className = 'line-en';
+        meaningDiv.textContent = comp.meaning;
+        card.appendChild(meaningDiv);
+    }
+    
+    // 圖片
+    if (comp.image && comp.image.trim()) {
+        const imageDiv = document.createElement('div');
+        imageDiv.style.marginTop = '10px';
+        imageDiv.innerHTML = `<img src="${comp.image}" style="max-width:100%;border-radius:6px;" onerror="this.style.display='none';">`;
+        card.appendChild(imageDiv);
+    }
+    
+    // Markdown 內容
+    if (comp.notes) {
+        const notesDiv = document.createElement('div');
+        notesDiv.className = 'timeline-notes markdown-body';
+        if (typeof renderMarkdown === 'function') {
+            notesDiv.innerHTML = renderMarkdown(comp.notes);
+        } else {
+            notesDiv.textContent = comp.notes;
+        }
+        card.appendChild(notesDiv);
+    }
+    
+    return card;
+}
+
+function initStudioSortable() {
+    const formList = document.getElementById('studio-form-list');
+    const previewList = document.getElementById('studio-preview-list');
+    
+    if (studioSortableFormList) studioSortableFormList.destroy();
+    if (studioSortablePreviewList) studioSortablePreviewList.destroy();
+    
+    if (formList && typeof Sortable !== 'undefined') {
+        studioSortableFormList = new Sortable(formList, {
+            handle: '.drag-handle',
+            animation: 150,
+            onEnd: (evt) => handleStudioSort(evt)
+        });
+    }
+    
+    if (previewList && typeof Sortable !== 'undefined') {
+        studioSortablePreviewList = new Sortable(previewList, {
+            handle: '.timeline-card',
+            animation: 150,
+            onEnd: (evt) => handleStudioSort(evt)
+        });
+    }
+}
+
+function handleStudioSort(evt) {
+    const { oldIndex, newIndex } = evt;
+    if (oldIndex === newIndex) return;
+    
+    const [moved] = studioComponents.splice(oldIndex, 1);
+    studioComponents.splice(newIndex, 0, moved);
+    
+    studioComponents.forEach((comp, index) => {
+        comp.order = index;
+        updateStudioField(comp.id, 'order', index, false);
+    });
+    
+    renderStudioFormList();
+    renderStudioPreviewList();
+    initStudioSortable();
+}
+
+function debounceStudioUpdate(componentId, field, value) {
+    const timerKey = `${componentId}-${field}`;
+    if (studioDebounceTimers.has(timerKey)) {
+        clearTimeout(studioDebounceTimers.get(timerKey));
+    }
+    
+    const timer = setTimeout(() => {
+        updateStudioField(componentId, field, value);
+        studioDebounceTimers.delete(timerKey);
+    }, 1000);
+    
+    studioDebounceTimers.set(timerKey, timer);
+}
+
+async function updateStudioField(componentId, field, value, shouldRerender = true) {
+    if (!db) return;
+    
+    try {
+        const component = studioComponents.find(c => c.id === componentId);
+        if (!component) return;
+        
+        component[field] = value;
+        
+        const level = document.getElementById('studio-level-select')?.value || 'btc1';
+        await db.collection(`timeline/${level}/components`).doc(componentId).update({
+            [field]: value
+        });
+        
+        if (shouldRerender && ['character', 'pinyin', 'notes', 'image', 'meaning'].includes(field)) {
+            renderStudioPreviewList();
+        }
+    } catch (error) {
+        console.error('更新失敗:', error);
+        alert('更新失敗：' + error.message);
+    }
+}
+
+async function addStudioComponent() {
+    if (!db) {
+        alert('Firebase 尚未初始化');
+        return;
+    }
+    
+    try {
+        const level = document.getElementById('studio-level-select')?.value || 'btc1';
+        const newComponent = {
+            character: '',
+            pinyin: '',
+            notes: '',
+            image: '',
+            published: true,
+            order: studioComponents.length
+        };
+        
+        const docRef = await db.collection(`timeline/${level}/components`).add(newComponent);
+        await loadStudioComponents(level);
+        
+        setTimeout(() => {
+            const newItem = document.querySelector(`[data-id="${docRef.id}"]`);
+            if (newItem) {
+                newItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                newItem.classList.add('active');
+                const firstInput = newItem.querySelector('input[data-field="character"]');
+                if (firstInput) firstInput.focus();
+            }
+        }, 100);
+    } catch (error) {
+        console.error('添加失敗:', error);
+        alert('添加失敗：' + error.message);
+    }
+}
+
+async function deleteStudioComponent(index) {
+    if (!confirm('確定要刪除這個項目嗎？')) return;
+    
+    if (!db) {
+        alert('Firebase 尚未初始化');
+        return;
+    }
+    
+    try {
+        const component = studioComponents[index];
+        const level = document.getElementById('studio-level-select')?.value || 'btc1';
+        
+        await db.collection(`timeline/${level}/components`).doc(component.id).delete();
+        studioComponents.splice(index, 1);
+        
+        studioComponents.forEach((comp, idx) => {
+            comp.order = idx;
+            updateStudioField(comp.id, 'order', idx, false);
+        });
+        
+        renderStudioFormList();
+        renderStudioPreviewList();
+        initStudioSortable();
+    } catch (error) {
+        console.error('刪除失敗:', error);
+        alert('刪除失敗：' + error.message);
+    }
+}
+
+function openStudioTeachingModal(index) {
+    const component = studioComponents[index];
+    if (!component) return;
+    
+    // 創建模態框（如果不存在）
+    let modal = document.getElementById('studio-teaching-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'studio-teaching-modal';
+        modal.className = 'teaching-modal';
+        modal.innerHTML = `
+            <div class="teaching-modal-content">
+                <div class="teaching-modal-header">
+                    <h3>教學視圖</h3>
+                    <button onclick="closeStudioTeachingModal()" style="border: none; background: transparent; font-size: 1.5rem; cursor: pointer; color: var(--muted);">×</button>
+                </div>
+                <div class="teaching-modal-body" id="studio-modal-body"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // 點擊背景關閉
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeStudioTeachingModal();
+            }
+        });
+    }
+    
+    const modalBody = document.getElementById('studio-modal-body');
+    const card = createStudioPreviewCard(component, index);
+    modalBody.innerHTML = '';
+    modalBody.appendChild(card);
+    
+    modal.classList.add('active');
+}
+
+function closeStudioTeachingModal() {
+    const modal = document.getElementById('studio-teaching-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 

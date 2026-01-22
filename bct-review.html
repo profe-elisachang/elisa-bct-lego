@@ -209,11 +209,14 @@
                         </div>
                         <div class="card-back" id="cardBack">
                             <div class="source-tag" id="sourceTag">Lesson 1</div>
-                            <div class="back-character" id="backCharacter">字</div>
+                            <div class="back-character-wrapper">
+                                <div class="back-character" id="backCharacter">字</div>
+                                <button class="speak-btn audio-btn" onclick="speakCharacter(event)">🔊</button>
+                            </div>
                             <div class="back-pinyin" id="backPinyin">zì</div>
                             <div class="back-meaning" id="backMeaning">character | carácter</div>
+                            <div class="back-image" id="backImage"></div>
                             <div class="back-notes" id="backNotes"></div>
-                            <button class="speak-btn" onclick="speakCharacter(event)">🔊 Speak</button>
                         </div>
                     </div>
                 </div>

@@ -7,8 +7,11 @@
     <link rel="stylesheet" href="assets/css/nav-global.css">
     <link rel="stylesheet" href="assets/css/timeline.css">
     <link rel="stylesheet" href="assets/css/timeline-admin.css">
+    <link rel="stylesheet" href="styles/templates/lesson-b.css">
     <!-- Marked.js for Markdown parsing -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- SortableJS -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <!-- Cloudinary Upload Widget -->
     <script src="https://widget.cloudinary.com/v2.0/global/all.js"></script>
 </head>
@@ -31,16 +34,20 @@
         <div class="admin-tabs">
             <button class="admin-tab-btn active" data-tab="supplement">📝 補充管理</button>
             <button class="admin-tab-btn" data-tab="character-cards">🧩 部件與目標字管理</button>
+            <button class="admin-tab-btn" data-tab="studio">🎨 Studio</button>
         </div>
 
         <!-- Tab 1: 補充管理（現有內容） -->
         <div id="supplement-tab" class="admin-tab-pane active">
-        <section class="panel">
-            <h2>新增补充</h2>
-            <p class="form-hint" style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">
-                💡 部件为所有班级共用，生词和笔记需选择班级
-            </p>
-            <div class="form-grid">
+            <div class="supplement-layout">
+                <!-- 左側：表單區域 -->
+                <div class="supplement-left">
+                    <section class="panel">
+                        <h2>新增补充</h2>
+                        <p class="form-hint" style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">
+                            💡 部件为所有班级共用，生词和笔记需选择班级
+                        </p>
+                        <div class="form-grid">
                 <div class="form-row">
                     <label>等级</label>
                     <div class="type-group">
@@ -152,24 +159,32 @@
                 </div>
             </div>
         </section>
+                </div>
 
-        <section class="panel">
-            <h2>补充列表</h2>
-            <div id="listStats" class="list-stats">共 0 笔</div>
-            <div id="entryList" class="entry-list">载入中...</div>
-            <div class="pagination">
-                <button id="prevPage" class="btn btn-secondary" disabled>上一页</button>
-                <span id="pageInfo">1 / 1</span>
-                <button id="nextPage" class="btn btn-secondary" disabled>下一页</button>
+                <!-- 右側：預覽/列表區域 -->
+                <div class="supplement-right">
+                    <section class="panel">
+                        <h2>补充列表</h2>
+                        <div id="listStats" class="list-stats">共 0 笔</div>
+                        <div id="entryList" class="entry-list">载入中...</div>
+                        <div class="pagination">
+                            <button id="prevPage" class="btn btn-secondary" disabled>上一页</button>
+                            <span id="pageInfo">1 / 1</span>
+                            <button id="nextPage" class="btn btn-secondary" disabled>下一页</button>
+                        </div>
+                    </section>
+                </div>
             </div>
-        </section>
         </div>
 
         <!-- Tab 2: 部件與目標字管理 -->
         <div id="character-cards-tab" class="admin-tab-pane">
-            <section class="panel">
-                <h2>📝 新增/編輯</h2>
-                <div class="form-grid">
+            <div class="character-cards-layout">
+                <!-- 左側：表單區域 -->
+                <div class="character-cards-left">
+                    <section class="panel">
+                        <h2>📝 新增/編輯</h2>
+                        <div class="form-grid">
                     <div class="form-row">
                         <label>等级</label>
                         <div class="type-group">
@@ -254,20 +269,66 @@
                     </div>
                 </div>
             </section>
-
-            <section class="panel">
-                <h2>📚 已新增的內容</h2>
-                <div id="cardLoader" class="loader" style="display:none;"></div>
-                
-                <div class="batch-publish-buttons" style="display:flex;gap:10px;margin-bottom:15px;">
-                    <button class="btn btn-success" id="batchPublishCardsBtn">✅ 本課全部發布</button>
-                    <button class="btn btn-secondary" id="batchUnpublishCardsBtn">⛔ 本課全部取消發布</button>
                 </div>
 
-                <div id="cardList" class="entry-list">
-                    <div class="no-data">尚未新增任何內容</div>
+                <!-- 右側：預覽/列表區域 -->
+                <div class="character-cards-right">
+                    <section class="panel">
+                        <h2>📚 已新增的內容</h2>
+                        <div id="cardLoader" class="loader" style="display:none;"></div>
+                        
+                        <div class="batch-publish-buttons" style="display:flex;gap:10px;margin-bottom:15px;">
+                            <button class="btn btn-success" id="batchPublishCardsBtn">✅ 本課全部發布</button>
+                            <button class="btn btn-secondary" id="batchUnpublishCardsBtn">⛔ 本課全部取消發布</button>
+                        </div>
+
+                        <div id="cardList" class="entry-list">
+                            <div class="no-data">尚未新增任何內容</div>
+                        </div>
+                    </section>
                 </div>
-            </section>
+            </div>
+        </div>
+
+        <!-- Tab 3: Studio 管理 -->
+        <div id="studio-tab" class="admin-tab-pane">
+            <div class="studio-layout" id="studio-layout">
+                <!-- 左側：編輯面板 (40%) -->
+                <div class="studio-editor" id="studio-editor">
+                    <div class="editor-header">
+                        <h2>編輯表單</h2>
+                        <button class="btn btn-primary" id="studio-add-btn">+ 新增</button>
+                    </div>
+                    <div class="editor-content">
+                        <div class="form-list" id="studio-form-list">
+                            <div style="padding: 40px; text-align: center; color: var(--muted);">載入中...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 可調整寬度的拉條 -->
+                <div class="resizer" id="studio-resizer"></div>
+
+                <!-- 右側：預覽面板 (60%) -->
+                <div class="studio-preview">
+                    <div class="preview-header">
+                        <h2>實時預覽</h2>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button class="sidebar-toggle-btn" id="studio-sidebar-toggle" title="顯示/隱藏編輯面板">◀</button>
+                            <select id="studio-level-select" style="padding: 8px 12px; border: 1px solid var(--gray); border-radius: 8px; font-size: 14px;">
+                                <option value="btc1">BCT 1</option>
+                                <option value="btc2">BCT 2</option>
+                                <option value="btc3">BCT 3</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="preview-content">
+                        <div class="preview-list" id="studio-preview-list">
+                            <div style="padding: 40px; text-align: center; color: var(--muted);">載入中...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
