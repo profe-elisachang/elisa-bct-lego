@@ -153,14 +153,16 @@
       <!-- 可調整寬度的拉條 -->
       <div class="notes-resizer" id="notes-resizer"></div>
 
+      <!-- 筆記欄收合按鈕 -->
+      <button class="notes-toggle" id="notes-toggle" title="收合/展開筆記欄">
+        <span class="toggle-icon">◀</span>
+      </button>
+
       <!-- 右側：筆記欄 -->
       <aside class="b-notes" id="notes-sidebar">
         <div class="b-notes-card">
           <div class="b-notes-header">
             <h3>Elisa 的笔记</h3>
-            <button class="notes-toggle-btn" id="notes-toggle-btn" title="隱藏/顯示筆記欄">
-              <span class="toggle-icon">◀</span>
-            </button>
           </div>
           <div class="b-notes-content">
             <div id="teacher-notes"></div>
@@ -212,11 +214,26 @@
   <!-- 筆記欄隱藏功能 -->
   <script>
     (function() {
-      const notesToggleBtn = document.getElementById('notes-toggle-btn');
+      const notesToggleBtn = document.getElementById('notes-toggle');
       const layout = document.querySelector('.b-layout');
       const storageKey = 'bct-notes-hidden';
 
       if (!notesToggleBtn || !layout) return;
+
+      // 更新按鈕位置的函數
+      function updateTogglePosition() {
+        if (!notesToggleBtn) return;
+        const isHidden = layout.classList.contains('notes-hidden');
+        if (isHidden) {
+          // 隱藏時，按鈕在右側邊緣（CSS 會處理）
+          notesToggleBtn.style.right = '';
+        } else {
+          // 顯示時，根據筆記欄寬度計算位置
+          const notesWidth = getComputedStyle(document.documentElement).getPropertyValue('--notes-width') || '350px';
+          const gap = getComputedStyle(document.documentElement).getPropertyValue('--space-5') || '20px';
+          notesToggleBtn.style.right = `calc(${notesWidth} + ${gap})`;
+        }
+      }
 
       // 從 localStorage 讀取保存的狀態
       const isHidden = localStorage.getItem(storageKey) === 'true';
@@ -225,12 +242,21 @@
         notesToggleBtn.querySelector('.toggle-icon').textContent = '▶';
       }
 
+      // 初始化按鈕位置
+      updateTogglePosition();
+
       notesToggleBtn.addEventListener('click', () => {
         layout.classList.toggle('notes-hidden');
         const hidden = layout.classList.contains('notes-hidden');
         notesToggleBtn.querySelector('.toggle-icon').textContent = hidden ? '▶' : '◀';
         localStorage.setItem(storageKey, hidden);
+        
+        // 更新按鈕位置
+        setTimeout(updateTogglePosition, 50);
       });
+
+      // 監聽窗口大小變化
+      window.addEventListener('resize', updateTogglePosition);
     })();
   </script>
   <!-- 筆記欄拉條功能 -->
@@ -238,13 +264,31 @@
     (function() {
       const resizer = document.getElementById('notes-resizer');
       const layout = document.querySelector('.b-layout');
+      const notesToggle = document.getElementById('notes-toggle');
       const storageKey = 'bct-notes-width';
+      
+      // 更新按鈕位置的函數（與隱藏功能共享）
+      function updateNotesTogglePosition() {
+        const notesToggleBtn = document.getElementById('notes-toggle');
+        if (!notesToggleBtn) return;
+        const isHidden = layout.classList.contains('notes-hidden');
+        if (isHidden) {
+          notesToggleBtn.style.right = '';
+        } else {
+          const notesWidth = getComputedStyle(document.documentElement).getPropertyValue('--notes-width') || '350px';
+          const gap = getComputedStyle(document.documentElement).getPropertyValue('--space-5') || '20px';
+          notesToggleBtn.style.right = `calc(${notesWidth} + ${gap})`;
+        }
+      }
       
       // 從 localStorage 讀取保存的寬度
       const savedWidth = localStorage.getItem(storageKey);
       if (savedWidth) {
         document.documentElement.style.setProperty('--notes-width', savedWidth + 'px');
       }
+      
+      // 初始化按鈕位置
+      setTimeout(updateNotesTogglePosition, 100);
 
       if (!resizer) return;
 
@@ -276,6 +320,9 @@
         
         // 保存到 localStorage
         localStorage.setItem(storageKey, clampedWidth);
+        
+        // 更新按鈕位置（使用 requestAnimationFrame 確保平滑）
+        requestAnimationFrame(updateNotesTogglePosition);
       }
 
       function stopResize() {

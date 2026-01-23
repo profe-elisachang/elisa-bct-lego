@@ -177,6 +177,52 @@
   border-radius: var(--radius-lg);
 }
 
+/* ================================================
+   筆記欄收合按鈕
+   ================================================ */
+.notes-toggle {
+  position: absolute;
+  right: calc(var(--notes-width, 350px) + var(--space-5, 20px));
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  width: 24px;
+  height: 48px;
+  background: var(--bg-card);
+  border: 1px solid var(--gray-200);
+  border-right: none;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  transition: right var(--duration-normal) var(--ease-out);
+}
+
+.notes-toggle:hover {
+  background: var(--gray-100);
+  width: 28px;
+}
+
+.notes-toggle .toggle-icon {
+  font-size: 10px;
+  color: var(--gray-500);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+/* 筆記欄隱藏時，按鈕移到右側邊緣 */
+.b-layout.notes-hidden .notes-toggle {
+  right: 0;
+  border-right: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  margin-right: var(--space-4);
+}
+
+.b-layout.sidebar-collapsed.notes-hidden .notes-toggle {
+  right: 0;
+}
+
 /* 複習按鈕 */
 .b-review-btn {
   display: flex;
@@ -417,7 +463,6 @@
   border-bottom: 1px solid var(--gray-100);
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2);
 }
 
@@ -433,32 +478,6 @@
 
 .b-notes-card h3::before {
   content: '📝';
-}
-
-.notes-toggle-btn {
-  width: 28px;
-  height: 28px;
-  background: transparent;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--duration-fast) var(--ease-out);
-  color: var(--gray-600);
-  flex-shrink: 0;
-}
-
-.notes-toggle-btn:hover {
-  background: var(--gray-100);
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.notes-toggle-btn .toggle-icon {
-  font-size: 10px;
-  transition: transform var(--duration-fast) var(--ease-out);
 }
 
 .b-notes-content {
@@ -605,6 +624,10 @@
   }
 
   .sidebar-toggle {
+    display: none;
+  }
+
+  .notes-toggle {
     display: none;
   }
 

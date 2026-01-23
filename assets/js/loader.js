@@ -779,9 +779,10 @@ class LessonLoader {
         this.lessonData.timelineNotes.forEach((item) => {
             console.log('📝 渲染笔记项：', item);
             const note = document.createElement('div');
-            note.className = 'timeline-note';
+            note.className = 'timeline-note timeline-notes markdown-body';
             const title = item.title ? `<div class="note-title">${item.title}</div>` : '';
-            const content = item.content ? `<div class="note-content">${item.content}</div>` : '';
+            // 使用 renderMarkdown 渲染內容
+            const content = item.content ? `<div class="note-content">${this.renderMarkdown(item.content)}</div>` : '';
             note.innerHTML = title + content;
             container.appendChild(note);
         });
