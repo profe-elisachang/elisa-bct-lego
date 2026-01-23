@@ -150,10 +150,18 @@
         </div>
       </section>
 
+      <!-- 可調整寬度的拉條 -->
+      <div class="notes-resizer" id="notes-resizer"></div>
+
       <!-- 右側：筆記欄 -->
-      <aside class="b-notes">
+      <aside class="b-notes" id="notes-sidebar">
         <div class="b-notes-card">
-          <h3>Elisa 的笔记</h3>
+          <div class="b-notes-header">
+            <h3>Elisa 的笔记</h3>
+            <button class="notes-toggle-btn" id="notes-toggle-btn" title="隱藏/顯示筆記欄">
+              <span class="toggle-icon">◀</span>
+            </button>
+          </div>
           <div class="b-notes-content">
             <div id="teacher-notes"></div>
             <p class="placeholder">暂无笔记 No notes yet.</p>
@@ -199,6 +207,86 @@
         toggleBtn.querySelector('.toggle-icon').textContent = collapsed ? '▶' : '◀';
         localStorage.setItem(storageKey, collapsed);
       });
+    })();
+  </script>
+  <!-- 筆記欄隱藏功能 -->
+  <script>
+    (function() {
+      const notesToggleBtn = document.getElementById('notes-toggle-btn');
+      const layout = document.querySelector('.b-layout');
+      const storageKey = 'bct-notes-hidden';
+
+      if (!notesToggleBtn || !layout) return;
+
+      // 從 localStorage 讀取保存的狀態
+      const isHidden = localStorage.getItem(storageKey) === 'true';
+      if (isHidden) {
+        layout.classList.add('notes-hidden');
+        notesToggleBtn.querySelector('.toggle-icon').textContent = '▶';
+      }
+
+      notesToggleBtn.addEventListener('click', () => {
+        layout.classList.toggle('notes-hidden');
+        const hidden = layout.classList.contains('notes-hidden');
+        notesToggleBtn.querySelector('.toggle-icon').textContent = hidden ? '▶' : '◀';
+        localStorage.setItem(storageKey, hidden);
+      });
+    })();
+  </script>
+  <!-- 筆記欄拉條功能 -->
+  <script>
+    (function() {
+      const resizer = document.getElementById('notes-resizer');
+      const layout = document.querySelector('.b-layout');
+      const storageKey = 'bct-notes-width';
+      
+      // 從 localStorage 讀取保存的寬度
+      const savedWidth = localStorage.getItem(storageKey);
+      if (savedWidth) {
+        document.documentElement.style.setProperty('--notes-width', savedWidth + 'px');
+      }
+
+      if (!resizer) return;
+
+      let isResizing = false;
+
+      resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        resizer.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        
+        document.addEventListener('mousemove', handleResize);
+        document.addEventListener('mouseup', stopResize);
+      });
+
+      function handleResize(e) {
+        if (!isResizing) return;
+        
+        const rect = layout.getBoundingClientRect();
+        const notesWidth = rect.right - e.clientX - 20; // 減去 gap
+        
+        // 限制寬度範圍：最小 200px，最大 800px
+        const minWidth = 200;
+        const maxWidth = 800;
+        const clampedWidth = Math.max(minWidth, Math.min(maxWidth, notesWidth));
+        
+        // 設置 CSS 變數
+        document.documentElement.style.setProperty('--notes-width', clampedWidth + 'px');
+        
+        // 保存到 localStorage
+        localStorage.setItem(storageKey, clampedWidth);
+      }
+
+      function stopResize() {
+        isResizing = false;
+        resizer.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        
+        document.removeEventListener('mousemove', handleResize);
+        document.removeEventListener('mouseup', stopResize);
+      }
     })();
   </script>
   <script src="assets/js/mobile-nav.js"></script>
