@@ -296,7 +296,11 @@
                 <!-- 左側：編輯面板 (40%) -->
                 <div class="studio-editor" id="studio-editor">
                     <div class="editor-header">
-                        <h2>編輯表單</h2>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <h2>編輯表單</h2>
+                            <button class="btn btn-secondary" id="studio-collapse-all-btn" style="padding: 6px 12px; font-size: 13px;">全部折疊</button>
+                            <button class="btn btn-secondary" id="studio-expand-all-btn" style="padding: 6px 12px; font-size: 13px;">全部展開</button>
+                        </div>
                         <button class="btn btn-primary" id="studio-add-btn">+ 新增</button>
                     </div>
                     <div class="editor-content">

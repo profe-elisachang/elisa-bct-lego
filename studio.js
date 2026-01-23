@@ -11,6 +11,10 @@ class StudioManager {
         this.debounceTimers = new Map();
         this.sortableFormList = null;
         this.sortablePreviewList = null;
+        this.displayImageWidget = null;
+        this.imageWidget = null;
+        this.currentUploadComponentId = null;
+        this.currentUploadType = null;
         
         this.init();
     }
@@ -45,6 +49,11 @@ class StudioManager {
             // 初始化拖拽
             console.log('🔧 初始化拖拽功能...');
             this.initSortable();
+            
+            // 初始化 Cloudinary 上傳功能
+            console.log('🔧 初始化 Cloudinary 上傳功能...');
+            this.initCloudinaryUpload();
+            
             console.log('✅ Studio Manager 初始化完成');
         } catch (error) {
             console.error('❌ Studio Manager 初始化失敗:', error);
@@ -439,9 +448,22 @@ class StudioManager {
                     <label>Display Image (字形補丁圖片)</label>
                     <input type="text" 
                            data-field="display_image" 
+                           id="display-image-${comp.id}"
                            value="${this.escapeHtml(comp.display_image || '')}" 
                            oninput="studioManager.debounceUpdate('${comp.id}', 'display_image', this.value)"
-                           placeholder="https://res.cloudinary.com/...">
+                           placeholder="https://res.cloudinary.com/... （上傳後自動填入）">
+                    <div style="margin-top: 12px;">
+                        <button type="button" class="btn-icon" id="upload-display-image-${comp.id}" 
+                                style="background: var(--gray-200); color: var(--gray-900); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-medium); border: 1px solid var(--gray-300);">
+                            🖼️ 上傳字形補丁圖片到 Cloudinary
+                        </button>
+                        <div id="display-image-progress-${comp.id}" style="margin-top: 10px; display: none;">
+                            <div style="background: var(--gray-200); height: 8px; border-radius: 4px; overflow: hidden;">
+                                <div id="display-image-progress-bar-${comp.id}" style="height: 100%; background: var(--primary); width: 0%; transition: width 0.3s;"></div>
+                            </div>
+                            <small id="display-image-progress-text-${comp.id}" style="color: var(--primary); font-weight: bold;">上傳中 0%</small>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Pinyin (拼音)</label>
@@ -460,33 +482,6 @@ class StudioManager {
                            placeholder="例如：water radical | radical de agua">
                 </div>
                 <div class="form-group">
-                    <label>Lesson (課次)</label>
-                    <select data-field="lesson" 
-                            onchange="studioManager.updateField('${comp.id}', 'lesson', this.value)">
-                        <option value="">未指定</option>
-                        <option value="lesson1" ${(comp.lesson || '') === 'lesson1' ? 'selected' : ''}>Lesson 1</option>
-                        <option value="lesson2" ${(comp.lesson || '') === 'lesson2' ? 'selected' : ''}>Lesson 2</option>
-                        <option value="lesson3" ${(comp.lesson || '') === 'lesson3' ? 'selected' : ''}>Lesson 3</option>
-                        <option value="lesson4" ${(comp.lesson || '') === 'lesson4' ? 'selected' : ''}>Lesson 4</option>
-                        <option value="lesson5" ${(comp.lesson || '') === 'lesson5' ? 'selected' : ''}>Lesson 5</option>
-                        <option value="lesson6" ${(comp.lesson || '') === 'lesson6' ? 'selected' : ''}>Lesson 6</option>
-                        <option value="lesson7" ${(comp.lesson || '') === 'lesson7' ? 'selected' : ''}>Lesson 7</option>
-                        <option value="lesson8" ${(comp.lesson || '') === 'lesson8' ? 'selected' : ''}>Lesson 8</option>
-                        <option value="lesson9" ${(comp.lesson || '') === 'lesson9' ? 'selected' : ''}>Lesson 9</option>
-                        <option value="lesson10" ${(comp.lesson || '') === 'lesson10' ? 'selected' : ''}>Lesson 10</option>
-                        <option value="lesson11" ${(comp.lesson || '') === 'lesson11' ? 'selected' : ''}>Lesson 11</option>
-                        <option value="lesson12" ${(comp.lesson || '') === 'lesson12' ? 'selected' : ''}>Lesson 12</option>
-                        <option value="lesson13" ${(comp.lesson || '') === 'lesson13' ? 'selected' : ''}>Lesson 13</option>
-                        <option value="lesson14" ${(comp.lesson || '') === 'lesson14' ? 'selected' : ''}>Lesson 14</option>
-                        <option value="lesson15" ${(comp.lesson || '') === 'lesson15' ? 'selected' : ''}>Lesson 15</option>
-                        <option value="lesson16" ${(comp.lesson || '') === 'lesson16' ? 'selected' : ''}>Lesson 16</option>
-                        <option value="lesson17" ${(comp.lesson || '') === 'lesson17' ? 'selected' : ''}>Lesson 17</option>
-                        <option value="lesson18" ${(comp.lesson || '') === 'lesson18' ? 'selected' : ''}>Lesson 18</option>
-                        <option value="lesson19" ${(comp.lesson || '') === 'lesson19' ? 'selected' : ''}>Lesson 19</option>
-                        <option value="lesson20" ${(comp.lesson || '') === 'lesson20' ? 'selected' : ''}>Lesson 20</option>
-                    </select>
-                </div>
-                <div class="form-group">
                     <label>Notes (補充說明，支援 Markdown)</label>
                     <textarea class="markdown-content" 
                               data-field="notes" 
@@ -497,9 +492,22 @@ class StudioManager {
                     <label>Image URL (輔助插圖)</label>
                     <input type="text" 
                            data-field="image" 
+                           id="image-${comp.id}"
                            value="${this.escapeHtml(comp.image || '')}" 
                            oninput="studioManager.debounceUpdate('${comp.id}', 'image', this.value)"
-                           placeholder="https://res.cloudinary.com/...">
+                           placeholder="https://res.cloudinary.com/... （上傳後自動填入）">
+                    <div style="margin-top: 12px;">
+                        <button type="button" class="btn-icon" id="upload-image-${comp.id}" 
+                                style="background: var(--gray-200); color: var(--gray-900); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-medium); border: 1px solid var(--gray-300);">
+                            🖼️ 上傳輔助插圖到 Cloudinary
+                        </button>
+                        <div id="image-progress-${comp.id}" style="margin-top: 10px; display: none;">
+                            <div style="background: var(--gray-200); height: 8px; border-radius: 4px; overflow: hidden;">
+                                <div id="image-progress-bar-${comp.id}" style="height: 100%; background: var(--primary); width: 0%; transition: width 0.3s;"></div>
+                            </div>
+                            <small id="image-progress-text-${comp.id}" style="color: var(--primary); font-weight: bold;">上傳中 0%</small>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <div class="checkbox-group" style="display: flex; align-items: center; gap: var(--space-2);">
@@ -546,8 +554,15 @@ class StudioManager {
         card.dataset.id = comp.id;
         card.dataset.index = index;
         card.style.cursor = 'pointer';
+        
+        // 單擊：打開教學模態框
         card.addEventListener('click', () => {
             this.openTeachingModal(index);
+        });
+        
+        // 雙擊：跳轉到對應的編輯表單項目
+        card.addEventListener('dblclick', () => {
+            this.scrollToFormItem(comp.id, index);
         });
 
         // 字（優先顯示文字，否則顯示圖片）
@@ -722,6 +737,33 @@ class StudioManager {
         }
     }
 
+    scrollToFormItem(componentId, index) {
+        // 檢查編輯面板是否被最小化，如果是則展開
+        const layout = document.getElementById('studio-layout');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        
+        if (layout && layout.classList.contains('sidebar-hidden')) {
+            layout.classList.remove('sidebar-hidden');
+            if (sidebarToggle) {
+                sidebarToggle.textContent = '◀';
+                sidebarToggle.title = '隱藏編輯面板';
+            }
+        }
+        
+        // 找到對應的編輯表單項目
+        const formList = document.getElementById('form-list');
+        if (!formList) return;
+        
+        const formItem = formList.querySelector(`[data-id="${componentId}"]`);
+        if (formItem) {
+            // 滾動到該項目
+            formItem.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+        }
+    }
+
     openTeachingModal(index) {
         const component = this.components[index];
         if (!component) return;
@@ -866,6 +908,135 @@ class StudioManager {
             const toggleBtn = item.querySelector('.collapse-toggle');
             if (toggleBtn) {
                 toggleBtn.textContent = '▼';
+            }
+        });
+    }
+
+    initCloudinaryUpload() {
+        if (typeof cloudinary === 'undefined') {
+            console.warn('⚠️ Cloudinary widget not loaded');
+            return;
+        }
+        
+        // 字形補丁圖片上傳 widget
+        this.displayImageWidget = cloudinary.createUploadWidget({
+            cloudName: 'dxc8rcjuh',
+            uploadPreset: 'Elisa-BCT',
+            folder: 'bct-lego/display-images',
+            cropping: false,
+            multiple: false,
+            clientAllowedFormats: ['png', 'jpg', 'jpeg', 'webp'],
+            maxFileSize: 10000000
+        }, (error, result) => {
+            if (error) {
+                console.error('Cloudinary 上傳錯誤:', error);
+                return;
+            }
+            
+            if (result && result.event === "success") {
+                const componentId = this.currentUploadComponentId;
+                if (componentId) {
+                    const input = document.getElementById(`display-image-${componentId}`);
+                    if (input) {
+                        input.value = result.info.secure_url;
+                        // 自動更新 Firestore
+                        this.updateField(componentId, 'display_image', result.info.secure_url);
+                        // 隱藏進度條
+                        const progressDiv = document.getElementById(`display-image-progress-${componentId}`);
+                        if (progressDiv) {
+                            progressDiv.style.display = 'none';
+                        }
+                    }
+                }
+            }
+            
+            // 上傳進度
+            if (result && result.event === "progress") {
+                const componentId = this.currentUploadComponentId;
+                if (componentId) {
+                    const progressBar = document.getElementById(`display-image-progress-bar-${componentId}`);
+                    const progressText = document.getElementById(`display-image-progress-text-${componentId}`);
+                    const progressDiv = document.getElementById(`display-image-progress-${componentId}`);
+                    
+                    if (progressBar && progressText && progressDiv) {
+                        const percent = Math.round(result.info.progress);
+                        progressBar.style.width = `${percent}%`;
+                        progressText.textContent = `上傳中 ${percent}%`;
+                        progressDiv.style.display = 'block';
+                    }
+                }
+            }
+        });
+        
+        // 輔助插圖上傳 widget
+        this.imageWidget = cloudinary.createUploadWidget({
+            cloudName: 'dxc8rcjuh',
+            uploadPreset: 'Elisa-BCT',
+            folder: 'bct-lego/images',
+            cropping: false,
+            multiple: false,
+            clientAllowedFormats: ['png', 'jpg', 'jpeg', 'webp'],
+            maxFileSize: 10000000
+        }, (error, result) => {
+            if (error) {
+                console.error('Cloudinary 上傳錯誤:', error);
+                return;
+            }
+            
+            if (result && result.event === "success") {
+                const componentId = this.currentUploadComponentId;
+                if (componentId) {
+                    const input = document.getElementById(`image-${componentId}`);
+                    if (input) {
+                        input.value = result.info.secure_url;
+                        // 自動更新 Firestore
+                        this.updateField(componentId, 'image', result.info.secure_url);
+                        // 隱藏進度條
+                        const progressDiv = document.getElementById(`image-progress-${componentId}`);
+                        if (progressDiv) {
+                            progressDiv.style.display = 'none';
+                        }
+                    }
+                }
+            }
+            
+            // 上傳進度
+            if (result && result.event === "progress") {
+                const componentId = this.currentUploadComponentId;
+                if (componentId) {
+                    const progressBar = document.getElementById(`image-progress-bar-${componentId}`);
+                    const progressText = document.getElementById(`image-progress-text-${componentId}`);
+                    const progressDiv = document.getElementById(`image-progress-${componentId}`);
+                    
+                    if (progressBar && progressText && progressDiv) {
+                        const percent = Math.round(result.info.progress);
+                        progressBar.style.width = `${percent}%`;
+                        progressText.textContent = `上傳中 ${percent}%`;
+                        progressDiv.style.display = 'block';
+                    }
+                }
+            }
+        });
+        
+        // 使用事件委派處理動態生成的按鈕
+        document.addEventListener('click', (e) => {
+            if (e.target && e.target.id) {
+                // 字形補丁圖片上傳
+                if (e.target.id.startsWith('upload-display-image-')) {
+                    const componentId = e.target.id.replace('upload-display-image-', '');
+                    this.currentUploadComponentId = componentId;
+                    if (this.displayImageWidget) {
+                        this.displayImageWidget.open();
+                    }
+                }
+                // 輔助插圖上傳
+                else if (e.target.id.startsWith('upload-image-')) {
+                    const componentId = e.target.id.replace('upload-image-', '');
+                    this.currentUploadComponentId = componentId;
+                    if (this.imageWidget) {
+                        this.imageWidget.open();
+                    }
+                }
             }
         });
     }

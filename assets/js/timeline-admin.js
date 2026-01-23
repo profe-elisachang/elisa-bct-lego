@@ -965,6 +965,8 @@ function setupStudioSystem() {
     const levelSelect = document.getElementById('studio-level-select');
     const addBtn = document.getElementById('studio-add-btn');
     const sidebarToggle = document.getElementById('studio-sidebar-toggle');
+    const collapseAllBtn = document.getElementById('studio-collapse-all-btn');
+    const expandAllBtn = document.getElementById('studio-expand-all-btn');
     
     if (levelSelect) {
         levelSelect.addEventListener('change', (e) => {
@@ -1059,6 +1061,23 @@ function setupStudioSystem() {
         });
     }
     
+    // 全部折疊按鈕
+    if (collapseAllBtn) {
+        collapseAllBtn.addEventListener('click', () => {
+            collapseAllStudioItems();
+        });
+    }
+
+    // 全部展開按鈕
+    if (expandAllBtn) {
+        expandAllBtn.addEventListener('click', () => {
+            expandAllStudioItems();
+        });
+    }
+    
+    // 初始化 Cloudinary 上傳功能（Studio 區塊）
+    initStudioCloudinaryUpload();
+    
     // 初始化時載入數據（等待 Firebase 初始化完成）
     setTimeout(() => {
         if (levelSelect && db) {
@@ -1136,42 +1155,87 @@ function createStudioFormItem(comp, index) {
     const item = document.createElement('div');
     item.className = 'form-item';
     item.dataset.id = comp.id;
+    item.dataset.index = index;
+    // 添加折疊狀態數據屬性，預設為展開
+    item.dataset.collapsed = 'false';
     
     item.innerHTML = `
         <div class="form-item-header">
             <span class="drag-handle">☰</span>
             <span>項目 #${index + 1}</span>
             <div style="display: flex; gap: 8px;">
+                <button class="collapse-toggle" onclick="toggleStudioCollapse(${index})" title="折疊/展開">
+                    ▼
+                </button>
                 <button class="btn-icon" onclick="openStudioTeachingModal(${index})" title="教學視圖">👁️</button>
-                <button class="btn-icon delete" onclick="deleteStudioComponent(${index})" title="刪除">🗑️</button>
             </div>
         </div>
-        <div class="form-group">
+        <div class="form-group character-group">
             <label>Character</label>
             <input type="text" data-field="character" value="${escapeHtml(comp.character || '')}" 
                    oninput="debounceStudioUpdate('${comp.id}', 'character', this.value)">
         </div>
-        <div class="form-group">
-            <label>Pinyin</label>
-            <input type="text" data-field="pinyin" value="${escapeHtml(comp.pinyin || '')}" 
-                   oninput="debounceStudioUpdate('${comp.id}', 'pinyin', this.value)">
-        </div>
-        <div class="form-group">
-            <label>Markdown Content</label>
-            <textarea data-field="notes" oninput="debounceStudioUpdate('${comp.id}', 'notes', this.value)" 
-                      style="min-height: 100px; font-family: monospace;">${escapeHtml(comp.notes || '')}</textarea>
-        </div>
-        <div class="form-group">
-            <label>Image URL</label>
-            <input type="text" data-field="image" value="${escapeHtml(comp.image || '')}" 
-                   oninput="debounceStudioUpdate('${comp.id}', 'image', this.value)">
-        </div>
-        <div class="form-group">
-            <label style="display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" ${comp.published !== false ? 'checked' : ''} 
-                       onchange="updateStudioField('${comp.id}', 'published', this.checked)">
-                Published (發布給 Review 系統)
-            </label>
+        <div class="form-item-body">
+            <div class="form-group">
+                <label>Display Image (字形補丁圖片)</label>
+                <input type="text" 
+                       data-field="display_image" 
+                       id="studio-display-image-${comp.id}"
+                       value="${escapeHtml(comp.display_image || '')}" 
+                       oninput="debounceStudioUpdate('${comp.id}', 'display_image', this.value)"
+                       placeholder="https://res.cloudinary.com/... （上傳後自動填入）">
+                <div style="margin-top: 12px;">
+                    <button type="button" class="btn btn-secondary" id="studio-upload-display-image-${comp.id}" 
+                            style="padding: 8px 12px; font-size: 13px;">
+                        🖼️ 上傳字形補丁圖片到 Cloudinary
+                    </button>
+                    <div id="studio-display-image-progress-${comp.id}" style="margin-top: 10px; display: none;">
+                        <div style="background: #eee; height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div id="studio-display-image-progress-bar-${comp.id}" style="height: 100%; background: var(--primary); width: 0%; transition: width 0.3s;"></div>
+                        </div>
+                        <small id="studio-display-image-progress-text-${comp.id}" style="color: var(--primary); font-weight: bold;">上傳中 0%</small>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Pinyin</label>
+                <input type="text" data-field="pinyin" value="${escapeHtml(comp.pinyin || '')}" 
+                       oninput="debounceStudioUpdate('${comp.id}', 'pinyin', this.value)">
+            </div>
+            <div class="form-group">
+                <label>Markdown Content</label>
+                <textarea data-field="notes" oninput="debounceStudioUpdate('${comp.id}', 'notes', this.value)" 
+                          style="min-height: 100px; font-family: monospace;">${escapeHtml(comp.notes || '')}</textarea>
+            </div>
+            <div class="form-group">
+                <label>Image URL (輔助插圖)</label>
+                <input type="text" 
+                       data-field="image" 
+                       id="studio-image-${comp.id}"
+                       value="${escapeHtml(comp.image || '')}" 
+                       oninput="debounceStudioUpdate('${comp.id}', 'image', this.value)"
+                       placeholder="https://res.cloudinary.com/... （上傳後自動填入）">
+                <div style="margin-top: 12px;">
+                    <button type="button" class="btn btn-secondary" id="studio-upload-image-${comp.id}" 
+                            style="padding: 8px 12px; font-size: 13px;">
+                        🖼️ 上傳輔助插圖到 Cloudinary
+                    </button>
+                    <div id="studio-image-progress-${comp.id}" style="margin-top: 10px; display: none;">
+                        <div style="background: #eee; height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div id="studio-image-progress-bar-${comp.id}" style="height: 100%; background: var(--primary); width: 0%; transition: width 0.3s;"></div>
+                        </div>
+                        <small id="studio-image-progress-text-${comp.id}" style="color: var(--primary); font-weight: bold;">上傳中 0%</small>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" ${comp.published !== false ? 'checked' : ''} 
+                           onchange="updateStudioField('${comp.id}', 'published', this.checked)">
+                    Published (發布給 Review 系統)
+                    <button class="btn-icon delete" onclick="deleteStudioComponent(${index})" title="刪除" style="margin-left: auto;">🗑️</button>
+                </label>
+            </div>
         </div>
     `;
     
@@ -1200,7 +1264,14 @@ function createStudioPreviewCard(comp, index) {
     card.className = 'timeline-card';
     if (comp.isCharacterCard) card.classList.add('character-card');
     card.style.cursor = 'pointer';
+    card.dataset.id = comp.id;
+    card.dataset.index = index;
+    
+    // 單擊：打開教學模態框
     card.onclick = () => openStudioTeachingModal(index);
+    
+    // 雙擊：跳轉到對應的編輯表單項目
+    card.ondblclick = () => scrollToStudioFormItem(comp.id, index);
     
     // 字
     const charDiv = document.createElement('div');
@@ -1393,6 +1464,33 @@ async function deleteStudioComponent(index) {
     }
 }
 
+function scrollToStudioFormItem(componentId, index) {
+    // 檢查編輯面板是否被最小化，如果是則展開
+    const layout = document.getElementById('studio-layout');
+    const sidebarToggle = document.getElementById('studio-sidebar-toggle');
+    
+    if (layout && layout.classList.contains('sidebar-hidden')) {
+        layout.classList.remove('sidebar-hidden');
+        if (sidebarToggle) {
+            sidebarToggle.textContent = '◀';
+            sidebarToggle.title = '隱藏編輯面板';
+        }
+    }
+    
+    // 找到對應的編輯表單項目
+    const formList = document.getElementById('studio-form-list');
+    if (!formList) return;
+    
+    const formItem = formList.querySelector(`[data-id="${componentId}"]`);
+    if (formItem) {
+        // 滾動到該項目
+        formItem.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+        });
+    }
+}
+
 function openStudioTeachingModal(index) {
     const component = studioComponents[index];
     if (!component) return;
@@ -1433,6 +1531,185 @@ function openStudioTeachingModal(index) {
 function closeStudioTeachingModal() {
     const modal = document.getElementById('studio-teaching-modal');
     if (modal) modal.classList.remove('active');
+}
+
+function toggleStudioCollapse(index) {
+    const formList = document.getElementById('studio-form-list');
+    if (!formList) return;
+    
+    const items = formList.querySelectorAll('.form-item');
+    const item = items[index];
+    
+    if (!item) return;
+    
+    const isCollapsed = item.dataset.collapsed === 'true';
+    item.dataset.collapsed = isCollapsed ? 'false' : 'true';
+    item.classList.toggle('collapsed', !isCollapsed);
+    
+    // 更新按鈕圖標
+    const toggleBtn = item.querySelector('.collapse-toggle');
+    if (toggleBtn) {
+        toggleBtn.textContent = isCollapsed ? '▼' : '▶';
+    }
+}
+
+function collapseAllStudioItems() {
+    const formList = document.getElementById('studio-form-list');
+    if (!formList) return;
+    
+    const items = formList.querySelectorAll('.form-item');
+    items.forEach((item) => {
+        item.dataset.collapsed = 'true';
+        item.classList.add('collapsed');
+        const toggleBtn = item.querySelector('.collapse-toggle');
+        if (toggleBtn) {
+            toggleBtn.textContent = '▶';
+        }
+    });
+}
+
+function expandAllStudioItems() {
+    const formList = document.getElementById('studio-form-list');
+    if (!formList) return;
+    
+    const items = formList.querySelectorAll('.form-item');
+    items.forEach((item) => {
+        item.dataset.collapsed = 'false';
+        item.classList.remove('collapsed');
+        const toggleBtn = item.querySelector('.collapse-toggle');
+        if (toggleBtn) {
+            toggleBtn.textContent = '▼';
+        }
+    });
+}
+
+function initStudioCloudinaryUpload() {
+    if (typeof cloudinary === 'undefined') {
+        console.warn('Cloudinary widget not loaded');
+        return;
+    }
+    
+    // Studio 區塊的字形補丁圖片上傳 widget
+    const studioDisplayImageWidget = cloudinary.createUploadWidget({
+        cloudName: 'dxc8rcjuh',
+        uploadPreset: 'Elisa-BCT',
+        folder: 'bct-lego/display-images',
+        cropping: false,
+        multiple: false,
+        clientAllowedFormats: ['png', 'jpg', 'jpeg', 'webp'],
+        maxFileSize: 10000000
+    }, (error, result) => {
+        if (error) {
+            console.error('Cloudinary 上傳錯誤:', error);
+            return;
+        }
+        
+        if (result && result.event === "success") {
+            const componentId = window.currentStudioUploadComponentId;
+            if (componentId) {
+                const input = document.getElementById(`studio-display-image-${componentId}`);
+                if (input) {
+                    input.value = result.info.secure_url;
+                    // 自動更新 Firestore
+                    updateStudioField(componentId, 'display_image', result.info.secure_url);
+                    // 隱藏進度條
+                    const progressDiv = document.getElementById(`studio-display-image-progress-${componentId}`);
+                    if (progressDiv) {
+                        progressDiv.style.display = 'none';
+                    }
+                }
+            }
+        }
+        
+        // 上傳進度
+        if (result && result.event === "progress") {
+            const componentId = window.currentStudioUploadComponentId;
+            if (componentId) {
+                const progressBar = document.getElementById(`studio-display-image-progress-bar-${componentId}`);
+                const progressText = document.getElementById(`studio-display-image-progress-text-${componentId}`);
+                const progressDiv = document.getElementById(`studio-display-image-progress-${componentId}`);
+                
+                if (progressBar && progressText && progressDiv) {
+                    const percent = Math.round(result.info.progress);
+                    progressBar.style.width = `${percent}%`;
+                    progressText.textContent = `上傳中 ${percent}%`;
+                    progressDiv.style.display = 'block';
+                }
+            }
+        }
+    });
+    
+    // Studio 區塊的輔助插圖上傳 widget
+    const studioImageWidget = cloudinary.createUploadWidget({
+        cloudName: 'dxc8rcjuh',
+        uploadPreset: 'Elisa-BCT',
+        folder: 'bct-lego/images',
+        cropping: false,
+        multiple: false,
+        clientAllowedFormats: ['png', 'jpg', 'jpeg', 'webp'],
+        maxFileSize: 10000000
+    }, (error, result) => {
+        if (error) {
+            console.error('Cloudinary 上傳錯誤:', error);
+            return;
+        }
+        
+        if (result && result.event === "success") {
+            const componentId = window.currentStudioUploadComponentId;
+            if (componentId) {
+                const input = document.getElementById(`studio-image-${componentId}`);
+                if (input) {
+                    input.value = result.info.secure_url;
+                    // 自動更新 Firestore
+                    updateStudioField(componentId, 'image', result.info.secure_url);
+                    // 隱藏進度條
+                    const progressDiv = document.getElementById(`studio-image-progress-${componentId}`);
+                    if (progressDiv) {
+                        progressDiv.style.display = 'none';
+                    }
+                }
+            }
+        }
+        
+        // 上傳進度
+        if (result && result.event === "progress") {
+            const componentId = window.currentStudioUploadComponentId;
+            if (componentId) {
+                const progressBar = document.getElementById(`studio-image-progress-bar-${componentId}`);
+                const progressText = document.getElementById(`studio-image-progress-text-${componentId}`);
+                const progressDiv = document.getElementById(`studio-image-progress-${componentId}`);
+                
+                if (progressBar && progressText && progressDiv) {
+                    const percent = Math.round(result.info.progress);
+                    progressBar.style.width = `${percent}%`;
+                    progressText.textContent = `上傳中 ${percent}%`;
+                    progressDiv.style.display = 'block';
+                }
+            }
+        }
+    });
+    
+    // 使用事件委派處理動態生成的按鈕
+    document.addEventListener('click', (e) => {
+        if (e.target && e.target.id) {
+            // 字形補丁圖片上傳
+            if (e.target.id.startsWith('studio-upload-display-image-')) {
+                const componentId = e.target.id.replace('studio-upload-display-image-', '');
+                window.currentStudioUploadComponentId = componentId;
+                if (studioDisplayImageWidget) {
+                    studioDisplayImageWidget.open();
+                }
+            }
+            // 輔助插圖上傳
+            else if (e.target.id.startsWith('studio-upload-image-')) {
+                const componentId = e.target.id.replace('studio-upload-image-', '');
+                window.currentStudioUploadComponentId = componentId;
+                if (studioImageWidget) {
+                    studioImageWidget.open();
+                }
+            }
+        }
+    });
 }
 
 function escapeHtml(text) {

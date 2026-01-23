@@ -762,6 +762,43 @@ body {
     opacity: 0.5;
 }
 
+/* ==================== Studio 折疊/展開功能 ==================== */
+.collapse-toggle {
+    padding: 4px 8px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 14px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    min-width: 24px;
+}
+
+.collapse-toggle:hover {
+    background: var(--gray);
+    color: var(--dark);
+}
+
+/* 表單項目折疊狀態 */
+.form-item.collapsed .form-item-body {
+    display: none;
+}
+
+.form-item.collapsed .form-item-header {
+    margin-bottom: 0;
+}
+
+/* 折疊時只顯示「字」欄位 */
+.form-item.collapsed .form-group:not(.character-group) {
+    display: none;
+}
+
+/* 確保「字」欄位始終可見（即使在折疊狀態） */
+.character-group {
+    display: block !important;
+}
+
 /* 教學模態框 */
 .teaching-modal {
     display: none;
