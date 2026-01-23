@@ -19,7 +19,7 @@
       max-width: 100%;
       margin: 0;
       padding: var(--space-4);
-      height: calc(100vh - 80px);
+      height: calc(100vh );
       display: flex;
       flex-direction: column;
     }
@@ -441,6 +441,59 @@
       opacity: 0.5;
     }
 
+    /* 折疊/展開按鈕 */
+    .collapse-toggle {
+      padding: var(--space-1) var(--space-2);
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      color: var(--gray-500);
+      font-size: var(--text-sm);
+      border-radius: var(--radius-md);
+      transition: all var(--duration-fast) var(--ease-out);
+      min-width: 24px;
+    }
+
+    .collapse-toggle:hover {
+      background: var(--gray-100);
+      color: var(--gray-900);
+    }
+
+    /* 表單項目折疊狀態 */
+    .form-item.collapsed .form-item-body {
+      display: none;
+    }
+
+    .form-item.collapsed .form-item-header {
+      margin-bottom: 0;
+    }
+
+    /* 確保「字」欄位始終可見（即使在折疊狀態） */
+    .character-group {
+      display: block !important;
+    }
+
+    /* 全部折疊/展開按鈕 */
+    #collapse-all-btn,
+    #expand-all-btn {
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--gray-300);
+      background: var(--bg-card);
+      color: var(--gray-700);
+      font-size: var(--text-sm);
+      font-weight: var(--font-medium);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--ease-out);
+    }
+
+    #collapse-all-btn:hover,
+    #expand-all-btn:hover {
+      background: var(--gray-100);
+      border-color: var(--gray-400);
+      color: var(--gray-900);
+    }
+
     /* 可調整寬度的拉條 */
     .resizer {
       width: 4px;
@@ -523,7 +576,11 @@
       <!-- 左側：編輯面板 -->
       <div class="studio-editor" id="studio-editor">
         <div class="editor-header">
-          <h2>編輯表單</h2>
+          <div style="display: flex; align-items: center; gap: var(--space-2);">
+            <h2>編輯表單</h2>
+            <button class="btn-icon" id="collapse-all-btn" title="全部折疊">全部折疊</button>
+            <button class="btn-icon" id="expand-all-btn" title="全部展開">全部展開</button>
+          </div>
           <button class="btn-icon" id="add-component-btn" title="添加新項目" style="background: var(--primary); color: white; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-semibold);">
             + 新增
           </button>

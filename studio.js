@@ -198,6 +198,22 @@ class StudioManager {
         addBtn.addEventListener('click', () => {
             this.addNewComponent();
         });
+
+        // 全部折疊按鈕
+        const collapseAllBtn = document.getElementById('collapse-all-btn');
+        if (collapseAllBtn) {
+            collapseAllBtn.addEventListener('click', () => {
+                this.collapseAll();
+            });
+        }
+
+        // 全部展開按鈕
+        const expandAllBtn = document.getElementById('expand-all-btn');
+        if (expandAllBtn) {
+            expandAllBtn.addEventListener('click', () => {
+                this.expandAll();
+            });
+        }
     }
 
     async loadComponents() {
@@ -395,17 +411,21 @@ class StudioManager {
         item.className = 'form-item';
         item.dataset.id = comp.id;
         item.dataset.index = index;
+        // 添加折疊狀態數據屬性，預設為展開
+        item.dataset.collapsed = 'false';
 
         item.innerHTML = `
             <div class="form-item-header">
                 <span class="drag-handle">☰</span>
                 <span class="form-item-title">項目 #${index + 1}</span>
                 <div class="form-item-actions">
+                    <button class="collapse-toggle" onclick="studioManager.toggleCollapse(${index})" title="折疊/展開">
+                        ▼
+                    </button>
                     <button class="btn-icon" onclick="studioManager.openTeachingModal(${index})" title="教學視圖">👁️</button>
-                    <button class="btn-icon delete" onclick="studioManager.deleteComponent(${index})" title="刪除">🗑️</button>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="form-group character-group">
                 <label>Character (字)</label>
                 <input type="text" 
                        data-field="character" 
@@ -414,79 +434,82 @@ class StudioManager {
                        placeholder="例如：氵">
                 <small style="color: var(--gray-500); font-size: var(--text-xs);">如果字無法正常顯示，請使用下方的字形補丁圖片</small>
             </div>
-            <div class="form-group">
-                <label>Display Image (字形補丁圖片)</label>
-                <input type="text" 
-                       data-field="display_image" 
-                       value="${this.escapeHtml(comp.display_image || '')}" 
-                       oninput="studioManager.debounceUpdate('${comp.id}', 'display_image', this.value)"
-                       placeholder="https://res.cloudinary.com/...">
-            </div>
-            <div class="form-group">
-                <label>Pinyin (拼音)</label>
-                <input type="text" 
-                       data-field="pinyin" 
-                       value="${this.escapeHtml(comp.pinyin || '')}" 
-                       oninput="studioManager.debounceUpdate('${comp.id}', 'pinyin', this.value)"
-                       placeholder="例如：shuǐ">
-            </div>
-            <div class="form-group">
-                <label>Meaning (意思)</label>
-                <input type="text" 
-                       data-field="meaning" 
-                       value="${this.escapeHtml(comp.meaning || '')}" 
-                       oninput="studioManager.debounceUpdate('${comp.id}', 'meaning', this.value)"
-                       placeholder="例如：water radical | radical de agua">
-            </div>
-            <div class="form-group">
-                <label>Lesson (課次)</label>
-                <select data-field="lesson" 
-                        onchange="studioManager.updateField('${comp.id}', 'lesson', this.value)">
-                    <option value="">未指定</option>
-                    <option value="lesson1" ${(comp.lesson || '') === 'lesson1' ? 'selected' : ''}>Lesson 1</option>
-                    <option value="lesson2" ${(comp.lesson || '') === 'lesson2' ? 'selected' : ''}>Lesson 2</option>
-                    <option value="lesson3" ${(comp.lesson || '') === 'lesson3' ? 'selected' : ''}>Lesson 3</option>
-                    <option value="lesson4" ${(comp.lesson || '') === 'lesson4' ? 'selected' : ''}>Lesson 4</option>
-                    <option value="lesson5" ${(comp.lesson || '') === 'lesson5' ? 'selected' : ''}>Lesson 5</option>
-                    <option value="lesson6" ${(comp.lesson || '') === 'lesson6' ? 'selected' : ''}>Lesson 6</option>
-                    <option value="lesson7" ${(comp.lesson || '') === 'lesson7' ? 'selected' : ''}>Lesson 7</option>
-                    <option value="lesson8" ${(comp.lesson || '') === 'lesson8' ? 'selected' : ''}>Lesson 8</option>
-                    <option value="lesson9" ${(comp.lesson || '') === 'lesson9' ? 'selected' : ''}>Lesson 9</option>
-                    <option value="lesson10" ${(comp.lesson || '') === 'lesson10' ? 'selected' : ''}>Lesson 10</option>
-                    <option value="lesson11" ${(comp.lesson || '') === 'lesson11' ? 'selected' : ''}>Lesson 11</option>
-                    <option value="lesson12" ${(comp.lesson || '') === 'lesson12' ? 'selected' : ''}>Lesson 12</option>
-                    <option value="lesson13" ${(comp.lesson || '') === 'lesson13' ? 'selected' : ''}>Lesson 13</option>
-                    <option value="lesson14" ${(comp.lesson || '') === 'lesson14' ? 'selected' : ''}>Lesson 14</option>
-                    <option value="lesson15" ${(comp.lesson || '') === 'lesson15' ? 'selected' : ''}>Lesson 15</option>
-                    <option value="lesson16" ${(comp.lesson || '') === 'lesson16' ? 'selected' : ''}>Lesson 16</option>
-                    <option value="lesson17" ${(comp.lesson || '') === 'lesson17' ? 'selected' : ''}>Lesson 17</option>
-                    <option value="lesson18" ${(comp.lesson || '') === 'lesson18' ? 'selected' : ''}>Lesson 18</option>
-                    <option value="lesson19" ${(comp.lesson || '') === 'lesson19' ? 'selected' : ''}>Lesson 19</option>
-                    <option value="lesson20" ${(comp.lesson || '') === 'lesson20' ? 'selected' : ''}>Lesson 20</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Notes (補充說明，支援 Markdown)</label>
-                <textarea class="markdown-content" 
-                          data-field="notes" 
-                          oninput="studioManager.debounceUpdate('${comp.id}', 'notes', this.value)"
-                          placeholder="可使用 Markdown 格式，例如：&#10;&#10;## 記憶故事&#10;這是一個關於...&#10;&#10;![story](圖片網址)">${this.escapeHtml(comp.notes || '')}</textarea>
-            </div>
-            <div class="form-group">
-                <label>Image URL (輔助插圖)</label>
-                <input type="text" 
-                       data-field="image" 
-                       value="${this.escapeHtml(comp.image || '')}" 
-                       oninput="studioManager.debounceUpdate('${comp.id}', 'image', this.value)"
-                       placeholder="https://res.cloudinary.com/...">
-            </div>
-            <div class="form-group">
-                <div class="checkbox-group">
-                    <input type="checkbox" 
-                           id="published-${comp.id}" 
-                           ${(comp.is_published !== false && comp.published !== false) ? 'checked' : ''} 
-                           onchange="studioManager.updateField('${comp.id}', 'is_published', this.checked)">
-                    <label for="published-${comp.id}">Published (發布給 Review 系統)</label>
+            <div class="form-item-body">
+                <div class="form-group">
+                    <label>Display Image (字形補丁圖片)</label>
+                    <input type="text" 
+                           data-field="display_image" 
+                           value="${this.escapeHtml(comp.display_image || '')}" 
+                           oninput="studioManager.debounceUpdate('${comp.id}', 'display_image', this.value)"
+                           placeholder="https://res.cloudinary.com/...">
+                </div>
+                <div class="form-group">
+                    <label>Pinyin (拼音)</label>
+                    <input type="text" 
+                           data-field="pinyin" 
+                           value="${this.escapeHtml(comp.pinyin || '')}" 
+                           oninput="studioManager.debounceUpdate('${comp.id}', 'pinyin', this.value)"
+                           placeholder="例如：shuǐ">
+                </div>
+                <div class="form-group">
+                    <label>Meaning (意思)</label>
+                    <input type="text" 
+                           data-field="meaning" 
+                           value="${this.escapeHtml(comp.meaning || '')}" 
+                           oninput="studioManager.debounceUpdate('${comp.id}', 'meaning', this.value)"
+                           placeholder="例如：water radical | radical de agua">
+                </div>
+                <div class="form-group">
+                    <label>Lesson (課次)</label>
+                    <select data-field="lesson" 
+                            onchange="studioManager.updateField('${comp.id}', 'lesson', this.value)">
+                        <option value="">未指定</option>
+                        <option value="lesson1" ${(comp.lesson || '') === 'lesson1' ? 'selected' : ''}>Lesson 1</option>
+                        <option value="lesson2" ${(comp.lesson || '') === 'lesson2' ? 'selected' : ''}>Lesson 2</option>
+                        <option value="lesson3" ${(comp.lesson || '') === 'lesson3' ? 'selected' : ''}>Lesson 3</option>
+                        <option value="lesson4" ${(comp.lesson || '') === 'lesson4' ? 'selected' : ''}>Lesson 4</option>
+                        <option value="lesson5" ${(comp.lesson || '') === 'lesson5' ? 'selected' : ''}>Lesson 5</option>
+                        <option value="lesson6" ${(comp.lesson || '') === 'lesson6' ? 'selected' : ''}>Lesson 6</option>
+                        <option value="lesson7" ${(comp.lesson || '') === 'lesson7' ? 'selected' : ''}>Lesson 7</option>
+                        <option value="lesson8" ${(comp.lesson || '') === 'lesson8' ? 'selected' : ''}>Lesson 8</option>
+                        <option value="lesson9" ${(comp.lesson || '') === 'lesson9' ? 'selected' : ''}>Lesson 9</option>
+                        <option value="lesson10" ${(comp.lesson || '') === 'lesson10' ? 'selected' : ''}>Lesson 10</option>
+                        <option value="lesson11" ${(comp.lesson || '') === 'lesson11' ? 'selected' : ''}>Lesson 11</option>
+                        <option value="lesson12" ${(comp.lesson || '') === 'lesson12' ? 'selected' : ''}>Lesson 12</option>
+                        <option value="lesson13" ${(comp.lesson || '') === 'lesson13' ? 'selected' : ''}>Lesson 13</option>
+                        <option value="lesson14" ${(comp.lesson || '') === 'lesson14' ? 'selected' : ''}>Lesson 14</option>
+                        <option value="lesson15" ${(comp.lesson || '') === 'lesson15' ? 'selected' : ''}>Lesson 15</option>
+                        <option value="lesson16" ${(comp.lesson || '') === 'lesson16' ? 'selected' : ''}>Lesson 16</option>
+                        <option value="lesson17" ${(comp.lesson || '') === 'lesson17' ? 'selected' : ''}>Lesson 17</option>
+                        <option value="lesson18" ${(comp.lesson || '') === 'lesson18' ? 'selected' : ''}>Lesson 18</option>
+                        <option value="lesson19" ${(comp.lesson || '') === 'lesson19' ? 'selected' : ''}>Lesson 19</option>
+                        <option value="lesson20" ${(comp.lesson || '') === 'lesson20' ? 'selected' : ''}>Lesson 20</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Notes (補充說明，支援 Markdown)</label>
+                    <textarea class="markdown-content" 
+                              data-field="notes" 
+                              oninput="studioManager.debounceUpdate('${comp.id}', 'notes', this.value)"
+                              placeholder="可使用 Markdown 格式，例如：&#10;&#10;## 記憶故事&#10;這是一個關於...&#10;&#10;![story](圖片網址)">${this.escapeHtml(comp.notes || '')}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Image URL (輔助插圖)</label>
+                    <input type="text" 
+                           data-field="image" 
+                           value="${this.escapeHtml(comp.image || '')}" 
+                           oninput="studioManager.debounceUpdate('${comp.id}', 'image', this.value)"
+                           placeholder="https://res.cloudinary.com/...">
+                </div>
+                <div class="form-group">
+                    <div class="checkbox-group" style="display: flex; align-items: center; gap: var(--space-2);">
+                        <input type="checkbox" 
+                               id="published-${comp.id}" 
+                               ${(comp.is_published !== false && comp.published !== false) ? 'checked' : ''} 
+                               onchange="studioManager.updateField('${comp.id}', 'is_published', this.checked)">
+                        <label for="published-${comp.id}" style="margin: 0;">Published (發布給 Review 系統)</label>
+                        <button class="btn-icon delete" onclick="studioManager.deleteComponent(${index})" title="刪除" style="margin-left: auto;">🗑️</button>
+                    </div>
                 </div>
             </div>
         `;
@@ -801,6 +824,50 @@ class StudioManager {
             console.error('❌ 添加新項目失敗:', error);
             alert('添加失敗：' + error.message);
         }
+    }
+
+    toggleCollapse(index) {
+        const formList = document.getElementById('form-list');
+        const items = formList.querySelectorAll('.form-item');
+        const item = items[index];
+        
+        if (!item) return;
+        
+        const isCollapsed = item.dataset.collapsed === 'true';
+        item.dataset.collapsed = isCollapsed ? 'false' : 'true';
+        item.classList.toggle('collapsed', !isCollapsed);
+        
+        // 更新按鈕圖標
+        const toggleBtn = item.querySelector('.collapse-toggle');
+        if (toggleBtn) {
+            toggleBtn.textContent = isCollapsed ? '▼' : '▶';
+        }
+    }
+
+    collapseAll() {
+        const formList = document.getElementById('form-list');
+        const items = formList.querySelectorAll('.form-item');
+        items.forEach((item) => {
+            item.dataset.collapsed = 'true';
+            item.classList.add('collapsed');
+            const toggleBtn = item.querySelector('.collapse-toggle');
+            if (toggleBtn) {
+                toggleBtn.textContent = '▶';
+            }
+        });
+    }
+
+    expandAll() {
+        const formList = document.getElementById('form-list');
+        const items = formList.querySelectorAll('.form-item');
+        items.forEach((item) => {
+            item.dataset.collapsed = 'false';
+            item.classList.remove('collapsed');
+            const toggleBtn = item.querySelector('.collapse-toggle');
+            if (toggleBtn) {
+                toggleBtn.textContent = '▼';
+            }
+        });
     }
 
     escapeHtml(text) {
