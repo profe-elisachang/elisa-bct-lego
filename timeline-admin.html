@@ -35,6 +35,7 @@
             <button class="admin-tab-btn active" data-tab="supplement">📝 補充管理</button>
             <button class="admin-tab-btn" data-tab="character-cards">🧩 部件與目標字管理</button>
             <button class="admin-tab-btn" data-tab="studio">🎨 Studio</button>
+            <button class="admin-tab-btn" data-tab="live-note">📝 Live Note</button>
         </div>
 
         <!-- Tab 1: 補充管理（現有內容） -->
@@ -95,7 +96,7 @@
                 </div>
                 <div class="form-row type-vocab">
                     <label>补充</label>
-                    <textarea id="notesInput" rows="2" placeholder="记忆故事、例句等..."></textarea>
+                    <textarea id="notesInput" class="markdown-content" rows="2" placeholder="记忆故事、例句等..."></textarea>
                 </div>
                 <div class="form-row type-note hidden">
                     <label>笔记标题</label>
@@ -254,7 +255,7 @@
                     </div>
                     <div class="form-row" style="grid-column: 1 / -1;">
                         <label for="cardNotes">補充說明（notes，支援 Markdown）</label>
-                        <textarea id="cardNotes" rows="8" placeholder="可使用 Markdown 格式，例如：&#10;&#10;## 記憶故事&#10;這是一個關於切割的故事...&#10;&#10;![story](圖片網址)&#10;&#10;## 象形演變&#10;![origin](圖片網址)&#10;&#10;## 例句&#10;COW needs a TOWEL"></textarea>
+                        <textarea id="cardNotes" class="markdown-content" rows="8" placeholder="可使用 Markdown 格式，例如：&#10;&#10;## 記憶故事&#10;這是一個關於切割的故事...&#10;&#10;![story](圖片網址)&#10;&#10;## 象形演變&#10;![origin](圖片網址)&#10;&#10;## 例句&#10;COW needs a TOWEL"></textarea>
                         <small style="color:#666; display:block; margin-top:6px;">
                             Markdown 圖片分類：<br>
                             • <code>![comp](url)</code>：字形補丁（行內顯示）<br>
@@ -334,12 +335,76 @@
                 </div>
             </div>
         </div>
+
+        <!-- Tab 4: Live Note 即時筆記 -->
+        <div id="live-note-tab" class="admin-tab-pane">
+            <div class="live-note-layout" id="live-note-layout">
+                <!-- 左側：編輯面板 -->
+                <div class="live-note-editor" id="live-note-editor">
+                    <div class="editor-header">
+                        <h2>編輯筆記</h2>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <select id="live-note-level-select" style="padding: 8px 12px; border: 1px solid var(--gray); border-radius: 8px; font-size: 14px;">
+                                <option value="btc1">BCT 1</option>
+                                <option value="btc2">BCT 2</option>
+                                <option value="btc3">BCT 3</option>
+                            </select>
+                            <select id="live-note-lesson-select" style="padding: 8px 12px; border: 1px solid var(--gray); border-radius: 8px; font-size: 14px;">
+                                <option value="">選擇課次...</option>
+                            </select>
+                            <select id="live-note-select" style="padding: 8px 12px; border: 1px solid var(--gray); border-radius: 8px; font-size: 14px;">
+                                <option value="">選擇或新增筆記...</option>
+                            </select>
+                            <button class="btn btn-primary" id="live-note-new-btn">+ 新增筆記</button>
+                        </div>
+                    </div>
+                    <div class="editor-content">
+                        <div class="form-group">
+                            <label for="live-note-title">標題</label>
+                            <input type="text" id="live-note-title" placeholder="輸入筆記標題..." class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="live-note-content">內容（支援 Markdown）</label>
+                            <textarea id="live-note-content" rows="20" placeholder="輸入筆記內容，支援 Markdown 格式...&#10;&#10;提示：&#10;• 使用 **粗體** 或 Ctrl+B 快捷鍵&#10;• 使用 ## 標題&#10;• 使用 ![origin](圖片網址) 或 ![story](圖片網址) 插入圖片" class="markdown-content form-control"></textarea>
+                            <small style="color: #666; display: block; margin-top: 8px;">
+                                💡 提示：內容會自動保存，支援 Markdown 格式
+                            </small>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn btn-success" id="live-note-save-btn">💾 手動保存</button>
+                            <button class="btn btn-danger" id="live-note-delete-btn" style="display: none;">🗑️ 刪除筆記</button>
+                            <span id="live-note-status" style="margin-left: 15px; color: var(--muted); font-size: 13px;"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 可調整寬度的拉條 -->
+                <div class="resizer" id="live-note-resizer"></div>
+
+                <!-- 右側：預覽面板 -->
+                <div class="live-note-preview">
+                    <div class="preview-header">
+                        <h2>實時預覽</h2>
+                        <button class="sidebar-toggle-btn" id="live-note-sidebar-toggle" title="顯示/隱藏編輯面板">◀</button>
+                    </div>
+                    <div class="preview-content">
+                        <div id="live-note-preview-content" style="padding: 20px;">
+                            <div style="padding: 40px; text-align: center; color: var(--muted);">
+                                請在左側輸入內容以查看預覽
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="assets/js/firestore.js"></script>
+    <script src="assets/js/markdown-renderer.js"></script>
+    <script src="assets/js/markdown-shortcuts.js"></script>
     <script src="assets/js/timeline-admin.js"></script>
 </body>
 </html>

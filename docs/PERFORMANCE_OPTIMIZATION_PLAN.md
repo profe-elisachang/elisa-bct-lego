@@ -225,3 +225,119 @@ snapshot.forEach(doc => {
 **优化目标：** 将查询速度从 5-10 秒优化到 0.5 秒  
 **预期影响：** 提升 10-20 倍性能 🚀
 
+---
+
+### 3. Markdown 圖片大小控制擴展
+
+**問題描述：**
+- 目前系統只支援三種預定義圖片類型：`comp`、`origin`、`story`
+- 無法靈活控制圖片大小，例如需要 30%、50%、80% 等不同寬度
+- 在 Live Note 和筆記功能中，需要更多圖片大小選項
+
+**當前實現：**
+- 使用 `alt` 文字判斷圖片類型
+- `![comp](url)` → 行內顯示，1.6em 高度
+- `![origin](url)` → 55% 寬度，置中
+- `![story](url)` → 90% 寬度，置中
+- 其他 → 自適應，max-width: 100%
+
+**優先級：** 低（不影響現有功能，屬於功能增強）
+
+**解決方案（方案 D - 混合方式）：**
+
+擴展 `assets/js/markdown-renderer.js` 和 `assets/js/loader.js` 的 `renderMarkdown` 方法：
+
+1. **保留現有類型**（向後兼容）：
+   - `![comp](url)` → 行內，1.6em（現有）
+   - `![origin](url)` → 55% 寬度（現有）
+   - `![story](url)` → 90% 寬度（現有）
+
+2. **新增預定義類型**：
+   - `![small](url)` → 30% 寬度，置中
+   - `![medium](url)` → 50% 寬度，置中
+   - `![large](url)` → 80% 寬度，置中
+   - `![full](url)` → 100% 寬度
+   - `![note](url)` → 自適應，適合筆記欄（max-width: 100%）
+
+3. **支援自定義寬度語法**：
+   - `![width:45%](url)` → 45% 寬度，置中
+   - `![width:300px](url)` → 300px 固定寬度
+   - `![width:40%,center](url)` → 40% 寬度，置中（可選參數）
+
+**需要修改的文件：**
+- `assets/js/markdown-renderer.js` - `renderMarkdown()` 方法
+- `assets/js/loader.js` - `renderMarkdown()` 方法
+- `styles/templates/lesson-b.css` - 新增 `.img-small`、`.img-medium`、`.img-large`、`.img-full`、`.img-note` 樣式
+
+**預計時間：** 30-45 分鐘
+
+**測試場景：**
+- 在 Live Note 中輸入各種圖片語法
+- 在 `lesson-template-b.html` 的筆記欄中顯示
+- 確認所有圖片類型正確渲染
+- 確認向後兼容（現有的 comp/origin/story 仍可用）
+
+---
+
+**記錄日期：** 2026-01-21  
+**相關功能：** Live Note、筆記功能  
+**狀態：** ⏳ 待實作
+
+---
+
+### 3. Markdown 圖片大小控制擴展
+
+**問題描述：**
+- 目前系統只支援三種預定義圖片類型：`comp`、`origin`、`story`
+- 無法靈活控制圖片大小，例如需要 30%、50%、80% 等不同寬度
+- 在 Live Note 和筆記功能中，需要更多圖片大小選項
+
+**當前實現：**
+- 使用 `alt` 文字判斷圖片類型
+- `![comp](url)` → 行內顯示，1.6em 高度
+- `![origin](url)` → 55% 寬度，置中
+- `![story](url)` → 90% 寬度，置中
+- 其他 → 自適應，max-width: 100%
+
+**優先級：** 低（不影響現有功能，屬於功能增強）
+
+**解決方案（方案 D - 混合方式）：**
+
+擴展 `assets/js/markdown-renderer.js` 和 `assets/js/loader.js` 的 `renderMarkdown` 方法：
+
+1. **保留現有類型**（向後兼容）：
+   - `![comp](url)` → 行內，1.6em（現有）
+   - `![origin](url)` → 55% 寬度（現有）
+   - `![story](url)` → 90% 寬度（現有）
+
+2. **新增預定義類型**：
+   - `![small](url)` → 30% 寬度，置中
+   - `![medium](url)` → 50% 寬度，置中
+   - `![large](url)` → 80% 寬度，置中
+   - `![full](url)` → 100% 寬度
+   - `![note](url)` → 自適應，適合筆記欄（max-width: 100%）
+
+3. **支援自定義寬度語法**：
+   - `![width:45%](url)` → 45% 寬度，置中
+   - `![width:300px](url)` → 300px 固定寬度
+   - `![width:40%,center](url)` → 40% 寬度，置中（可選參數）
+
+**需要修改的文件：**
+- `assets/js/markdown-renderer.js` - `renderMarkdown()` 方法
+- `assets/js/loader.js` - `renderMarkdown()` 方法
+- `styles/templates/lesson-b.css` - 新增 `.img-small`、`.img-medium`、`.img-large`、`.img-full`、`.img-note` 樣式
+
+**預計時間：** 30-45 分鐘
+
+**測試場景：**
+- 在 Live Note 中輸入各種圖片語法
+- 在 `lesson-template-b.html` 的筆記欄中顯示
+- 確認所有圖片類型正確渲染
+- 確認向後兼容（現有的 comp/origin/story 仍可用）
+
+---
+
+**記錄日期：** 2026-01-21  
+**相關功能：** Live Note、筆記功能  
+**狀態：** ⏳ 待實作
+

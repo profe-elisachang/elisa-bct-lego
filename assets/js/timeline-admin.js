@@ -44,6 +44,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         setupFilters();
         setupTabSystem();
         setupStudioSystem();
+        setupLiveNoteSystem();
         await ensureAuth();
         
         // Initialize Firebase and ensure Anonymous Sign-in
@@ -1716,5 +1717,395 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// ==================== Live Note 系統 ====================
+let currentLiveNoteId = null;
+let currentLiveNoteLevel = 'btc1';
+let currentLiveNoteLesson = '';
+let liveNoteSaveTimeout = null;
+let liveNoteCohort = 'taigen-a'; // 預設班級
+
+function setupLiveNoteSystem() {
+    // 綁定事件
+    const levelSelect = document.getElementById('live-note-level-select');
+    const lessonSelect = document.getElementById('live-note-lesson-select');
+    const noteSelect = document.getElementById('live-note-select');
+    const titleInput = document.getElementById('live-note-title');
+    const contentInput = document.getElementById('live-note-content');
+    const newBtn = document.getElementById('live-note-new-btn');
+    const saveBtn = document.getElementById('live-note-save-btn');
+    const deleteBtn = document.getElementById('live-note-delete-btn');
+    const sidebarToggle = document.getElementById('live-note-sidebar-toggle');
+    const resizer = document.getElementById('live-note-resizer');
+
+    if (!levelSelect || !lessonSelect || !noteSelect || !titleInput || !contentInput) {
+        console.warn('Live Note 元素未找到，跳過初始化');
+        return;
+    }
+
+    // 初始化課次選項
+    renderLiveNoteLessonOptions();
+
+    // Level 變更
+    levelSelect.addEventListener('change', async (e) => {
+        currentLiveNoteLevel = e.target.value;
+        renderLiveNoteLessonOptions();
+        await loadLiveNoteList();
+    });
+
+    // Lesson 變更
+    lessonSelect.addEventListener('change', async (e) => {
+        currentLiveNoteLesson = e.target.value;
+        await loadLiveNoteList();
+    });
+
+    // Note 選擇變更
+    noteSelect.addEventListener('change', async (e) => {
+        const noteId = e.target.value;
+        if (noteId) {
+            await loadLiveNote(noteId);
+        } else {
+            clearLiveNoteForm();
+        }
+    });
+
+    // 新增筆記
+    newBtn.addEventListener('click', () => {
+        clearLiveNoteForm();
+        currentLiveNoteId = null;
+        noteSelect.value = '';
+        deleteBtn.style.display = 'none';
+        updateLiveNoteStatus('已清空表單，可以開始輸入新筆記');
+    });
+
+    // 手動保存
+    saveBtn.addEventListener('click', async () => {
+        await saveLiveNote();
+    });
+
+    // 刪除筆記
+    deleteBtn.addEventListener('click', async () => {
+        if (confirm('確定要刪除這則筆記嗎？此操作無法復原。')) {
+            await deleteLiveNote();
+        }
+    });
+
+    // 標題輸入 - 自動保存
+    titleInput.addEventListener('input', () => {
+        debounceLiveNoteUpdate();
+    });
+
+    // 內容輸入 - 自動保存 + 即時預覽
+    contentInput.addEventListener('input', () => {
+        debounceLiveNoteUpdate();
+        updateLiveNotePreview();
+    });
+
+    // 側邊欄切換
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            const editor = document.getElementById('live-note-editor');
+            if (editor) {
+                editor.classList.toggle('minimized');
+                sidebarToggle.textContent = editor.classList.contains('minimized') ? '▶' : '◀';
+            }
+        });
+    }
+
+    // 可調整寬度的拉條
+    if (resizer) {
+        let isResizing = false;
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.addEventListener('mousemove', handleResize);
+            document.addEventListener('mouseup', () => {
+                isResizing = false;
+                document.removeEventListener('mousemove', handleResize);
+            });
+        });
+
+        function handleResize(e) {
+            if (!isResizing) return;
+            const layout = document.getElementById('live-note-layout');
+            if (!layout) return;
+            
+            const rect = layout.getBoundingClientRect();
+            const newLeftWidth = ((e.clientX - rect.left) / rect.width) * 100;
+            
+            if (newLeftWidth >= 5 && newLeftWidth <= 60) {
+                document.documentElement.style.setProperty('--live-note-editor-width', `${newLeftWidth}%`);
+            }
+        }
+    }
+
+    // 初始化預覽
+    updateLiveNotePreview();
+}
+
+function renderLiveNoteLessonOptions() {
+    const lessonSelect = document.getElementById('live-note-lesson-select');
+    if (!lessonSelect) return;
+
+    lessonSelect.innerHTML = '<option value="">選擇課次...</option>';
+    lessons.forEach(lesson => {
+        const option = document.createElement('option');
+        option.value = lesson;
+        option.textContent = `Lesson ${lesson.replace('lesson', '')}`;
+        lessonSelect.appendChild(option);
+    });
+}
+
+async function loadLiveNoteList() {
+    const noteSelect = document.getElementById('live-note-select');
+    if (!noteSelect || !currentLiveNoteLevel || !currentLiveNoteLesson) {
+        if (noteSelect) {
+            noteSelect.innerHTML = '<option value="">請先選擇等級和課次</option>';
+        }
+        return;
+    }
+
+    try {
+        noteSelect.innerHTML = '<option value="">載入中...</option>';
+        
+        // 讀取兩個班級的筆記
+        const notes = [];
+        for (const cohort of ['taigen-a', 'taigen-b']) {
+            try {
+                const snapshot = await db
+                    .collection('timeline')
+                    .doc(currentLiveNoteLevel)
+                    .collection('notes')
+                    .doc(cohort)
+                    .collection('items')
+                    .where('lesson', '==', currentLiveNoteLesson)
+                    .get();
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    notes.push({
+                        id: doc.id,
+                        cohort: cohort,
+                        title: data.title || '（無標題）',
+                        ...data
+                    });
+                });
+            } catch (error) {
+                console.warn(`載入 ${cohort} 筆記時出錯:`, error);
+            }
+        }
+
+        // 按標題排序
+        notes.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+
+        noteSelect.innerHTML = '<option value="">選擇或新增筆記...</option>';
+        notes.forEach(note => {
+            const option = document.createElement('option');
+            option.value = note.id;
+            option.textContent = `${note.title} (${note.cohort})`;
+            option.dataset.cohort = note.cohort;
+            noteSelect.appendChild(option);
+        });
+
+        if (notes.length === 0) {
+            noteSelect.innerHTML = '<option value="">尚無筆記，請新增</option>';
+        }
+    } catch (error) {
+        console.error('載入筆記列表失敗:', error);
+        const noteSelect = document.getElementById('live-note-select');
+        if (noteSelect) {
+            noteSelect.innerHTML = '<option value="">載入失敗</option>';
+        }
+    }
+}
+
+async function loadLiveNote(noteId) {
+    const noteSelect = document.getElementById('live-note-select');
+    const titleInput = document.getElementById('live-note-title');
+    const contentInput = document.getElementById('live-note-content');
+    const deleteBtn = document.getElementById('live-note-delete-btn');
+    
+    if (!noteSelect || !titleInput || !contentInput) return;
+
+    const selectedOption = noteSelect.options[noteSelect.selectedIndex];
+    const cohort = selectedOption?.dataset.cohort || 'taigen-a';
+    liveNoteCohort = cohort;
+
+    try {
+        const doc = await db
+            .collection('timeline')
+            .doc(currentLiveNoteLevel)
+            .collection('notes')
+            .doc(cohort)
+            .collection('items')
+            .doc(noteId)
+            .get();
+
+        if (doc.exists) {
+            const data = doc.data();
+            currentLiveNoteId = noteId;
+            titleInput.value = data.title || '';
+            contentInput.value = data.content || '';
+            if (deleteBtn) deleteBtn.style.display = 'inline-block';
+            updateLiveNotePreview();
+            updateLiveNoteStatus('筆記已載入');
+        } else {
+            updateLiveNoteStatus('筆記不存在');
+        }
+    } catch (error) {
+        console.error('載入筆記失敗:', error);
+        updateLiveNoteStatus('載入失敗');
+    }
+}
+
+async function saveLiveNote() {
+    const titleInput = document.getElementById('live-note-title');
+    const contentInput = document.getElementById('live-note-content');
+    
+    if (!titleInput || !contentInput) return;
+
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+
+    if (!title && !content) {
+        updateLiveNoteStatus('標題和內容不能同時為空');
+        return;
+    }
+
+    if (!currentLiveNoteLevel || !currentLiveNoteLesson) {
+        updateLiveNoteStatus('請先選擇等級和課次');
+        return;
+    }
+
+    try {
+        const noteData = {
+            title: title || '（無標題）',
+            content: content,
+            lesson: currentLiveNoteLesson,
+            type: 'note',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (!currentLiveNoteId) {
+            noteData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        }
+
+        if (currentLiveNoteId) {
+            // 更新現有筆記
+            await db
+                .collection('timeline')
+                .doc(currentLiveNoteLevel)
+                .collection('notes')
+                .doc(liveNoteCohort)
+                .collection('items')
+                .doc(currentLiveNoteId)
+                .update(noteData);
+            
+            updateLiveNoteStatus('✅ 筆記已更新');
+        } else {
+            // 新增筆記
+            const docRef = await db
+                .collection('timeline')
+                .doc(currentLiveNoteLevel)
+                .collection('notes')
+                .doc(liveNoteCohort)
+                .collection('items')
+                .add(noteData);
+            
+            currentLiveNoteId = docRef.id;
+            const deleteBtn = document.getElementById('live-note-delete-btn');
+            if (deleteBtn) deleteBtn.style.display = 'inline-block';
+            
+            // 更新選擇器
+            await loadLiveNoteList();
+            const noteSelect = document.getElementById('live-note-select');
+            if (noteSelect) {
+                noteSelect.value = currentLiveNoteId;
+            }
+            
+            updateLiveNoteStatus('✅ 筆記已新增');
+        }
+    } catch (error) {
+        console.error('保存筆記失敗:', error);
+        updateLiveNoteStatus('❌ 保存失敗');
+    }
+}
+
+async function deleteLiveNote() {
+    if (!currentLiveNoteId || !currentLiveNoteLevel) return;
+
+    try {
+        await db
+            .collection('timeline')
+            .doc(currentLiveNoteLevel)
+            .collection('notes')
+            .doc(liveNoteCohort)
+            .collection('items')
+            .doc(currentLiveNoteId)
+            .delete();
+
+        clearLiveNoteForm();
+        await loadLiveNoteList();
+        updateLiveNoteStatus('✅ 筆記已刪除');
+    } catch (error) {
+        console.error('刪除筆記失敗:', error);
+        updateLiveNoteStatus('❌ 刪除失敗');
+    }
+}
+
+function clearLiveNoteForm() {
+    const titleInput = document.getElementById('live-note-title');
+    const contentInput = document.getElementById('live-note-content');
+    const deleteBtn = document.getElementById('live-note-delete-btn');
+    
+    if (titleInput) titleInput.value = '';
+    if (contentInput) contentInput.value = '';
+    if (deleteBtn) deleteBtn.style.display = 'none';
+    
+    currentLiveNoteId = null;
+    updateLiveNotePreview();
+}
+
+function debounceLiveNoteUpdate() {
+    clearTimeout(liveNoteSaveTimeout);
+    liveNoteSaveTimeout = setTimeout(() => {
+        saveLiveNote();
+    }, 2000); // 2 秒後自動保存
+}
+
+function updateLiveNotePreview() {
+    const contentInput = document.getElementById('live-note-content');
+    const previewContent = document.getElementById('live-note-preview-content');
+    
+    if (!contentInput || !previewContent) return;
+
+    const content = contentInput.value.trim();
+    
+    if (!content) {
+        previewContent.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--muted);">請在左側輸入內容以查看預覽</div>';
+        return;
+    }
+
+    // 使用 renderMarkdown 函數（如果存在）
+    if (typeof renderMarkdown === 'function') {
+        previewContent.innerHTML = renderMarkdown(content);
+    } else if (typeof marked !== 'undefined') {
+        // 備用方案：直接使用 marked
+        previewContent.innerHTML = marked.parse(content);
+    } else {
+        previewContent.innerHTML = '<div style="padding: 20px; color: #666;">Markdown 渲染器未載入</div>';
+    }
+}
+
+function updateLiveNoteStatus(message) {
+    const statusEl = document.getElementById('live-note-status');
+    if (statusEl) {
+        statusEl.textContent = message;
+        setTimeout(() => {
+            if (statusEl.textContent === message) {
+                statusEl.textContent = '';
+            }
+        }, 3000);
+    }
 }
 
