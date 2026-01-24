@@ -13,6 +13,7 @@ const firebaseConfig = {
 
 // #region agent log helper
 function dlog(hypothesisId, location, message, data = {}, runId = 'admin') {
+    // 靜默發送日誌，不顯示錯誤（開發用功能）
     fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -24,8 +25,11 @@ function dlog(hypothesisId, location, message, data = {}, runId = 'admin') {
             message,
             data,
             timestamp:Date.now()
-        })
-    }).catch(()=>{});
+        }),
+        mode: 'no-cors' // 使用 no-cors 模式避免 CORS 錯誤
+    }).catch(()=>{
+        // 完全靜默，不顯示任何錯誤
+    });
 }
 // #endregion
 
@@ -45,6 +49,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         setupTabSystem();
         setupStudioSystem();
         setupLiveNoteSystem();
+        setupGrammarSystem();
+        setupPracticeSystem();
         await ensureAuth();
         
         // Initialize Firebase and ensure Anonymous Sign-in
@@ -1726,6 +1732,17 @@ let currentLiveNoteLesson = '';
 let liveNoteSaveTimeout = null;
 let liveNoteCohort = 'taigen-a'; // 預設班級
 
+// Grammar 和 Practice 系統變數
+let currentGrammarId = null;
+let currentGrammarLevel = 'btc1';
+let currentGrammarLesson = '';
+let grammarSaveTimeout = null;
+
+let currentPracticeId = null;
+let currentPracticeLevel = 'btc1';
+let currentPracticeLesson = '';
+let practiceSaveTimeout = null;
+
 function setupLiveNoteSystem() {
     // 綁定事件
     const levelSelect = document.getElementById('live-note-level-select');
@@ -2099,6 +2116,720 @@ function updateLiveNotePreview() {
 
 function updateLiveNoteStatus(message) {
     const statusEl = document.getElementById('live-note-status');
+    if (statusEl) {
+        statusEl.textContent = message;
+        setTimeout(() => {
+            if (statusEl.textContent === message) {
+                statusEl.textContent = '';
+            }
+        }, 3000);
+    }
+}
+
+// ============================================
+// Grammar 管理系統
+// ============================================
+
+function setupGrammarSystem() {
+    const levelSelect = document.getElementById('grammar-level-select');
+    const lessonSelect = document.getElementById('grammar-lesson-select');
+    const grammarSelect = document.getElementById('grammar-select');
+    const titleInput = document.getElementById('grammar-title');
+    const contentInput = document.getElementById('grammar-content');
+    const newBtn = document.getElementById('grammar-new-btn');
+    const saveBtn = document.getElementById('grammar-save-btn');
+    const deleteBtn = document.getElementById('grammar-delete-btn');
+    const sidebarToggle = document.getElementById('grammar-sidebar-toggle');
+    const resizer = document.getElementById('grammar-resizer');
+
+    if (!levelSelect || !lessonSelect || !grammarSelect || !titleInput || !contentInput) {
+        console.warn('Grammar 元素未找到，跳過初始化');
+        return;
+    }
+
+    renderGrammarLessonOptions();
+
+    levelSelect.addEventListener('change', async (e) => {
+        currentGrammarLevel = e.target.value;
+        renderGrammarLessonOptions();
+        await loadGrammarList();
+    });
+
+    lessonSelect.addEventListener('change', async (e) => {
+        currentGrammarLesson = e.target.value;
+        await loadGrammarList();
+    });
+
+    grammarSelect.addEventListener('change', async (e) => {
+        const grammarId = e.target.value;
+        if (grammarId) {
+            await loadGrammar(grammarId);
+        } else {
+            clearGrammarForm();
+        }
+    });
+
+    newBtn.addEventListener('click', () => {
+        clearGrammarForm();
+        currentGrammarId = null;
+        grammarSelect.value = '';
+        deleteBtn.style.display = 'none';
+        updateGrammarStatus('已清空表單，可以開始輸入新文法');
+    });
+
+    saveBtn.addEventListener('click', async () => {
+        await saveGrammar();
+    });
+
+    deleteBtn.addEventListener('click', async () => {
+        if (confirm('確定要刪除這則文法嗎？此操作無法復原。')) {
+            await deleteGrammar();
+        }
+    });
+
+    titleInput.addEventListener('input', () => {
+        debounceGrammarUpdate();
+    });
+
+    contentInput.addEventListener('input', () => {
+        debounceGrammarUpdate();
+        updateGrammarPreview();
+    });
+
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            const editor = document.getElementById('grammar-editor');
+            if (editor) {
+                editor.classList.toggle('minimized');
+                sidebarToggle.textContent = editor.classList.contains('minimized') ? '▶' : '◀';
+            }
+        });
+    }
+
+    if (resizer) {
+        let isResizing = false;
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.addEventListener('mousemove', handleResize);
+            document.addEventListener('mouseup', () => {
+                isResizing = false;
+                document.removeEventListener('mousemove', handleResize);
+            });
+        });
+
+        function handleResize(e) {
+            if (!isResizing) return;
+            const layout = document.getElementById('grammar-layout');
+            if (!layout) return;
+            
+            const rect = layout.getBoundingClientRect();
+            const newLeftWidth = ((e.clientX - rect.left) / rect.width) * 100;
+            
+            if (newLeftWidth >= 5 && newLeftWidth <= 60) {
+                document.documentElement.style.setProperty('--grammar-editor-width', `${newLeftWidth}%`);
+            }
+        }
+    }
+
+    updateGrammarPreview();
+}
+
+function renderGrammarLessonOptions() {
+    const lessonSelect = document.getElementById('grammar-lesson-select');
+    if (!lessonSelect) return;
+
+    lessonSelect.innerHTML = '<option value="">選擇課次...</option>';
+    lessons.forEach(lesson => {
+        const option = document.createElement('option');
+        option.value = lesson;
+        option.textContent = `Lesson ${lesson.replace('lesson', '')}`;
+        lessonSelect.appendChild(option);
+    });
+}
+
+async function loadGrammarList() {
+    const grammarSelect = document.getElementById('grammar-select');
+    if (!grammarSelect || !currentGrammarLevel || !currentGrammarLesson) {
+        if (grammarSelect) {
+            grammarSelect.innerHTML = '<option value="">請先選擇等級和課次</option>';
+        }
+        return;
+    }
+
+    try {
+        grammarSelect.innerHTML = '<option value="">載入中...</option>';
+        
+        // 將 lesson1 轉換為 lesson1 格式（Firestore 路徑）
+        const lessonDocId = currentGrammarLesson; // lesson1, lesson2, etc.
+        
+        const snapshot = await db
+            .collection('courses')
+            .doc(currentGrammarLevel)
+            .collection('lessons')
+            .doc(lessonDocId)
+            .collection('grammar')
+            .orderBy('updatedAt', 'desc')
+            .get();
+
+        grammarSelect.innerHTML = '<option value="">選擇或新增文法...</option>';
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = data.title || '（無標題）';
+            grammarSelect.appendChild(option);
+        });
+
+        if (snapshot.empty) {
+            grammarSelect.innerHTML = '<option value="">尚無文法，請新增</option>';
+        }
+    } catch (error) {
+        console.error('載入文法列表失敗:', error);
+        if (grammarSelect) {
+            grammarSelect.innerHTML = '<option value="">載入失敗</option>';
+        }
+    }
+}
+
+async function loadGrammar(grammarId) {
+    const titleInput = document.getElementById('grammar-title');
+    const contentInput = document.getElementById('grammar-content');
+    const deleteBtn = document.getElementById('grammar-delete-btn');
+    
+    if (!titleInput || !contentInput) return;
+
+    try {
+        const lessonDocId = currentGrammarLesson;
+        const doc = await db
+            .collection('courses')
+            .doc(currentGrammarLevel)
+            .collection('lessons')
+            .doc(lessonDocId)
+            .collection('grammar')
+            .doc(grammarId)
+            .get();
+
+        if (doc.exists) {
+            const data = doc.data();
+            currentGrammarId = grammarId;
+            titleInput.value = data.title || '';
+            contentInput.value = data.content || '';
+            if (deleteBtn) deleteBtn.style.display = 'inline-block';
+            updateGrammarPreview();
+            updateGrammarStatus('文法已載入');
+        } else {
+            updateGrammarStatus('文法不存在');
+        }
+    } catch (error) {
+        console.error('載入文法失敗:', error);
+        updateGrammarStatus('載入失敗');
+    }
+}
+
+async function saveGrammar() {
+    const titleInput = document.getElementById('grammar-title');
+    const contentInput = document.getElementById('grammar-content');
+    
+    if (!titleInput || !contentInput) return;
+
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+
+    if (!title && !content) {
+        updateGrammarStatus('標題和內容不能同時為空');
+        return;
+    }
+
+    if (!currentGrammarLevel || !currentGrammarLesson) {
+        updateGrammarStatus('請先選擇等級和課次');
+        return;
+    }
+
+    try {
+        const lessonDocId = currentGrammarLesson;
+        const grammarData = {
+            title: title || '（無標題）',
+            content: content,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (!currentGrammarId) {
+            grammarData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        }
+
+        // 確保 lesson 文件存在
+        await db
+            .collection('courses')
+            .doc(currentGrammarLevel)
+            .collection('lessons')
+            .doc(lessonDocId)
+            .set({
+                scope: 'lesson',
+                course: currentGrammarLevel,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+
+        if (currentGrammarId) {
+            await db
+                .collection('courses')
+                .doc(currentGrammarLevel)
+                .collection('lessons')
+                .doc(lessonDocId)
+                .collection('grammar')
+                .doc(currentGrammarId)
+                .update(grammarData);
+            
+            updateGrammarStatus('✅ 文法已更新');
+        } else {
+            const docRef = await db
+                .collection('courses')
+                .doc(currentGrammarLevel)
+                .collection('lessons')
+                .doc(lessonDocId)
+                .collection('grammar')
+                .add(grammarData);
+            
+            currentGrammarId = docRef.id;
+            const deleteBtn = document.getElementById('grammar-delete-btn');
+            if (deleteBtn) deleteBtn.style.display = 'inline-block';
+            
+            await loadGrammarList();
+            const grammarSelect = document.getElementById('grammar-select');
+            if (grammarSelect) {
+                grammarSelect.value = currentGrammarId;
+            }
+            
+            updateGrammarStatus('✅ 文法已新增');
+        }
+    } catch (error) {
+        console.error('保存文法失敗:', error);
+        updateGrammarStatus('❌ 保存失敗');
+    }
+}
+
+async function deleteGrammar() {
+    if (!currentGrammarId || !currentGrammarLevel || !currentGrammarLesson) return;
+
+    try {
+        const lessonDocId = currentGrammarLesson;
+        await db
+            .collection('courses')
+            .doc(currentGrammarLevel)
+            .collection('lessons')
+            .doc(lessonDocId)
+            .collection('grammar')
+            .doc(currentGrammarId)
+            .delete();
+
+        clearGrammarForm();
+        await loadGrammarList();
+        updateGrammarStatus('✅ 文法已刪除');
+    } catch (error) {
+        console.error('刪除文法失敗:', error);
+        updateGrammarStatus('❌ 刪除失敗');
+    }
+}
+
+function clearGrammarForm() {
+    const titleInput = document.getElementById('grammar-title');
+    const contentInput = document.getElementById('grammar-content');
+    const deleteBtn = document.getElementById('grammar-delete-btn');
+    
+    if (titleInput) titleInput.value = '';
+    if (contentInput) contentInput.value = '';
+    if (deleteBtn) deleteBtn.style.display = 'none';
+    
+    currentGrammarId = null;
+    updateGrammarPreview();
+}
+
+function debounceGrammarUpdate() {
+    clearTimeout(grammarSaveTimeout);
+    grammarSaveTimeout = setTimeout(() => {
+        saveGrammar();
+    }, 2000);
+}
+
+function updateGrammarPreview() {
+    const contentInput = document.getElementById('grammar-content');
+    const previewContent = document.getElementById('grammar-preview-content');
+    
+    if (!contentInput || !previewContent) return;
+
+    const content = contentInput.value.trim();
+    
+    if (!content) {
+        previewContent.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--muted);">請在左側輸入內容以查看預覽</div>';
+        return;
+    }
+
+    if (typeof renderMarkdown === 'function') {
+        previewContent.innerHTML = renderMarkdown(content);
+    } else if (typeof marked !== 'undefined') {
+        previewContent.innerHTML = marked.parse(content);
+    } else {
+        previewContent.innerHTML = '<div style="padding: 20px; color: #666;">Markdown 渲染器未載入</div>';
+    }
+}
+
+function updateGrammarStatus(message) {
+    const statusEl = document.getElementById('grammar-status');
+    if (statusEl) {
+        statusEl.textContent = message;
+        setTimeout(() => {
+            if (statusEl.textContent === message) {
+                statusEl.textContent = '';
+            }
+        }, 3000);
+    }
+}
+
+// ============================================
+// Practice 管理系統
+// ============================================
+
+function setupPracticeSystem() {
+    const levelSelect = document.getElementById('practice-level-select');
+    const lessonSelect = document.getElementById('practice-lesson-select');
+    const practiceSelect = document.getElementById('practice-select');
+    const titleInput = document.getElementById('practice-title');
+    const contentInput = document.getElementById('practice-content');
+    const newBtn = document.getElementById('practice-new-btn');
+    const saveBtn = document.getElementById('practice-save-btn');
+    const deleteBtn = document.getElementById('practice-delete-btn');
+    const sidebarToggle = document.getElementById('practice-sidebar-toggle');
+    const resizer = document.getElementById('practice-resizer');
+
+    if (!levelSelect || !lessonSelect || !practiceSelect || !titleInput || !contentInput) {
+        console.warn('Practice 元素未找到，跳過初始化');
+        return;
+    }
+
+    renderPracticeLessonOptions();
+
+    levelSelect.addEventListener('change', async (e) => {
+        currentPracticeLevel = e.target.value;
+        renderPracticeLessonOptions();
+        await loadPracticeList();
+    });
+
+    lessonSelect.addEventListener('change', async (e) => {
+        currentPracticeLesson = e.target.value;
+        await loadPracticeList();
+    });
+
+    practiceSelect.addEventListener('change', async (e) => {
+        const practiceId = e.target.value;
+        if (practiceId) {
+            await loadPractice(practiceId);
+        } else {
+            clearPracticeForm();
+        }
+    });
+
+    newBtn.addEventListener('click', () => {
+        clearPracticeForm();
+        currentPracticeId = null;
+        practiceSelect.value = '';
+        deleteBtn.style.display = 'none';
+        updatePracticeStatus('已清空表單，可以開始輸入新練習');
+    });
+
+    saveBtn.addEventListener('click', async () => {
+        await savePractice();
+    });
+
+    deleteBtn.addEventListener('click', async () => {
+        if (confirm('確定要刪除這則練習嗎？此操作無法復原。')) {
+            await deletePractice();
+        }
+    });
+
+    titleInput.addEventListener('input', () => {
+        debouncePracticeUpdate();
+    });
+
+    contentInput.addEventListener('input', () => {
+        debouncePracticeUpdate();
+        updatePracticePreview();
+    });
+
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            const editor = document.getElementById('practice-editor');
+            if (editor) {
+                editor.classList.toggle('minimized');
+                sidebarToggle.textContent = editor.classList.contains('minimized') ? '▶' : '◀';
+            }
+        });
+    }
+
+    if (resizer) {
+        let isResizing = false;
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.addEventListener('mousemove', handleResize);
+            document.addEventListener('mouseup', () => {
+                isResizing = false;
+                document.removeEventListener('mousemove', handleResize);
+            });
+        });
+
+        function handleResize(e) {
+            if (!isResizing) return;
+            const layout = document.getElementById('practice-layout');
+            if (!layout) return;
+            
+            const rect = layout.getBoundingClientRect();
+            const newLeftWidth = ((e.clientX - rect.left) / rect.width) * 100;
+            
+            if (newLeftWidth >= 5 && newLeftWidth <= 60) {
+                document.documentElement.style.setProperty('--practice-editor-width', `${newLeftWidth}%`);
+            }
+        }
+    }
+
+    updatePracticePreview();
+}
+
+function renderPracticeLessonOptions() {
+    const lessonSelect = document.getElementById('practice-lesson-select');
+    if (!lessonSelect) return;
+
+    lessonSelect.innerHTML = '<option value="">選擇課次...</option>';
+    lessons.forEach(lesson => {
+        const option = document.createElement('option');
+        option.value = lesson;
+        option.textContent = `Lesson ${lesson.replace('lesson', '')}`;
+        lessonSelect.appendChild(option);
+    });
+}
+
+async function loadPracticeList() {
+    const practiceSelect = document.getElementById('practice-select');
+    if (!practiceSelect || !currentPracticeLevel || !currentPracticeLesson) {
+        if (practiceSelect) {
+            practiceSelect.innerHTML = '<option value="">請先選擇等級和課次</option>';
+        }
+        return;
+    }
+
+    try {
+        practiceSelect.innerHTML = '<option value="">載入中...</option>';
+        
+        const lessonDocId = currentPracticeLesson;
+        
+        const snapshot = await db
+            .collection('courses')
+            .doc(currentPracticeLevel)
+            .collection('lessons')
+            .doc(lessonDocId)
+            .collection('practice')
+            .orderBy('updatedAt', 'desc')
+            .get();
+
+        practiceSelect.innerHTML = '<option value="">選擇或新增練習...</option>';
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = data.title || '（無標題）';
+            practiceSelect.appendChild(option);
+        });
+
+        if (snapshot.empty) {
+            practiceSelect.innerHTML = '<option value="">尚無練習，請新增</option>';
+        }
+    } catch (error) {
+        console.error('載入練習列表失敗:', error);
+        if (practiceSelect) {
+            practiceSelect.innerHTML = '<option value="">載入失敗</option>';
+        }
+    }
+}
+
+async function loadPractice(practiceId) {
+    const titleInput = document.getElementById('practice-title');
+    const contentInput = document.getElementById('practice-content');
+    const deleteBtn = document.getElementById('practice-delete-btn');
+    
+    if (!titleInput || !contentInput) return;
+
+    try {
+        const lessonDocId = currentPracticeLesson;
+        const doc = await db
+            .collection('courses')
+            .doc(currentPracticeLevel)
+            .collection('lessons')
+            .doc(lessonDocId)
+            .collection('practice')
+            .doc(practiceId)
+            .get();
+
+        if (doc.exists) {
+            const data = doc.data();
+            currentPracticeId = practiceId;
+            titleInput.value = data.title || '';
+            contentInput.value = data.content || '';
+            if (deleteBtn) deleteBtn.style.display = 'inline-block';
+            updatePracticePreview();
+            updatePracticeStatus('練習已載入');
+        } else {
+            updatePracticeStatus('練習不存在');
+        }
+    } catch (error) {
+        console.error('載入練習失敗:', error);
+        updatePracticeStatus('載入失敗');
+    }
+}
+
+async function savePractice() {
+    const titleInput = document.getElementById('practice-title');
+    const contentInput = document.getElementById('practice-content');
+    
+    if (!titleInput || !contentInput) return;
+
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+
+    if (!title && !content) {
+        updatePracticeStatus('標題和內容不能同時為空');
+        return;
+    }
+
+    if (!currentPracticeLevel || !currentPracticeLesson) {
+        updatePracticeStatus('請先選擇等級和課次');
+        return;
+    }
+
+    try {
+        const lessonDocId = currentPracticeLesson;
+        const practiceData = {
+            title: title || '（無標題）',
+            content: content,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (!currentPracticeId) {
+            practiceData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        }
+
+        await db
+            .collection('courses')
+            .doc(currentPracticeLevel)
+            .collection('lessons')
+            .doc(lessonDocId)
+            .set({
+                scope: 'lesson',
+                course: currentPracticeLevel,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+
+        if (currentPracticeId) {
+            await db
+                .collection('courses')
+                .doc(currentPracticeLevel)
+                .collection('lessons')
+                .doc(lessonDocId)
+                .collection('practice')
+                .doc(currentPracticeId)
+                .update(practiceData);
+            
+            updatePracticeStatus('✅ 練習已更新');
+        } else {
+            const docRef = await db
+                .collection('courses')
+                .doc(currentPracticeLevel)
+                .collection('lessons')
+                .doc(lessonDocId)
+                .collection('practice')
+                .add(practiceData);
+            
+            currentPracticeId = docRef.id;
+            const deleteBtn = document.getElementById('practice-delete-btn');
+            if (deleteBtn) deleteBtn.style.display = 'inline-block';
+            
+            await loadPracticeList();
+            const practiceSelect = document.getElementById('practice-select');
+            if (practiceSelect) {
+                practiceSelect.value = currentPracticeId;
+            }
+            
+            updatePracticeStatus('✅ 練習已新增');
+        }
+    } catch (error) {
+        console.error('保存練習失敗:', error);
+        updatePracticeStatus('❌ 保存失敗');
+    }
+}
+
+async function deletePractice() {
+    if (!currentPracticeId || !currentPracticeLevel || !currentPracticeLesson) return;
+
+    try {
+        const lessonDocId = currentPracticeLesson;
+        await db
+            .collection('courses')
+            .doc(currentPracticeLevel)
+            .collection('lessons')
+            .doc(lessonDocId)
+            .collection('practice')
+            .doc(currentPracticeId)
+            .delete();
+
+        clearPracticeForm();
+        await loadPracticeList();
+        updatePracticeStatus('✅ 練習已刪除');
+    } catch (error) {
+        console.error('刪除練習失敗:', error);
+        updatePracticeStatus('❌ 刪除失敗');
+    }
+}
+
+function clearPracticeForm() {
+    const titleInput = document.getElementById('practice-title');
+    const contentInput = document.getElementById('practice-content');
+    const deleteBtn = document.getElementById('practice-delete-btn');
+    
+    if (titleInput) titleInput.value = '';
+    if (contentInput) contentInput.value = '';
+    if (deleteBtn) deleteBtn.style.display = 'none';
+    
+    currentPracticeId = null;
+    updatePracticePreview();
+}
+
+function debouncePracticeUpdate() {
+    clearTimeout(practiceSaveTimeout);
+    practiceSaveTimeout = setTimeout(() => {
+        savePractice();
+    }, 2000);
+}
+
+function updatePracticePreview() {
+    const contentInput = document.getElementById('practice-content');
+    const previewContent = document.getElementById('practice-preview-content');
+    
+    if (!contentInput || !previewContent) return;
+
+    const content = contentInput.value.trim();
+    
+    if (!content) {
+        previewContent.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--muted);">請在左側輸入內容以查看預覽</div>';
+        return;
+    }
+
+    if (typeof renderMarkdown === 'function') {
+        previewContent.innerHTML = renderMarkdown(content);
+    } else if (typeof marked !== 'undefined') {
+        previewContent.innerHTML = marked.parse(content);
+    } else {
+        previewContent.innerHTML = '<div style="padding: 20px; color: #666;">Markdown 渲染器未載入</div>';
+    }
+}
+
+function updatePracticeStatus(message) {
+    const statusEl = document.getElementById('practice-status');
     if (statusEl) {
         statusEl.textContent = message;
         setTimeout(() => {

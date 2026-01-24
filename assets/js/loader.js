@@ -1,6 +1,35 @@
 // BCT Lesson Loader
 // 負責從 Markdown 載入課程內容並動態渲染到頁面
 
+// 靜默日誌函數（開發用，失敗時不顯示錯誤）
+function silentLog(sessionId, runId, hypothesisId, location, message, data) {
+    // 使用 try-catch 和 setTimeout 來完全靜默錯誤
+    try {
+        setTimeout(() => {
+            fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId: sessionId || 'debug-session',
+                    runId: runId || 'baseline',
+                    hypothesisId,
+                    location,
+                    message,
+                    data,
+                    timestamp: Date.now()
+                }),
+                // 使用 no-cors 模式可以減少一些錯誤，但會限制響應
+                // 由於這是日誌功能，我們不需要響應
+                mode: 'no-cors'
+            }).catch(() => {
+                // 完全靜默，不顯示任何錯誤
+            });
+        }, 0);
+    } catch (e) {
+        // 完全靜默，不顯示任何錯誤
+    }
+}
+
 class LessonLoader {
     constructor() {
         this.currentLesson = null;
@@ -10,6 +39,7 @@ class LessonLoader {
             vocabulary: [],
             reading: [],
             practice: [],
+            grammar: [], // Grammar 內容
             timeline: [], // Timeline 補充內容
             timelineComponents: [],
             timelineVocab: [],
@@ -49,23 +79,11 @@ class LessonLoader {
         const firestoreSrc = Array.from(document.querySelectorAll('script[src]'))
             .map((s) => s.getAttribute('src'))
             .find((src) => src && src.includes('assets/js/firestore.js'));
-        fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({
-                sessionId:'debug-session',
-                runId:'baseline',
-                hypothesisId:'H14',
-                location:'assets/js/loader.js:init',
-                message:'Firestore version seen',
-                data:{
-                    firestoreSrc,
-                    firestoreVersion:window.__firestoreVersion || null,
-                    cohort: this.currentCohort
-                },
-                timestamp:Date.now()
-            })
-        }).catch(()=>{});
+        silentLog('debug-session', 'baseline', 'H14', 'assets/js/loader.js:init', 'Firestore version seen', {
+            firestoreSrc,
+            firestoreVersion: window.__firestoreVersion || null,
+            cohort: this.currentCohort
+        });
         // #endregion
 
         // 自動轉換 L1 → lesson1（相容舊版 URL）
@@ -73,25 +91,13 @@ class LessonLoader {
             lessonId = 'lesson' + lessonId.substring(1);
         }
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({
-                sessionId:'debug-session',
-                runId:'baseline',
-                hypothesisId:'H8',
-                location:'assets/js/loader.js:init',
-                message:'Init lesson params',
-                data:{
-                    qsClass:urlParams.get('class'),
-                    rememberedClass,
-                    resolvedClassId:classId,
-                    qsLesson:urlParams.get('lesson'),
-                    computedLessonId:lessonId
-                },
-                timestamp:Date.now()
-            })
-        }).catch(()=>{});
+        silentLog('debug-session', 'baseline', 'H8', 'assets/js/loader.js:init', 'Init lesson params', {
+            qsClass: urlParams.get('class'),
+            rememberedClass,
+            resolvedClassId: classId,
+            qsLesson: urlParams.get('lesson'),
+            computedLessonId: lessonId
+        });
         // #endregion
 
         await this.loadLesson(lessonId);
@@ -144,6 +150,9 @@ class LessonLoader {
             // #endregion
             const fullLesson = await firestoreService.getFullLesson(lessonId, classId);
 
+            // 儲存當前課次（無論 fullLesson 是否存在，都需要載入 Grammar/Practice）
+            this.currentLesson = lessonId;
+
             if (!fullLesson) {
                 // #region agent log
                 fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
@@ -164,12 +173,18 @@ class LessonLoader {
                 this.lessonData.vocabulary = [];
                 this.lessonData.reading = [];
                 this.lessonData.practice = [];
+                this.lessonData.grammar = [];
                 this.lessonData.timeline = [];
                 this.lessonData.timelineComponents = [];
                 this.lessonData.timelineVocab = [];
                 this.lessonData.timelineTargetCharacters = [];
                 this.lessonData.timelineNotes = [];
                 document.getElementById('lesson-title').textContent = '暂无课程';
+                
+                // 即使沒有 fullLesson，也嘗試載入 Grammar/Practice（可能只有 Grammar/Practice 而沒有其他內容）
+                console.log('⚠️ 沒有找到完整課程資料，但仍嘗試載入 Grammar/Practice...');
+                await this.loadGrammarAndPractice(lessonId);
+                
                 this.render();
                 return;
             }
@@ -179,6 +194,14 @@ class LessonLoader {
             this.lessonData.vocabulary = fullLesson.vocabulary || [];
             this.lessonData.reading = fullLesson.reading || [];
             this.lessonData.practice = []; // Practice 暫時保持空的
+            
+            // 載入 Grammar 和 Practice（從 Firestore）
+            console.log('🔍 準備載入 Grammar/Practice，檢查連接狀態...');
+            console.log('🔍 Firestore 連接狀態:', firestoreService.isConnected());
+            console.log('🔍 Firestore db:', firestoreService.db);
+            console.log('🔍 當前課次:', lessonId);
+            console.log('🔍 當前等級:', this.currentLevel);
+            await this.loadGrammarAndPractice(lessonId);
 
             // 載入 Timeline 補充內容
             // 转换 lessonId：L1 → lesson1, L2 → lesson2
@@ -376,6 +399,7 @@ class LessonLoader {
         this.renderVocabulary();
         this.renderReading();
         this.renderPractice();
+        this.renderGrammar();
         this.renderTimelineComponents();
         this.renderTimelineVocab();
         this.renderTimelineTargetCharacters();
@@ -577,20 +601,548 @@ class LessonLoader {
         // #endregion
     }
 
-    // 渲染 Practice
-    renderPractice() {
-        const container = document.getElementById('practice-content');
+    // 載入 Grammar 和 Practice 資料
+    async loadGrammarAndPractice(lessonId) {
+        console.log('🚀 loadGrammarAndPractice 被調用，lessonId:', lessonId);
+        try {
+            // 確保 Firestore 已連接
+            if (!firestoreService.isConnected()) {
+                console.warn('⚠️ Firestore 未連接，嘗試重新初始化...');
+                await firestoreService.init();
+                if (!firestoreService.isConnected()) {
+                    console.error('❌ Firestore 初始化失敗，無法載入 Grammar/Practice');
+                    return;
+                }
+            }
 
-        if (this.lessonData.practice.length === 0) {
-            container.innerHTML = '<p class="placeholder">練習功能開發中...</p>';
+            const db = firestoreService.db;
+            if (!db) {
+                console.error('❌ Firestore db 為 null');
+                return;
+            }
+
+            const level = this.currentLevel || 'btc1';
+            const lessonDocId = lessonId; // lesson1, lesson2, etc.
+
+            console.log('📚 開始載入 Grammar/Practice:', { 
+                level, 
+                lessonDocId, 
+                db: !!db,
+                currentLevel: this.currentLevel,
+                urlLevel: new URLSearchParams(window.location.search).get('level')
+            });
+            
+            // 構建 Firestore 路徑
+            const grammarPath = `courses/${level}/lessons/${lessonDocId}/grammar`;
+            console.log('🔍 Grammar Firestore 路徑:', grammarPath);
+
+            // 載入 Grammar
+            try {
+                console.log(`🔍 查詢 Grammar: courses/${level}/lessons/${lessonDocId}/grammar`);
+                
+                // 先檢查 lesson 文件是否存在
+                const lessonDocRef = db.collection('courses').doc(level).collection('lessons').doc(lessonDocId);
+                const lessonDoc = await lessonDocRef.get();
+                console.log(`🔍 Lesson 文件存在:`, lessonDoc.exists);
+                
+                if (!lessonDoc.exists) {
+                    console.warn(`⚠️ Lesson 文件不存在: courses/${level}/lessons/${lessonDocId}`);
+                    console.warn(`💡 提示：請確認 Firestore 中是否有此路徑的文件`);
+                }
+                
+                // 先嘗試使用 orderBy，如果失敗則不使用排序
+                let grammarSnapshot;
+                try {
+                    console.log('🔍 嘗試使用 orderBy 查詢 Grammar...');
+                    grammarSnapshot = await db
+                        .collection('courses')
+                        .doc(level)
+                        .collection('lessons')
+                        .doc(lessonDocId)
+                        .collection('grammar')
+                        .orderBy('updatedAt', 'desc')
+                        .get();
+                    console.log('✅ orderBy 查詢成功，找到', grammarSnapshot.size, '個文件');
+                } catch (orderError) {
+                    // 如果 orderBy 失敗（可能是缺少索引），嘗試不使用排序
+                    console.warn('⚠️ Grammar orderBy 失敗，改用無排序查詢:', orderError.message);
+                    console.warn('⚠️ 錯誤詳情:', orderError);
+                    grammarSnapshot = await db
+                        .collection('courses')
+                        .doc(level)
+                        .collection('lessons')
+                        .doc(lessonDocId)
+                        .collection('grammar')
+                        .get();
+                    console.log('✅ 無排序查詢成功，找到', grammarSnapshot.size, '個文件');
+                }
+
+                this.lessonData.grammar = [];
+                grammarSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    console.log('📄 讀取 Grammar 文件:', doc.id, { title: data.title, hasContent: !!data.content });
+                    this.lessonData.grammar.push({
+                        id: doc.id,
+                        ...data
+                    });
+                });
+
+                console.log(`✅ 載入 ${this.lessonData.grammar.length} 個 Grammar 項目`);
+                if (this.lessonData.grammar.length > 0) {
+                    console.log('Grammar 項目列表:', this.lessonData.grammar.map(g => ({ id: g.id, title: g.title, contentLength: (g.content || '').length })));
+                } else {
+                    console.warn('⚠️ 沒有找到任何 Grammar 項目');
+                    console.warn('💡 請確認：');
+                    console.warn(`   1. Firestore 路徑是否正確：courses/${level}/lessons/${lessonDocId}/grammar`);
+                    console.warn(`   2. 是否在 timeline-admin.html 的 Grammar 管理 Tab 中新增了內容`);
+                    console.warn(`   3. 等級和課次是否匹配（當前：level=${level}, lesson=${lessonDocId}）`);
+                }
+            } catch (error) {
+                console.error('❌ 載入 Grammar 失敗:', error);
+                console.error('❌ 錯誤堆疊:', error.stack);
+                this.lessonData.grammar = [];
+            }
+
+            // 載入 Practice
+            try {
+                let practiceSnapshot;
+                try {
+                    practiceSnapshot = await db
+                        .collection('courses')
+                        .doc(level)
+                        .collection('lessons')
+                        .doc(lessonDocId)
+                        .collection('practice')
+                        .orderBy('updatedAt', 'desc')
+                        .get();
+                } catch (orderError) {
+                    console.warn('⚠️ Practice orderBy 失敗，改用無排序查詢:', orderError.message);
+                    practiceSnapshot = await db
+                        .collection('courses')
+                        .doc(level)
+                        .collection('lessons')
+                        .doc(lessonDocId)
+                        .collection('practice')
+                        .get();
+                }
+
+                this.lessonData.practice = [];
+                practiceSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    this.lessonData.practice.push({
+                        id: doc.id,
+                        ...data
+                    });
+                });
+
+                console.log(`✅ 載入 ${this.lessonData.practice.length} 個 Practice 項目`);
+            } catch (error) {
+                console.error('❌ 載入 Practice 失敗:', error);
+                this.lessonData.practice = [];
+            }
+        } catch (error) {
+            console.error('❌ 載入 Grammar/Practice 失敗:', error);
+            this.lessonData.grammar = [];
+            this.lessonData.practice = [];
+        }
+    }
+
+    // 渲染 Grammar
+    async renderGrammar() {
+        const container = document.getElementById('grammar-content');
+        if (!container) {
+            console.warn('⚠️ Grammar container 未找到');
             return;
         }
 
         container.innerHTML = '';
-        this.lessonData.practice.forEach((item, index) => {
-            const practiceCard = this.createPracticeCard(item, index);
-            container.appendChild(practiceCard);
-        });
+
+        // 第一區塊：獨立 HTML 檔案按鈕（移到最上方）
+        const level = this.currentLevel || 'btc1';
+        const lessonId = this.currentLesson || 'lesson1';
+        await this.renderStandaloneButtons(container, 'grammar', level, lessonId);
+
+        // 第二區塊：Firestore 的 Markdown 內容（移到下方）
+        const grammarItems = this.lessonData.grammar || [];
+        console.log('🎨 渲染 Grammar，項目數量:', grammarItems.length);
+        console.log('Grammar 資料:', grammarItems);
+        
+        if (grammarItems.length > 0) {
+            const grammarSection = document.createElement('div');
+            grammarSection.className = 'grammar-section';
+            grammarSection.style.cssText = 'margin-top: 30px; padding-top: 30px; border-top: 2px solid #e0e0e0;';
+
+            grammarItems.forEach((item, index) => {
+                const grammarCard = document.createElement('div');
+                grammarCard.className = 'grammar-card';
+                grammarCard.style.cssText = 'background: white; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;';
+
+                // 標題行（可點擊）
+                const header = document.createElement('div');
+                header.className = 'grammar-card-header';
+                header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: #f8f9fa; cursor: pointer; transition: background-color 0.2s ease; user-select: none;';
+                header.dataset.collapsed = 'true';
+                
+                header.onmouseenter = () => {
+                    if (header.dataset.collapsed === 'true') {
+                        header.style.background = '#e9ecef';
+                    }
+                };
+                header.onmouseleave = () => {
+                    if (header.dataset.collapsed === 'true') {
+                        header.style.background = '#f8f9fa';
+                    }
+                };
+
+                const title = document.createElement('h3');
+                title.textContent = item.title || '（无标题）';
+                title.style.cssText = 'margin: 0; color: #333; font-size: 1.2rem; font-weight: 600; flex: 1;';
+                header.appendChild(title);
+
+                // 展開/摺疊圖示
+                const icon = document.createElement('span');
+                icon.className = 'grammar-card-icon';
+                icon.textContent = '▶';
+                icon.style.cssText = 'color: #666; font-size: 14px; transition: transform 0.3s ease; margin-left: 12px;';
+                header.appendChild(icon);
+
+                // 內容區域（預設摺疊）
+                const content = document.createElement('div');
+                content.className = 'grammar-card-content';
+                content.style.cssText = 'max-height: 0; overflow: hidden; transition: max-height 0.3s ease;';
+                
+                const contentInner = document.createElement('div');
+                contentInner.className = 'grammar-content';
+                const contentText = item.content || '';
+                console.log(`渲染 Grammar 項目 ${index + 1}:`, { title: item.title, contentLength: contentText.length });
+                
+                if (typeof renderMarkdown === 'function') {
+                    contentInner.innerHTML = renderMarkdown(contentText);
+                } else if (typeof marked !== 'undefined') {
+                    contentInner.innerHTML = marked.parse(contentText);
+                } else {
+                    contentInner.textContent = contentText;
+                }
+                contentInner.style.cssText = 'padding: 20px; line-height: 1.6; color: #555;';
+                content.appendChild(contentInner);
+
+                // 點擊標題行切換展開/摺疊
+                header.onclick = () => {
+                    const isCollapsed = header.dataset.collapsed === 'true';
+                    if (isCollapsed) {
+                        // 展開
+                        header.dataset.collapsed = 'false';
+                        // 先設置為 auto 獲取實際高度，然後設置為具體值以觸發動畫
+                        content.style.maxHeight = 'none';
+                        const height = content.scrollHeight;
+                        content.style.maxHeight = '0';
+                        // 使用 requestAnimationFrame 確保動畫觸發
+                        requestAnimationFrame(() => {
+                            content.style.maxHeight = height + 'px';
+                        });
+                        icon.textContent = '▼';
+                        icon.style.transform = 'rotate(0deg)';
+                        header.style.background = '#e9ecef';
+                    } else {
+                        // 摺疊
+                        header.dataset.collapsed = 'true';
+                        content.style.maxHeight = content.scrollHeight + 'px';
+                        requestAnimationFrame(() => {
+                            content.style.maxHeight = '0';
+                        });
+                        icon.textContent = '▶';
+                        icon.style.transform = 'rotate(0deg)';
+                        header.style.background = '#f8f9fa';
+                    }
+                };
+
+                grammarCard.appendChild(header);
+                grammarCard.appendChild(content);
+                grammarSection.appendChild(grammarCard);
+            });
+
+            container.appendChild(grammarSection);
+        } else {
+            // 如果沒有 Grammar 內容，顯示明確的提示
+            const levelDisplay = level.toUpperCase().replace('BTC', 'BCT');
+            const lessonDisplay = lessonId.replace('lesson', 'Lesson ').toUpperCase();
+            
+            const placeholderCard = document.createElement('div');
+            placeholderCard.className = 'grammar-empty-state';
+            placeholderCard.style.cssText = 'background: #f8f9fa; border: 2px dashed #dee2e6; border-radius: 8px; padding: 40px 20px; text-align: center; margin-top: 30px; padding-top: 30px; border-top: 2px solid #e0e0e0;';
+            
+            const icon = document.createElement('div');
+            icon.textContent = '📝';
+            icon.style.cssText = 'font-size: 48px; margin-bottom: 16px;';
+            placeholderCard.appendChild(icon);
+            
+            const title = document.createElement('h3');
+            title.textContent = '暂无文法内容';
+            title.style.cssText = 'color: #495057; font-size: 1.3rem; margin-bottom: 12px; font-weight: 600;';
+            placeholderCard.appendChild(title);
+            
+            const info = document.createElement('p');
+            info.style.cssText = 'color: #6c757d; font-size: 0.95rem; margin-bottom: 8px; line-height: 1.6;';
+            info.innerHTML = `目前查詢：<strong style="color: #495057;">${levelDisplay} - ${lessonDisplay}</strong>`;
+            placeholderCard.appendChild(info);
+            
+            const path = document.createElement('p');
+            path.style.cssText = 'color: #868e96; font-size: 0.85rem; margin-bottom: 16px; font-family: monospace; background: #e9ecef; padding: 8px 12px; border-radius: 4px; display: inline-block;';
+            path.textContent = `courses/${level}/lessons/${lessonId}/grammar/`;
+            placeholderCard.appendChild(path);
+            
+            const instruction = document.createElement('p');
+            instruction.style.cssText = 'color: #6c757d; font-size: 0.9rem; margin-top: 16px;';
+            instruction.textContent = '💡 请在 timeline-admin.html 的「Grammar 管理」Tab 中新增内容';
+            placeholderCard.appendChild(instruction);
+            
+            container.appendChild(placeholderCard);
+        }
+    }
+
+    // 渲染 Practice
+    async renderPractice() {
+        const container = document.getElementById('practice-content');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        // 第一區塊：獨立 HTML 檔案按鈕（移到最上方）
+        const level = this.currentLevel || 'btc1';
+        const lessonId = this.currentLesson || 'lesson1';
+        await this.renderStandaloneButtons(container, 'practice', level, lessonId);
+
+        // 第二區塊：Firestore 的 Markdown 內容（移到下方）
+        const practiceItems = this.lessonData.practice || [];
+        if (practiceItems.length > 0) {
+            const practiceSection = document.createElement('div');
+            practiceSection.className = 'practice-section';
+            practiceSection.style.cssText = 'margin-top: 30px; padding-top: 30px; border-top: 2px solid #e0e0e0;';
+
+            practiceItems.forEach((item, index) => {
+                const practiceCard = document.createElement('div');
+                practiceCard.className = 'practice-card';
+                practiceCard.style.cssText = 'background: white; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;';
+
+                // 標題行（可點擊）
+                const header = document.createElement('div');
+                header.className = 'practice-card-header';
+                header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: #f8f9fa; cursor: pointer; transition: background-color 0.2s ease; user-select: none;';
+                header.dataset.collapsed = 'true';
+                
+                header.onmouseenter = () => {
+                    if (header.dataset.collapsed === 'true') {
+                        header.style.background = '#e9ecef';
+                    }
+                };
+                header.onmouseleave = () => {
+                    if (header.dataset.collapsed === 'true') {
+                        header.style.background = '#f8f9fa';
+                    }
+                };
+
+                const title = document.createElement('h3');
+                title.textContent = item.title || '（无标题）';
+                title.style.cssText = 'margin: 0; color: #333; font-size: 1.2rem; font-weight: 600; flex: 1;';
+                header.appendChild(title);
+
+                // 展開/摺疊圖示
+                const icon = document.createElement('span');
+                icon.className = 'practice-card-icon';
+                icon.textContent = '▶';
+                icon.style.cssText = 'color: #666; font-size: 14px; transition: transform 0.3s ease; margin-left: 12px;';
+                header.appendChild(icon);
+
+                // 內容區域（預設摺疊）
+                const content = document.createElement('div');
+                content.className = 'practice-card-content';
+                content.style.cssText = 'max-height: 0; overflow: hidden; transition: max-height 0.3s ease;';
+                
+                const contentInner = document.createElement('div');
+                contentInner.className = 'practice-content';
+                if (typeof renderMarkdown === 'function') {
+                    contentInner.innerHTML = renderMarkdown(item.content || '');
+                } else if (typeof marked !== 'undefined') {
+                    contentInner.innerHTML = marked.parse(item.content || '');
+                } else {
+                    contentInner.textContent = item.content || '';
+                }
+                contentInner.style.cssText = 'padding: 20px; line-height: 1.6; color: #555;';
+                content.appendChild(contentInner);
+
+                // 點擊標題行切換展開/摺疊
+                header.onclick = () => {
+                    const isCollapsed = header.dataset.collapsed === 'true';
+                    if (isCollapsed) {
+                        // 展開
+                        header.dataset.collapsed = 'false';
+                        // 先設置為 auto 獲取實際高度，然後設置為具體值以觸發動畫
+                        content.style.maxHeight = 'none';
+                        const height = content.scrollHeight;
+                        content.style.maxHeight = '0';
+                        // 使用 requestAnimationFrame 確保動畫觸發
+                        requestAnimationFrame(() => {
+                            content.style.maxHeight = height + 'px';
+                        });
+                        icon.textContent = '▼';
+                        icon.style.transform = 'rotate(0deg)';
+                        header.style.background = '#e9ecef';
+                    } else {
+                        // 摺疊
+                        header.dataset.collapsed = 'true';
+                        content.style.maxHeight = content.scrollHeight + 'px';
+                        requestAnimationFrame(() => {
+                            content.style.maxHeight = '0';
+                        });
+                        icon.textContent = '▶';
+                        icon.style.transform = 'rotate(0deg)';
+                        header.style.background = '#f8f9fa';
+                    }
+                };
+
+                practiceCard.appendChild(header);
+                practiceCard.appendChild(content);
+                practiceSection.appendChild(practiceCard);
+            });
+
+            container.appendChild(practiceSection);
+        } else {
+            // 如果沒有 Practice 內容，顯示明確的提示
+            const levelDisplay = level.toUpperCase().replace('BTC', 'BCT');
+            const lessonDisplay = lessonId.replace('lesson', 'Lesson ').toUpperCase();
+            
+            const placeholderCard = document.createElement('div');
+            placeholderCard.className = 'practice-empty-state';
+            placeholderCard.style.cssText = 'background: #f8f9fa; border: 2px dashed #dee2e6; border-radius: 8px; padding: 40px 20px; text-align: center; margin-top: 30px; padding-top: 30px; border-top: 2px solid #e0e0e0;';
+            
+            const icon = document.createElement('div');
+            icon.textContent = '✏️';
+            icon.style.cssText = 'font-size: 48px; margin-bottom: 16px;';
+            placeholderCard.appendChild(icon);
+            
+            const title = document.createElement('h3');
+            title.textContent = '暂无练习内容';
+            title.style.cssText = 'color: #495057; font-size: 1.3rem; margin-bottom: 12px; font-weight: 600;';
+            placeholderCard.appendChild(title);
+            
+            const info = document.createElement('p');
+            info.style.cssText = 'color: #6c757d; font-size: 0.95rem; margin-bottom: 8px; line-height: 1.6;';
+            info.innerHTML = `目前查詢：<strong style="color: #495057;">${levelDisplay} - ${lessonDisplay}</strong>`;
+            placeholderCard.appendChild(info);
+            
+            const path = document.createElement('p');
+            path.style.cssText = 'color: #868e96; font-size: 0.85rem; margin-bottom: 16px; font-family: monospace; background: #e9ecef; padding: 8px 12px; border-radius: 4px; display: inline-block;';
+            path.textContent = `courses/${level}/lessons/${lessonId}/practice/`;
+            placeholderCard.appendChild(path);
+            
+            const instruction = document.createElement('p');
+            instruction.style.cssText = 'color: #6c757d; font-size: 0.9rem; margin-top: 16px;';
+            instruction.textContent = '💡 请在 timeline-admin.html 的「Practice 管理」Tab 中新增内容';
+            placeholderCard.appendChild(instruction);
+            
+            container.appendChild(placeholderCard);
+        }
+    }
+
+    // 渲染獨立 HTML 檔案按鈕（改進版：只顯示存在的文件）
+    async renderStandaloneButtons(container, type, level, lessonId) {
+        // 將 lesson1 轉換為 L1 格式（用於資料夾路徑）
+        let folderLessonId = lessonId;
+        if (lessonId.match(/^lesson\d+$/i)) {
+            const num = lessonId.match(/\d+/)[0];
+            folderLessonId = 'L' + num;
+        }
+
+        // 將 btc1 轉換為 BCT1 格式
+        const folderLevel = level.toUpperCase().replace('BTC', 'BCT');
+
+        // 構建資料夾路徑
+        const folderPath = `${folderLevel}/${folderLessonId}`;
+
+        // 建立按鈕區塊（移到最上方，不需要頂部邊距和邊框）
+        const buttonSection = document.createElement('div');
+        buttonSection.className = `${type}-standalone-buttons`;
+        buttonSection.style.cssText = 'margin-bottom: 20px;';
+
+        const sectionTitle = document.createElement('h3');
+        sectionTitle.textContent = type === 'grammar' ? '📄 额外资源' : '📄 额外练习';
+        sectionTitle.style.cssText = 'margin-bottom: 15px; color: #333; font-size: 1.2rem;';
+        buttonSection.appendChild(sectionTitle);
+
+        // 顯示載入狀態
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.style.cssText = 'padding: 20px; text-align: center; color: #666; font-size: 0.9rem;';
+        loadingIndicator.textContent = '⏳ 正在检查可用文件...';
+        buttonSection.appendChild(loadingIndicator);
+
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 10px;';
+        buttonSection.appendChild(buttonContainer);
+        container.appendChild(buttonSection);
+
+        // 檢查文件是否存在（最多檢查 5 個）
+        const maxFiles = 5;
+        const checkPromises = [];
+
+        for (let i = 1; i <= maxFiles; i++) {
+            const fileName = `${type}-${i}.html`;
+            const filePath = `${folderPath}/${fileName}`;
+            
+            // 使用 HEAD 請求檢查文件是否存在
+            const checkPromise = fetch(filePath, { method: 'HEAD' })
+                .then(response => {
+                    if (response.ok) {
+                        return { index: i, exists: true, path: filePath };
+                    }
+                    return { index: i, exists: false, path: filePath };
+                })
+                .catch(() => {
+                    return { index: i, exists: false, path: filePath };
+                });
+            
+            checkPromises.push(checkPromise);
+        }
+
+        // 等待所有檢查完成
+        try {
+            const results = await Promise.all(checkPromises);
+            const existingFiles = results.filter(r => r.exists);
+
+            // 移除載入指示器
+            loadingIndicator.remove();
+
+            // 如果有文件存在，創建按鈕
+            if (existingFiles.length > 0) {
+                existingFiles.forEach(({ index, path }) => {
+                    const button = document.createElement('button');
+                    button.className = 'standalone-btn';
+                    button.textContent = type === 'grammar' ? `文法 ${index}` : `练习 ${index}`;
+                    button.style.cssText = 'padding: 12px 24px; background: #FF8C42; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s;';
+                    button.onmouseover = () => button.style.background = '#E67A31';
+                    button.onmouseout = () => button.style.background = '#FF8C42';
+
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const cohort = urlParams.get('cohort') || 'taigen-a';
+                    const standaloneUrl = `${path}?level=${level}&lesson=${lessonId}&cohort=${cohort}`;
+
+                    button.onclick = () => {
+                        window.open(standaloneUrl, '_blank');
+                    };
+
+                    buttonContainer.appendChild(button);
+                });
+            } else {
+                // 如果沒有文件存在，顯示提示
+                const noFilesMsg = document.createElement('p');
+                noFilesMsg.style.cssText = 'padding: 15px; text-align: center; color: #999; font-size: 0.9rem; font-style: italic;';
+                noFilesMsg.textContent = '目前没有可用的独立文件';
+                buttonContainer.appendChild(noFilesMsg);
+            }
+        } catch (error) {
+            console.error('檢查文件時發生錯誤:', error);
+            loadingIndicator.textContent = '⚠️ 檢查文件時發生錯誤，請稍後再試';
+            loadingIndicator.style.color = '#dc3545';
+        }
     }
 
     // 創建句子卡片（用於 Reading）

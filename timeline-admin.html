@@ -36,6 +36,8 @@
             <button class="admin-tab-btn" data-tab="character-cards">🧩 部件與目標字管理</button>
             <button class="admin-tab-btn" data-tab="studio">🎨 Studio</button>
             <button class="admin-tab-btn" data-tab="live-note">📝 Live Note</button>
+            <button class="admin-tab-btn" data-tab="grammar">📚 Grammar 管理</button>
+            <button class="admin-tab-btn" data-tab="practice">✏️ Practice 管理</button>
         </div>
 
         <!-- Tab 1: 補充管理（現有內容） -->
@@ -389,6 +391,130 @@
                     </div>
                     <div class="preview-content">
                         <div id="live-note-preview-content" style="padding: 20px;">
+                            <div style="padding: 40px; text-align: center; color: var(--muted);">
+                                請在左側輸入內容以查看預覽
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 5: Grammar 管理 -->
+        <div id="grammar-tab" class="admin-tab-pane">
+            <div class="live-note-layout" id="grammar-layout">
+                <!-- 左側：編輯面板 -->
+                <div class="live-note-editor" id="grammar-editor">
+                    <div class="editor-header">
+                        <h2>編輯文法</h2>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <select id="grammar-level-select" style="padding: 8px 12px; border: 1px solid var(--gray); border-radius: 8px; font-size: 14px;">
+                                <option value="btc1">BCT 1</option>
+                                <option value="btc2">BCT 2</option>
+                                <option value="btc3">BCT 3</option>
+                            </select>
+                            <select id="grammar-lesson-select" style="padding: 8px 12px; border: 1px solid var(--gray); border-radius: 8px; font-size: 14px;">
+                                <option value="">選擇課次...</option>
+                            </select>
+                            <select id="grammar-select" style="padding: 8px 12px; border: 1px solid var(--gray); border-radius: 8px; font-size: 14px;">
+                                <option value="">選擇或新增文法...</option>
+                            </select>
+                            <button class="btn btn-primary" id="grammar-new-btn">+ 新增文法</button>
+                        </div>
+                    </div>
+                    <div class="editor-content">
+                        <div class="form-group">
+                            <label for="grammar-title">標題</label>
+                            <input type="text" id="grammar-title" placeholder="輸入文法標題..." class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="grammar-content">內容（支援 Markdown）</label>
+                            <textarea id="grammar-content" rows="20" placeholder="輸入文法內容，支援 Markdown 格式...&#10;&#10;提示：&#10;• 使用 **粗體** 或 Ctrl+B 快捷鍵&#10;• 使用 ## 標題&#10;• 使用 ![origin](圖片網址) 或 ![story](圖片網址) 插入圖片" class="markdown-content form-control"></textarea>
+                            <small style="color: #666; display: block; margin-top: 8px;">
+                                💡 提示：內容會自動保存，支援 Markdown 格式。此內容會顯示在 lesson-template-b.html 的 Grammar Tab
+                            </small>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn btn-success" id="grammar-save-btn">💾 手動保存</button>
+                            <button class="btn btn-danger" id="grammar-delete-btn" style="display: none;">🗑️ 刪除文法</button>
+                            <span id="grammar-status" style="margin-left: 15px; color: var(--muted); font-size: 13px;"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 可調整寬度的拉條 -->
+                <div class="resizer" id="grammar-resizer"></div>
+
+                <!-- 右側：預覽面板 -->
+                <div class="live-note-preview">
+                    <div class="preview-header">
+                        <h2>實時預覽</h2>
+                        <button class="sidebar-toggle-btn" id="grammar-sidebar-toggle" title="顯示/隱藏編輯面板">◀</button>
+                    </div>
+                    <div class="preview-content">
+                        <div id="grammar-preview-content" style="padding: 20px;">
+                            <div style="padding: 40px; text-align: center; color: var(--muted);">
+                                請在左側輸入內容以查看預覽
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 6: Practice 管理 -->
+        <div id="practice-tab" class="admin-tab-pane">
+            <div class="live-note-layout" id="practice-layout">
+                <!-- 左側：編輯面板 -->
+                <div class="live-note-editor" id="practice-editor">
+                    <div class="editor-header">
+                        <h2>編輯練習</h2>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <select id="practice-level-select" style="padding: 8px 12px; border: 1px solid var(--gray); border-radius: 8px; font-size: 14px;">
+                                <option value="btc1">BCT 1</option>
+                                <option value="btc2">BCT 2</option>
+                                <option value="btc3">BCT 3</option>
+                            </select>
+                            <select id="practice-lesson-select" style="padding: 8px 12px; border: 1px solid var(--gray); border-radius: 8px; font-size: 14px;">
+                                <option value="">選擇課次...</option>
+                            </select>
+                            <select id="practice-select" style="padding: 8px 12px; border: 1px solid var(--gray); border-radius: 8px; font-size: 14px;">
+                                <option value="">選擇或新增練習...</option>
+                            </select>
+                            <button class="btn btn-primary" id="practice-new-btn">+ 新增練習</button>
+                        </div>
+                    </div>
+                    <div class="editor-content">
+                        <div class="form-group">
+                            <label for="practice-title">標題</label>
+                            <input type="text" id="practice-title" placeholder="輸入練習標題..." class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="practice-content">內容（支援 Markdown）</label>
+                            <textarea id="practice-content" rows="20" placeholder="輸入練習內容，支援 Markdown 格式...&#10;&#10;提示：&#10;• 使用 **粗體** 或 Ctrl+B 快捷鍵&#10;• 使用 ## 標題&#10;• 使用 ![origin](圖片網址) 或 ![story](圖片網址) 插入圖片" class="markdown-content form-control"></textarea>
+                            <small style="color: #666; display: block; margin-top: 8px;">
+                                💡 提示：內容會自動保存，支援 Markdown 格式。此內容會顯示在 lesson-template-b.html 的 Practice Tab
+                            </small>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn btn-success" id="practice-save-btn">💾 手動保存</button>
+                            <button class="btn btn-danger" id="practice-delete-btn" style="display: none;">🗑️ 刪除練習</button>
+                            <span id="practice-status" style="margin-left: 15px; color: var(--muted); font-size: 13px;"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 可調整寬度的拉條 -->
+                <div class="resizer" id="practice-resizer"></div>
+
+                <!-- 右側：預覽面板 -->
+                <div class="live-note-preview">
+                    <div class="preview-header">
+                        <h2>實時預覽</h2>
+                        <button class="sidebar-toggle-btn" id="practice-sidebar-toggle" title="顯示/隱藏編輯面板">◀</button>
+                    </div>
+                    <div class="preview-content">
+                        <div id="practice-preview-content" style="padding: 20px;">
                             <div style="padding: 40px; text-align: center; color: var(--muted);">
                                 請在左側輸入內容以查看預覽
                             </div>
