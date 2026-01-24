@@ -1132,16 +1132,13 @@ class LessonLoader {
                     buttonContainer.appendChild(button);
                 });
             } else {
-                // 如果沒有文件存在，顯示提示
-                const noFilesMsg = document.createElement('p');
-                noFilesMsg.style.cssText = 'padding: 15px; text-align: center; color: #999; font-size: 0.9rem; font-style: italic;';
-                noFilesMsg.textContent = '目前没有可用的独立文件';
-                buttonContainer.appendChild(noFilesMsg);
+                // 如果沒有文件存在，隱藏整個區塊
+                buttonSection.style.display = 'none';
             }
         } catch (error) {
             console.error('檢查文件時發生錯誤:', error);
-            loadingIndicator.textContent = '⚠️ 檢查文件時發生錯誤，請稍後再試';
-            loadingIndicator.style.color = '#dc3545';
+            // 發生錯誤時也隱藏整個區塊
+            buttonSection.style.display = 'none';
         }
     }
 
