@@ -6,6 +6,65 @@
 - **MINOR（x.Y.0）**：新增功能或明显改版，但保持向后兼容（旧用法仍可用）。
 - **PATCH（x.y.Z）**：修 bug / 文案 / 样式 / 小优化，不改变对外行为契约。
 
+## [3.5.0] - 2026-01-22
+
+### 🎯 BCT Review 系統重大更新：By Difficulty 功能 + UI 優化
+
+- ✅ **新增 By Difficulty 複習模式**：
+  - 添加 Review Method Tab System（Smart Review / By Difficulty）
+  - 實作四個 Mastery Boxes（Forgotten / Hard / Good / Easy）
+  - 點擊任一難度 Box 可直接開始該難度的複習（不考慮到期日）
+  - 統計數字與 Smart Review 同步更新
+  - 樣式與 Smart Review Section 對齊，簡潔統一
+
+- ✅ **步驟指示器（Step Indicator）**：
+  - 添加 4 步驟視覺指示器（Level → Type → Lessons → Start）
+  - 圓形數字 + 連接線設計，清楚顯示當前進度
+  - 動態更新：當前步驟 active（橘色），已完成步驟 completed（綠色）
+  - 響應式設計，手機版自動縮小
+
+- ✅ **開始按鈕優化**：
+  - 手機版 sticky 固定在底部，始終可見
+  - 添加脈衝動畫（pulse animation）吸引注意
+  - 按鈕內部分為圖示、文字、提示三部分
+  - 提示文字："👆 Click here to begin!"
+  - 按鈕顏色改為主站品牌色（橘色漸變）
+
+- ✅ **課程選擇視覺改進**：
+  - 鎖定課程（L3-L20）使用灰色背景、降低透明度、grayscale 濾鏡
+  - 可用課程（L1, L2）正常顯示，hover 效果明顯
+  - 視覺區分明確，學生不會誤點鎖定課程
+
+- ✅ **各步驟說明文字**：
+  - Step 2 Hint：說明 Type Tab 對應關係（Components / 汉字 / Vocabulary）
+  - Step 3 Hint：說明如何選擇課程，鎖定課程的提示
+  - Step 4 Hint：說明如何開始複習
+  - 統一樣式：淺橘色背景 + 左側邊框，簡潔清晰
+
+- ✅ **手機按鈕並列**：
+  - Select All / Clear All 在手機版也並列顯示
+  - 使用 `flex: 1` 讓兩個按鈕等寬，節省空間
+
+- ✅ **Type Tab 標籤對應**：
+  - Components → "Components"（與 lesson page 一致）
+  - Characters → "汉字"（與 lesson page 一致，學生看不懂是正常的，這就是練習認字的地方）
+  - Vocab → "Vocabulary"（對應 lesson page 的 "Vocabulary" + "Vocab A" tabs）
+
+- ✅ **Smart Review Section 重新設計**：
+  - 移除漸變背景和背景圖案，改為簡潔的白色背景
+  - 移除標題，簡化結構
+  - 將四個大框改為一行文字顯示：`📊 Breakdown: 3 Forgot | 1 Hard | 1 Good | 0 Easy`
+  - 按鈕移到最上方，資訊作為小提示
+  - 與 By Difficulty Section 樣式對齊，視覺統一
+
+### 📁 修改文件
+
+| 文件 | 修改内容 |
+|------|---------|
+| `bct-review.html` | 添加步驟指示器、Review Method Tabs、By Difficulty Section、各步驟說明文字、更新 Type Tab 標籤、重新組織 Smart Review Section 結構 |
+| `assets/js/bct-review.js` | 添加 `startBoxReview()` 方法、Tab 切換邏輯、`updateStepIndicator()` 方法、更新 `updateStats()` 同時更新兩個地方的統計、添加防護措施和調試信息 |
+| `assets/css/review.css` | 添加步驟指示器樣式、By Difficulty Section 樣式、Step Hints 樣式、按鈕 pulse 動畫、手機版 sticky 按鈕、改進鎖定課程視覺、手機按鈕並列、Smart Review Section 簡潔風格 |
+
 ## [3.4.0] - 2026-01-21
 
 ### 📚 Grammar 和 Practice Tab 功能增強：摺疊/展開、智能文件檢測、簡體中文

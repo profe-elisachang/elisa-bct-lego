@@ -93,11 +93,40 @@
 
         <!-- Main Content -->
         <div id="mainContent" class="hidden">
+            <!-- Step Indicator -->
+            <div class="step-indicator">
+                <div class="step-item active" data-step="1">
+                    <div class="step-number">1</div>
+                    <div class="step-label">Level</div>
+                </div>
+                <div class="step-item" data-step="2">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Type</div>
+                </div>
+                <div class="step-item" data-step="3">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Lessons</div>
+                </div>
+                <div class="step-item" data-step="4">
+                    <div class="step-number">4</div>
+                    <div class="step-label">Start</div>
+                </div>
+            </div>
+
             <!-- Layer 1: Components vs Characters Tab -->
             <div class="segmented-tabs" id="typeTabSystem">
-                <button class="tab-btn active" data-tab="components">Components 部件</button>
-                <button class="tab-btn" data-tab="characters">Characters 字</button>
-                <button class="tab-btn" data-tab="vocab">Vocab 詞組</button>
+                <button class="tab-btn active" data-tab="components">Components</button>
+                <button class="tab-btn" data-tab="characters">汉字</button>
+                <button class="tab-btn" data-tab="vocab">Vocabulary</button>
+            </div>
+            <!-- Step 2 Hint -->
+            <div class="step-hint" id="step2Hint">
+                <p>💡 <strong>Select what you want to review.</strong> These match the tabs in your lesson page:</p>
+                <ul>
+                    <li><strong>Components</strong> → "Components" tab in lesson</li>
+                    <li><strong>汉字</strong> → "汉字" tab in lesson (practice reading characters)</li>
+                    <li><strong>Vocabulary</strong> → "Vocabulary" + "Vocab A" tabs in lesson</li>
+                </ul>
             </div>
 
             <!-- Layer 2: Lesson Selection -->
@@ -106,7 +135,11 @@
                     <h3>📚 Select Lessons</h3>
                     <span class="selector-count" id="selectedCount">(0/25)</span>
                 </div>
-                <p class="selector-hint">Click lessons to select • Multiple selection supported</p>
+                <!-- Step 3 Hint -->
+                <div class="step-hint" id="step3Hint">
+                    <p>💡 <strong>Click on available lesson circles to select.</strong></p>
+                    <p>🔒 <strong>Locked lessons</strong> will unlock as content is added.</p>
+                </div>
 
                 <div class="selector-content" id="selectorContent">
                     <div id="lessonGrid" class="lesson-grid"></div>
@@ -146,35 +179,27 @@
                 </div>
             </div>
 
-            <!-- Layer 4: Smart Review Section -->
-            <div id="smartReviewSection" class="smart-review-section hidden">
-                <h3>🎯 Smart Review (SRS)</h3>
+            <!-- Layer 4: Review Method Tab System (Smart Review vs By Difficulty) -->
+            <div id="reviewMethodTabs" class="segmented-tabs hidden" style="margin-top: 1.5rem;">
+                <button class="tab-btn active" data-tab="smart-review">🎯 Smart Review</button>
+                <button class="tab-btn" data-tab="by-difficulty">⚙️ By Difficulty</button>
+            </div>
 
+            <!-- Layer 5: Smart Review Section -->
+            <div id="smartReviewSection" class="smart-review-section hidden">
+                <!-- Step 4 Hint -->
+                <div class="step-hint" id="step4Hint">
+                    <p>💡 <strong>Ready to start?</strong> Choose how many items to review, then click the button below!</p>
+                </div>
+
+                <!-- Due Info -->
                 <div class="due-info">
                     Due Today: <span id="dueCount">0</span> items
                 </div>
 
-                <div class="srs-breakdown">
-                    <div class="srs-box forgot">
-                        <span class="box-count" id="forgotCount">0</span>
-                        <span class="box-label">Forgotten</span>
-                    </div>
-                    <div class="srs-box hard">
-                        <span class="box-count" id="hardCount">0</span>
-                        <span class="box-label">Hard</span>
-                    </div>
-                    <div class="srs-box good">
-                        <span class="box-count" id="goodCount">0</span>
-                        <span class="box-label">Good</span>
-                    </div>
-                    <div class="srs-box easy">
-                        <span class="box-count" id="easyCount">0</span>
-                        <span class="box-label">Easy</span>
-                    </div>
-                </div>
-
+                <!-- Amount Selector -->
                 <div class="amount-selector">
-                    <label>Review Amount:
+                    <label>Review Amount: <span class="amount-hint">select how many you want to review</span>
                         <select id="reviewAmount">
                             <option value="10">10 (Quick)</option>
                             <option value="20" selected>20 (Standard)</option>
@@ -185,7 +210,54 @@
                     </label>
                 </div>
 
-                <button class="btn-start" onclick="startReview()">🧠 Start Smart Review</button>
+                <!-- Start Button -->
+                <div class="start-button-wrapper">
+                    <button class="btn-start pulse-animation" onclick="startReview()">
+                        <span class="btn-icon">🧠</span>
+                        <span class="btn-text">Start Smart Review</span>
+                        <span class="btn-hint">👆 Click here to begin!</span>
+                    </button>
+                </div>
+
+                <!-- Breakdown - One Line Text -->
+                <div class="srs-breakdown-text">
+                    <span class="breakdown-label">📊 Breakdown:</span>
+                    <span class="breakdown-item"><span class="breakdown-count" id="forgotCount">0</span> Forgot</span>
+                    <span class="breakdown-separator">|</span>
+                    <span class="breakdown-item"><span class="breakdown-count" id="hardCount">0</span> Hard</span>
+                    <span class="breakdown-separator">|</span>
+                    <span class="breakdown-item"><span class="breakdown-count" id="goodCount">0</span> Good</span>
+                    <span class="breakdown-separator">|</span>
+                    <span class="breakdown-item"><span class="breakdown-count" id="easyCount">0</span> Easy</span>
+                </div>
+            </div>
+
+            <!-- Layer 6: By Difficulty Section -->
+            <div id="difficultySection" class="difficulty-section hidden">
+                <h3>⚙️ By Difficulty</h3>
+                <p class="difficulty-hint">Click on a difficulty box to review all items in that category</p>
+                <div class="mastery-boxes" id="masteryBoxes">
+                    <div class="mastery-box forgot" onclick="startBoxReview('forgot')">
+                        <div class="box-title">Forgotten</div>
+                        <div class="box-count" id="count-forgot">0</div>
+                        <div class="box-description">Needs frequent review</div>
+                    </div>
+                    <div class="mastery-box hard" onclick="startBoxReview('hard')">
+                        <div class="box-title">Hard</div>
+                        <div class="box-count" id="count-hard">0</div>
+                        <div class="box-description">Still challenging</div>
+                    </div>
+                    <div class="mastery-box good" onclick="startBoxReview('good')">
+                        <div class="box-title">Good</div>
+                        <div class="box-count" id="count-good">0</div>
+                        <div class="box-description">Doing well</div>
+                    </div>
+                    <div class="mastery-box easy" onclick="startBoxReview('easy')">
+                        <div class="box-title">Easy</div>
+                        <div class="box-count" id="count-easy">0</div>
+                        <div class="box-description">Mastered</div>
+                    </div>
+                </div>
             </div>
 
             <!-- Review Area (hidden until review starts) -->

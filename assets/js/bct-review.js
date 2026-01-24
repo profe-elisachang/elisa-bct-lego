@@ -121,6 +121,9 @@ class BCTReviewSystem {
             this.renderLessonSelector();
             this.setupEventListeners();
 
+            // Initialize step indicator (step 1 is active by default)
+            this.updateStepIndicator(1);
+
             document.getElementById('loadingContainer').classList.add('hidden');
             document.getElementById('mainContent').classList.remove('hidden');
         } catch (error) {
@@ -587,16 +590,37 @@ class BCTReviewSystem {
     updateReviewSections() {
         const selectedLessons = this.getSelectedLessons();
         const reviewModeSection = document.getElementById('reviewModeSection');
+        const reviewMethodTabs = document.getElementById('reviewMethodTabs');
         const smartReviewSection = document.getElementById('smartReviewSection');
+        const difficultySection = document.getElementById('difficultySection');
 
         if (selectedLessons.length > 0) {
             reviewModeSection.classList.remove('hidden');
+            reviewMethodTabs.classList.remove('hidden');
+            // Default to Smart Review tab
             smartReviewSection.classList.remove('hidden');
+            difficultySection.classList.add('hidden');
             this.updateStats();
+            this.updateStepIndicator(4); // Show step 4
         } else {
             reviewModeSection.classList.add('hidden');
+            reviewMethodTabs.classList.add('hidden');
             smartReviewSection.classList.add('hidden');
+            difficultySection.classList.add('hidden');
+            this.updateStepIndicator(3); // Back to step 3
         }
+    }
+
+    updateStepIndicator(currentStep) {
+        document.querySelectorAll('.step-item').forEach((item, index) => {
+            const stepNum = index + 1;
+            item.classList.remove('active', 'completed');
+            if (stepNum < currentStep) {
+                item.classList.add('completed');
+            } else if (stepNum === currentStep) {
+                item.classList.add('active');
+            }
+        });
     }
 
     updateStats() {
@@ -609,14 +633,34 @@ class BCTReviewSystem {
             boxes[box]++;
         });
 
-        document.getElementById('forgotCount').textContent = boxes.forgot;
-        document.getElementById('hardCount').textContent = boxes.hard;
-        document.getElementById('goodCount').textContent = boxes.good;
-        document.getElementById('easyCount').textContent = boxes.easy;
+        // Update Smart Review breakdown (with null checks)
+        const forgotEl = document.getElementById('forgotCount');
+        const hardEl = document.getElementById('hardCount');
+        const goodEl = document.getElementById('goodCount');
+        const easyEl = document.getElementById('easyCount');
+        const dueEl = document.getElementById('dueCount');
+        
+        if (forgotEl) forgotEl.textContent = boxes.forgot;
+        if (hardEl) hardEl.textContent = boxes.hard;
+        if (goodEl) goodEl.textContent = boxes.good;
+        if (easyEl) easyEl.textContent = boxes.easy;
+
+        // Update By Difficulty boxes
+        const countForgotEl = document.getElementById('count-forgot');
+        const countHardEl = document.getElementById('count-hard');
+        const countGoodEl = document.getElementById('count-good');
+        const countEasyEl = document.getElementById('count-easy');
+        
+        if (countForgotEl) countForgotEl.textContent = boxes.forgot;
+        if (countHardEl) countHardEl.textContent = boxes.hard;
+        if (countGoodEl) countGoodEl.textContent = boxes.good;
+        if (countEasyEl) countEasyEl.textContent = boxes.easy;
 
         // Update due count
         const dueVocab = this.getDueVocab(vocab);
-        document.getElementById('dueCount').textContent = dueVocab.length;
+        if (dueEl) dueEl.textContent = dueVocab.length;
+        
+        console.log('📊 Stats updated:', { vocab: vocab.length, boxes, due: dueVocab.length });
     }
 
     getDueVocab(vocabulary) {
@@ -664,6 +708,29 @@ class BCTReviewSystem {
                 document.querySelectorAll('#typeTabSystem .tab-btn').forEach(b => b.classList.remove('active'));
                 e.currentTarget.classList.add('active');
                 this.setCurrentTab(e.currentTarget.dataset.tab);
+                this.updateStepIndicator(2); // Update to step 2 when type is selected
+            });
+        });
+
+        // Review Method Tab switching (Smart Review vs By Difficulty)
+        document.querySelectorAll('#reviewMethodTabs .tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tab = e.currentTarget.dataset.tab;
+                
+                // Remove active from all tabs
+                document.querySelectorAll('#reviewMethodTabs .tab-btn').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                
+                // Hide all content
+                document.getElementById('smartReviewSection').classList.add('hidden');
+                document.getElementById('difficultySection').classList.add('hidden');
+                
+                // Show selected content
+                if (tab === 'smart-review') {
+                    document.getElementById('smartReviewSection').classList.remove('hidden');
+                } else if (tab === 'by-difficulty') {
+                    document.getElementById('difficultySection').classList.remove('hidden');
+                }
             });
         });
 
@@ -784,12 +851,35 @@ class BCTReviewSystem {
         this.showCard();
     }
 
+    startBoxReview(box) {
+        const vocab = this.getSelectedVocab();
+        this.reviewQueue = vocab.filter(v => {
+            const progress = this.userProgress[this.getProgressKey(v)];
+            return progress ? progress.box === box : box === 'forgot';
+        });
+
+        if (this.reviewQueue.length === 0) {
+            alert(`No items in ${box} difficulty!`);
+            return;
+        }
+
+        // Shuffle
+        this.shuffleArray(this.reviewQueue);
+
+        // Start review
+        this.currentIndex = 0;
+        this.showReviewArea();
+        this.showCard();
+    }
+
     showReviewArea() {
         // Hide other sections
         document.getElementById('typeTabSystem').style.display = 'none';
         document.querySelector('.lesson-selector').style.display = 'none';
         document.getElementById('reviewModeSection').classList.add('hidden');
+        document.getElementById('reviewMethodTabs').classList.add('hidden');
         document.getElementById('smartReviewSection').classList.add('hidden');
+        document.getElementById('difficultySection').classList.add('hidden');
         document.querySelector('.data-section').style.display = 'none';
 
         // Show review area
@@ -989,6 +1079,15 @@ class BCTReviewSystem {
         document.querySelector('.lesson-selector').style.display = 'block';
         document.querySelector('.data-section').style.display = 'block';
 
+        // Reset to Smart Review tab
+        document.querySelectorAll('#reviewMethodTabs .tab-btn').forEach(b => b.classList.remove('active'));
+        const smartReviewTab = document.querySelector('#reviewMethodTabs .tab-btn[data-tab="smart-review"]');
+        if (smartReviewTab) {
+            smartReviewTab.classList.add('active');
+            document.getElementById('smartReviewSection').classList.remove('hidden');
+            document.getElementById('difficultySection').classList.add('hidden');
+        }
+
         // Clear selection and refresh
         this.clearAllLessons();
         this.renderLessonSelector();
@@ -1029,6 +1128,10 @@ function clearAllLessons() {
 
 function startReview() {
     reviewSystem.startReview();
+}
+
+function startBoxReview(box) {
+    reviewSystem.startBoxReview(box);
 }
 
 function flipCard() {
