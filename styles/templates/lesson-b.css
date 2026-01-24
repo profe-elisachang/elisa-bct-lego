@@ -803,6 +803,145 @@
     margin: 5px 0;
 }
 
+/* 表格樣式 */
+.timeline-notes.markdown-body table,
+.markdown-body table,
+.b-notes-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    font-size: 0.95em;
+    display: table;
+}
+
+/* 表格容器：如果表格太寬，允許水平滾動 */
+.timeline-notes.markdown-body,
+.markdown-body {
+    overflow-x: auto;
+    overflow-y: visible;
+}
+
+.timeline-notes.markdown-body table th,
+.timeline-notes.markdown-body table td,
+.markdown-body table th,
+.markdown-body table td,
+.b-notes-content table th,
+.b-notes-content table td {
+    border: 1px solid var(--gray-200, #e2e8f0);
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.timeline-notes.markdown-body table th,
+.markdown-body table th,
+.b-notes-content table th {
+    background: var(--gray-100, #f9fafb);
+    font-weight: 600;
+    color: var(--gray-900, #1e293b);
+}
+
+.timeline-notes.markdown-body table tr:nth-child(even),
+.markdown-body table tr:nth-child(even),
+.b-notes-content table tr:nth-child(even) {
+    background: var(--gray-50, #f8f9fa);
+}
+
+/* ================================================
+   筆記折疊功能樣式
+   ================================================ */
+.timeline-note {
+    margin-bottom: 12px;
+}
+
+.note-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    cursor: pointer;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    transition: background-color 0.2s;
+    user-select: none;
+}
+
+.note-header:hover {
+    background: #e9ecef !important;
+}
+
+.note-header[data-collapsed="false"] {
+    background: #e9ecef !important;
+}
+
+.note-title-text {
+    font-weight: 600;
+    font-size: 1.1em;
+    color: #333;
+    flex: 1;
+}
+
+.note-toggle-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: #e9ecef;
+    color: #495057;
+    border-radius: 6px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    margin-left: 12px;
+}
+
+.note-toggle-btn:hover {
+    background: #dee2e6 !important;
+    transform: scale(1.1);
+}
+
+.note-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.note-content-inner {
+    padding: 16px;
+    line-height: 1.6;
+    color: #555;
+}
+
+/* 確保表格在折疊內容中也能正常顯示 */
+.note-content-inner table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    font-size: 0.95em;
+    display: table;
+}
+
+.note-content-inner table th,
+.note-content-inner table td {
+    border: 1px solid var(--gray-200, #e2e8f0);
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.note-content-inner table th {
+    background: var(--gray-100, #f9fafb);
+    font-weight: 600;
+    color: var(--gray-900, #1e293b);
+}
+
+.note-content-inner table tr:nth-child(even) {
+    background: var(--gray-50, #f8f9fa);
+}
+
 /* 圖片樣式：確保分類樣式優先級高於通用樣式 */
 .timeline-notes .img-comp {
     display: inline-block !important;

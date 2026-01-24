@@ -162,7 +162,7 @@
       <aside class="b-notes" id="notes-sidebar">
         <div class="b-notes-card">
           <div class="b-notes-header">
-            <h3>Elisa 的笔记</h3>
+            <h3>Elisa's Classroom Notes</h3>
           </div>
           <div class="b-notes-content">
             <div id="teacher-notes"></div>
@@ -310,9 +310,10 @@
         const rect = layout.getBoundingClientRect();
         const notesWidth = rect.right - e.clientX - 20; // 減去 gap
         
-        // 限制寬度範圍：最小 200px，最大 800px
+        // 限制寬度範圍：最小 200px，最大為螢幕寬度的 60%（支援 65 吋電視）
         const minWidth = 200;
-        const maxWidth = 800;
+        const screenWidth = window.innerWidth;
+        const maxWidth = Math.max(1200, Math.floor(screenWidth * 0.8)); // 至少 1200px，或螢幕的 80%
         const clampedWidth = Math.max(minWidth, Math.min(maxWidth, notesWidth));
         
         // 設置 CSS 變數

@@ -1328,14 +1328,93 @@ class LessonLoader {
         console.log('📝 开始渲染笔记');
         if (placeholder) placeholder.style.display = 'none';
 
-        this.lessonData.timelineNotes.forEach((item) => {
+        this.lessonData.timelineNotes.forEach((item, index) => {
             console.log('📝 渲染笔记项：', item);
+            
+            // 創建筆記容器
             const note = document.createElement('div');
             note.className = 'timeline-note timeline-notes markdown-body';
-            const title = item.title ? `<div class="note-title">${item.title}</div>` : '';
-            // 使用 renderMarkdown 渲染內容
-            const content = item.content ? `<div class="note-content">${this.renderMarkdown(item.content)}</div>` : '';
-            note.innerHTML = title + content;
+            note.dataset.noteIndex = index;
+            
+            // 創建標題行（可點擊）
+            const header = document.createElement('div');
+            header.className = 'note-header';
+            header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #f8f9fa; cursor: pointer; border-radius: 8px; margin-bottom: 8px; transition: background-color 0.2s; user-select: none;';
+            header.dataset.collapsed = 'true';
+            
+            // 標題文字
+            const titleText = document.createElement('div');
+            titleText.className = 'note-title-text';
+            titleText.textContent = item.title || `筆記 ${index + 1}`;
+            titleText.style.cssText = 'font-weight: 600; font-size: 1.1em; color: #333; flex: 1;';
+            header.appendChild(titleText);
+            
+            // 展開/折疊按鈕
+            const toggleBtn = document.createElement('button');
+            toggleBtn.className = 'note-toggle-btn';
+            toggleBtn.textContent = '+';
+            toggleBtn.style.cssText = 'width: 28px; height: 28px; border: none; background: #e9ecef; color: #495057; border-radius: 6px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; margin-left: 12px;';
+            toggleBtn.onmouseover = () => {
+                if (header.dataset.collapsed === 'true') {
+                    toggleBtn.style.background = '#dee2e6';
+                }
+            };
+            toggleBtn.onmouseout = () => {
+                if (header.dataset.collapsed === 'true') {
+                    toggleBtn.style.background = '#e9ecef';
+                }
+            };
+            header.appendChild(toggleBtn);
+            
+            // 內容區域（預設折疊）
+            const content = document.createElement('div');
+            content.className = 'note-content';
+            content.style.cssText = 'max-height: 0; overflow: hidden; transition: max-height 0.3s ease;';
+            
+            const contentInner = document.createElement('div');
+            contentInner.className = 'note-content-inner';
+            contentInner.style.cssText = 'padding: 16px; line-height: 1.6; color: #555;';
+            if (item.content) {
+                contentInner.innerHTML = this.renderMarkdown(item.content);
+            }
+            content.appendChild(contentInner);
+            
+            // 點擊標題行或按鈕切換展開/折疊
+            const toggleCollapse = () => {
+                const isCollapsed = header.dataset.collapsed === 'true';
+                if (isCollapsed) {
+                    // 展開
+                    header.dataset.collapsed = 'false';
+                    content.style.maxHeight = 'none';
+                    const height = content.scrollHeight;
+                    content.style.maxHeight = '0';
+                    requestAnimationFrame(() => {
+                        content.style.maxHeight = height + 'px';
+                    });
+                    toggleBtn.textContent = '−';
+                    toggleBtn.style.background = '#dee2e6';
+                    header.style.background = '#e9ecef';
+                } else {
+                    // 折疊
+                    header.dataset.collapsed = 'true';
+                    content.style.maxHeight = content.scrollHeight + 'px';
+                    requestAnimationFrame(() => {
+                        content.style.maxHeight = '0';
+                    });
+                    toggleBtn.textContent = '+';
+                    toggleBtn.style.background = '#e9ecef';
+                    header.style.background = '#f8f9fa';
+                }
+            };
+            
+            header.onclick = toggleCollapse;
+            toggleBtn.onclick = (e) => {
+                e.stopPropagation();
+                toggleCollapse();
+            };
+            
+            note.appendChild(header);
+            note.appendChild(content);
             container.appendChild(note);
         });
         
