@@ -1065,7 +1065,7 @@ class LessonLoader {
         buttonSection.style.cssText = 'margin-bottom: 20px;';
 
         const sectionTitle = document.createElement('h3');
-        sectionTitle.textContent = type === 'grammar' ? '📄 额外资源' : '📄 额外练习';
+        sectionTitle.textContent = type === 'grammar' ? '📄 Extra Resources' : '📄 Extra Practice';
         sectionTitle.style.cssText = 'margin-bottom: 15px; color: #333; font-size: 1.2rem;';
         buttonSection.appendChild(sectionTitle);
 
