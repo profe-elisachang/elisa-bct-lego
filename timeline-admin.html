@@ -18,7 +18,7 @@
 <body>
     <nav class="top-nav">
         <a href="index.html">🏠 Home</a>
-        <a href="timeline-admin.html" class="active">🛠️ Timeline Admin</a>
+
     </nav>
 
     <div class="admin-container">
@@ -322,6 +322,10 @@
                         <h2>實時預覽</h2>
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <button class="sidebar-toggle-btn" id="studio-sidebar-toggle" title="顯示/隱藏編輯面板">◀</button>
+                            <select id="studio-type-select" style="padding: 8px 12px; border: 1px solid var(--gray); border-radius: 8px; font-size: 14px;">
+                                <option value="component">部件</option>
+                                <option value="target-character">目標字</option>
+                            </select>
                             <select id="studio-level-select" style="padding: 8px 12px; border: 1px solid var(--gray); border-radius: 8px; font-size: 14px;">
                                 <option value="btc1">BCT 1</option>
                                 <option value="btc2">BCT 2</option>

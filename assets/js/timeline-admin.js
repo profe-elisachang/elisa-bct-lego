@@ -970,14 +970,25 @@ let studioSortablePreviewList = null;
 
 function setupStudioSystem() {
     const levelSelect = document.getElementById('studio-level-select');
+    const typeSelect = document.getElementById('studio-type-select');
     const addBtn = document.getElementById('studio-add-btn');
     const sidebarToggle = document.getElementById('studio-sidebar-toggle');
     const collapseAllBtn = document.getElementById('studio-collapse-all-btn');
     const expandAllBtn = document.getElementById('studio-expand-all-btn');
     
+    // 類型選擇器事件監聽
+    if (typeSelect) {
+        typeSelect.addEventListener('change', () => {
+            const level = levelSelect?.value || 'btc1';
+            const type = typeSelect.value;
+            loadStudioComponents(level, type);
+        });
+    }
+    
     if (levelSelect) {
         levelSelect.addEventListener('change', (e) => {
-            loadStudioComponents(e.target.value);
+            const type = typeSelect?.value || 'component';
+            loadStudioComponents(e.target.value, type);
         });
     }
     
@@ -1087,24 +1098,53 @@ function setupStudioSystem() {
     
     // 初始化時載入數據（等待 Firebase 初始化完成）
     setTimeout(() => {
-        if (levelSelect && db) {
-            loadStudioComponents(levelSelect.value);
+        if (levelSelect && typeSelect && db) {
+            const level = levelSelect.value;
+            const type = typeSelect.value || 'component';
+            loadStudioComponents(level, type);
         }
     }, 500);
 }
 
-async function loadStudioComponents(level) {
+async function loadStudioComponents(level, type = 'component') {
     if (!db) {
         console.warn('Firebase 尚未初始化');
         return;
     }
     
     try {
-        const snapshot = await db.collection(`timeline/${level}/components`).get();
+        // 根據類型選擇正確的集合名稱
+        const collectionName = type === 'component' ? 'components' : 'target-characters';
+        const typeLabel = type === 'component' ? '部件' : '目標字';
+        
+        console.log(`📦 開始載入 ${typeLabel}，Level: ${level}, Collection: timeline/${level}/${collectionName}`);
+        
+        // 對於目標字，直接使用 .get() 不排序（與 studio.js 保持一致）
+        let snapshot;
+        if (type === 'target-character') {
+            snapshot = await db.collection(`timeline/${level}/${collectionName}`).get();
+        } else {
+            // 部件可以使用 orderBy（通常有 order 字段）
+            try {
+                snapshot = await db.collection(`timeline/${level}/${collectionName}`).orderBy('order', 'asc').get();
+            } catch (orderError) {
+                console.warn('⚠️ orderBy 查詢失敗，改用無排序查詢:', orderError);
+                snapshot = await db.collection(`timeline/${level}/${collectionName}`).get();
+            }
+        }
+        
         studioComponents = [];
         
         snapshot.forEach(doc => {
             const data = doc.data();
+            
+            // 確保類型匹配（防止載入錯誤類型的數據）
+            const expectedType = type === 'component' ? 'component' : 'target-character';
+            if (data.type && data.type !== expectedType) {
+                console.log(`⏭️ 跳過項目 ${doc.id}，類型不匹配: ${data.type} !== ${expectedType}`);
+                return;
+            }
+            
             studioComponents.push({
                 id: doc.id,
                 order: data.order !== undefined ? data.order : 999999,
@@ -1112,7 +1152,7 @@ async function loadStudioComponents(level) {
             });
         });
         
-        // 按 order 排序
+        // 按 order 排序（本地排序）
         studioComponents.sort((a, b) => {
             if (a.order !== b.order) return a.order - b.order;
             return a.id.localeCompare(b.id);
@@ -1125,6 +1165,8 @@ async function loadStudioComponents(level) {
             }
         });
         
+        console.log(`✅ 載入完成，共 ${studioComponents.length} 個${typeLabel}`);
+        
         renderStudioFormList();
         renderStudioPreviewList();
         initStudioSortable();
@@ -1132,11 +1174,13 @@ async function loadStudioComponents(level) {
         console.error('載入 Studio components 失敗:', error);
         const formList = document.getElementById('studio-form-list');
         const previewList = document.getElementById('studio-preview-list');
+        const collectionName = type === 'component' ? 'components' : 'target-characters';
+        const typeLabel = type === 'component' ? '部件' : '目標字';
         if (formList) {
-            formList.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--danger);">載入失敗：${error.message}</div>`;
+            formList.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--danger);">載入${typeLabel}失敗：${error.message}</div>`;
         }
         if (previewList) {
-            previewList.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--danger);">載入失敗</div>`;
+            previewList.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--danger);">載入${typeLabel}失敗</div>`;
         }
     }
 }
@@ -1210,8 +1254,15 @@ function createStudioFormItem(comp, index) {
                        oninput="debounceStudioUpdate('${comp.id}', 'pinyin', this.value)">
             </div>
             <div class="form-group">
-                <label>Markdown Content</label>
+                <label>Meaning (意思)</label>
+                <input type="text" data-field="meaning" value="${escapeHtml(comp.meaning || '')}" 
+                       oninput="debounceStudioUpdate('${comp.id}', 'meaning', this.value)"
+                       placeholder="例如：water radical | radical de agua">
+            </div>
+            <div class="form-group">
+                <label>Notes (補充說明，支援 Markdown)</label>
                 <textarea data-field="notes" oninput="debounceStudioUpdate('${comp.id}', 'notes', this.value)" 
+                          class="markdown-content"
                           style="min-height: 100px; font-family: monospace;">${escapeHtml(comp.notes || '')}</textarea>
             </div>
             <div class="form-group">
@@ -1394,11 +1445,14 @@ async function updateStudioField(componentId, field, value, shouldRerender = tru
         component[field] = value;
         
         const level = document.getElementById('studio-level-select')?.value || 'btc1';
-        await db.collection(`timeline/${level}/components`).doc(componentId).update({
+        const type = document.getElementById('studio-type-select')?.value || 'component';
+        const collectionName = type === 'component' ? 'components' : 'target-characters';
+        
+        await db.collection(`timeline/${level}/${collectionName}`).doc(componentId).update({
             [field]: value
         });
         
-        if (shouldRerender && ['character', 'pinyin', 'notes', 'image', 'meaning'].includes(field)) {
+        if (shouldRerender && ['character', 'pinyin', 'notes', 'image', 'meaning', 'display_image'].includes(field)) {
             renderStudioPreviewList();
         }
     } catch (error) {
@@ -1415,17 +1469,25 @@ async function addStudioComponent() {
     
     try {
         const level = document.getElementById('studio-level-select')?.value || 'btc1';
+        const type = document.getElementById('studio-type-select')?.value || 'component';
+        const collectionName = type === 'component' ? 'components' : 'target-characters';
+        
         const newComponent = {
             character: '',
+            display_image: '',
             pinyin: '',
+            meaning: '',
             notes: '',
             image: '',
+            type: type,
+            is_published: true,
             published: true,
-            order: studioComponents.length
+            order: studioComponents.length,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         
-        const docRef = await db.collection(`timeline/${level}/components`).add(newComponent);
-        await loadStudioComponents(level);
+        const docRef = await db.collection(`timeline/${level}/${collectionName}`).add(newComponent);
+        await loadStudioComponents(level, type);
         
         setTimeout(() => {
             const newItem = document.querySelector(`[data-id="${docRef.id}"]`);
@@ -1443,7 +1505,13 @@ async function addStudioComponent() {
 }
 
 async function deleteStudioComponent(index) {
-    if (!confirm('確定要刪除這個項目嗎？')) return;
+    const component = studioComponents[index];
+    if (!component) return;
+    
+    const type = document.getElementById('studio-type-select')?.value || 'component';
+    const typeLabel = type === 'component' ? '部件' : '目標字';
+    
+    if (!confirm(`確定要刪除這個${typeLabel}嗎？\nCharacter: ${component.character || component.display_image || '(無)'}`)) return;
     
     if (!db) {
         alert('Firebase 尚未初始化');
@@ -1451,10 +1519,10 @@ async function deleteStudioComponent(index) {
     }
     
     try {
-        const component = studioComponents[index];
         const level = document.getElementById('studio-level-select')?.value || 'btc1';
+        const collectionName = type === 'component' ? 'components' : 'target-characters';
         
-        await db.collection(`timeline/${level}/components`).doc(component.id).delete();
+        await db.collection(`timeline/${level}/${collectionName}`).doc(component.id).delete();
         studioComponents.splice(index, 1);
         
         studioComponents.forEach((comp, idx) => {
