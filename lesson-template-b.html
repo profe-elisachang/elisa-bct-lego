@@ -271,25 +271,29 @@
 
       let isResizing = false;
 
-      resizer.addEventListener('mousedown', (e) => {
+      // 統一的開始拖動函數
+      function startResize(e) {
         isResizing = true;
         resizer.classList.add('dragging');
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
-        
-        document.addEventListener('mousemove', handleResize);
-        document.addEventListener('mouseup', stopResize);
-      });
+        if (e.type === 'touchstart') {
+          e.preventDefault(); // 防止觸控時的默認行為（滾動等）
+        }
+      }
 
+      // 統一的處理拖動函數
       function handleResize(e) {
         if (!isResizing) return;
         
         const rect = layout.getBoundingClientRect();
-        const sidebarWidth = e.clientX - rect.left;
+        // 支援滑鼠和觸控事件
+        const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+        const sidebarWidth = clientX - rect.left;
         
-        // 限制寬度範圍：最小 30px，最大 400px
-        const minWidth = 30
-        const maxWidth = 400;
+        // 限制寬度範圍：最小 200px，最大 600px
+        const minWidth = 200;
+        const maxWidth = 600;
         const clampedWidth = Math.max(minWidth, Math.min(maxWidth, sidebarWidth));
         
         // 設置 CSS 變數
@@ -302,15 +306,45 @@
         requestAnimationFrame(updateSidebarTogglePosition);
       }
 
+      // 統一的停止拖動函數
       function stopResize() {
+        if (!isResizing) return;
         isResizing = false;
         resizer.classList.remove('dragging');
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
-        
-        document.removeEventListener('mousemove', handleResize);
-        document.removeEventListener('mouseup', stopResize);
       }
+
+      // 滑鼠事件
+      resizer.addEventListener('mousedown', (e) => {
+        startResize(e);
+        const mouseMoveHandler = handleResize;
+        const mouseUpHandler = () => {
+          stopResize();
+          document.removeEventListener('mousemove', mouseMoveHandler);
+          document.removeEventListener('mouseup', mouseUpHandler);
+        };
+        document.addEventListener('mousemove', mouseMoveHandler);
+        document.addEventListener('mouseup', mouseUpHandler);
+      });
+
+      // 觸控事件
+      resizer.addEventListener('touchstart', (e) => {
+        startResize(e);
+        const touchMoveHandler = (e) => {
+          handleResize(e);
+          if (e.cancelable) e.preventDefault(); // 防止頁面滾動
+        };
+        const touchEndHandler = () => {
+          stopResize();
+          document.removeEventListener('touchmove', touchMoveHandler);
+          document.removeEventListener('touchend', touchEndHandler);
+          document.removeEventListener('touchcancel', touchEndHandler);
+        };
+        document.addEventListener('touchmove', touchMoveHandler, { passive: false });
+        document.addEventListener('touchend', touchEndHandler);
+        document.addEventListener('touchcancel', touchEndHandler);
+      });
     })();
   </script>
   <!-- 筆記欄隱藏功能 -->
@@ -396,23 +430,27 @@
 
       let isResizing = false;
 
-      resizer.addEventListener('mousedown', (e) => {
+      // 統一的開始拖動函數
+      function startResize(e) {
         isResizing = true;
         resizer.classList.add('dragging');
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
-        
-        document.addEventListener('mousemove', handleResize);
-        document.addEventListener('mouseup', stopResize);
-      });
+        if (e.type === 'touchstart') {
+          e.preventDefault(); // 防止觸控時的默認行為（滾動等）
+        }
+      }
 
+      // 統一的處理拖動函數
       function handleResize(e) {
         if (!isResizing) return;
         
         const rect = layout.getBoundingClientRect();
-        const notesWidth = rect.right - e.clientX - 20; // 減去 gap
+        // 支援滑鼠和觸控事件
+        const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+        const notesWidth = rect.right - clientX - 20; // 減去 gap
         
-        // 限制寬度範圍：最小 200px，最大為螢幕寬度的 60%（支援 65 吋電視）
+        // 限制寬度範圍：最小 200px，最大為螢幕寬度的 80%（支援 65 吋電視）
         const minWidth = 200;
         const screenWidth = window.innerWidth;
         const maxWidth = Math.max(1200, Math.floor(screenWidth * 0.8)); // 至少 1200px，或螢幕的 80%
@@ -428,15 +466,45 @@
         requestAnimationFrame(updateNotesTogglePosition);
       }
 
+      // 統一的停止拖動函數
       function stopResize() {
+        if (!isResizing) return;
         isResizing = false;
         resizer.classList.remove('dragging');
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
-        
-        document.removeEventListener('mousemove', handleResize);
-        document.removeEventListener('mouseup', stopResize);
       }
+
+      // 滑鼠事件
+      resizer.addEventListener('mousedown', (e) => {
+        startResize(e);
+        const mouseMoveHandler = handleResize;
+        const mouseUpHandler = () => {
+          stopResize();
+          document.removeEventListener('mousemove', mouseMoveHandler);
+          document.removeEventListener('mouseup', mouseUpHandler);
+        };
+        document.addEventListener('mousemove', mouseMoveHandler);
+        document.addEventListener('mouseup', mouseUpHandler);
+      });
+
+      // 觸控事件
+      resizer.addEventListener('touchstart', (e) => {
+        startResize(e);
+        const touchMoveHandler = (e) => {
+          handleResize(e);
+          if (e.cancelable) e.preventDefault(); // 防止頁面滾動
+        };
+        const touchEndHandler = () => {
+          stopResize();
+          document.removeEventListener('touchmove', touchMoveHandler);
+          document.removeEventListener('touchend', touchEndHandler);
+          document.removeEventListener('touchcancel', touchEndHandler);
+        };
+        document.addEventListener('touchmove', touchMoveHandler, { passive: false });
+        document.addEventListener('touchend', touchEndHandler);
+        document.addEventListener('touchcancel', touchEndHandler);
+      });
     })();
   </script>
   <script src="assets/js/mobile-nav.js"></script>
