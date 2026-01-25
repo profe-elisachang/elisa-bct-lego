@@ -893,7 +893,7 @@ class LessonLoader {
             
             const instruction = document.createElement('p');
             instruction.style.cssText = 'color: #6c757d; font-size: 0.9rem; margin-top: 16px;';
-            instruction.textContent = '💡 请在 timeline-admin.html 的「Grammar 管理」Tab 中新增内容';
+            instruction.textContent = "🚧 Still working on this. I'll update here as we go.";
             placeholderCard.appendChild(instruction);
             
             container.appendChild(placeholderCard);
@@ -1037,7 +1037,7 @@ class LessonLoader {
             
             const instruction = document.createElement('p');
             instruction.style.cssText = 'color: #6c757d; font-size: 0.9rem; margin-top: 16px;';
-            instruction.textContent = '💡 请在 timeline-admin.html 的「Practice 管理」Tab 中新增内容';
+            instruction.textContent = "🚧 Still working on this. I'll update here as we go.";
             placeholderCard.appendChild(instruction);
             
             container.appendChild(placeholderCard);

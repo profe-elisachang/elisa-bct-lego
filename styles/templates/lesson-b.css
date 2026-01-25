@@ -25,7 +25,7 @@
    ================================================ */
 .b-layout {
   display: grid;
-  grid-template-columns: 260px 1fr 4px var(--notes-width, 350px);
+  grid-template-columns: var(--sidebar-width, 260px) 4px 1fr 4px var(--notes-width, 350px);
   gap: var(--space-5);
   height: calc(100vh - 120px); /* 扣除導航欄和 padding */
 }
@@ -115,7 +115,7 @@
    ================================================ */
 .sidebar-toggle {
   position: absolute;
-  left: 260px;
+  left: calc(var(--sidebar-width, 260px) + var(--space-5, 20px));
   top: 50%;
   transform: translateY(-50%);
   z-index: 100;
@@ -146,20 +146,24 @@
 
 /* 收合狀態 */
 .b-layout.sidebar-collapsed {
-  grid-template-columns: 0 1fr 4px var(--notes-width, 350px);
+  grid-template-columns: 0 0 1fr 4px var(--notes-width, 350px);
 }
 
 /* 筆記欄隱藏狀態 */
 .b-layout.notes-hidden {
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: var(--sidebar-width, 260px) 4px 1fr;
 }
 
 .b-layout.sidebar-collapsed.notes-hidden {
-  grid-template-columns: 0 1fr;
+  grid-template-columns: 0 0 1fr;
 }
 
 .b-layout.notes-hidden .b-notes,
 .b-layout.notes-hidden .notes-resizer {
+  display: none;
+}
+
+.b-layout.sidebar-collapsed .sidebar-resizer {
   display: none;
 }
 
@@ -175,6 +179,7 @@
   left: 0;
   border-left: 1px solid var(--gray-200);
   border-radius: var(--radius-lg);
+  border-right: 1px solid var(--gray-200);
 }
 
 /* ================================================
@@ -504,6 +509,49 @@
 }
 
 /* ================================================
+   側邊欄拉條
+   ================================================ */
+.sidebar-resizer {
+  width: 4px;
+  background: var(--gray-200);
+  cursor: col-resize;
+  position: relative;
+  transition: background 0.2s;
+  z-index: 10;
+  user-select: none;
+}
+
+.sidebar-resizer:hover {
+  background: var(--primary);
+}
+
+.sidebar-resizer::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 40px;
+  background: var(--gray-400);
+  border-radius: 2px;
+  transition: background 0.2s;
+}
+
+.sidebar-resizer:hover::before {
+  background: var(--primary);
+}
+
+.sidebar-resizer.dragging {
+  background: var(--primary);
+  cursor: col-resize;
+}
+
+.sidebar-resizer.dragging::before {
+  background: var(--primary);
+}
+
+/* ================================================
    筆記欄拉條
    ================================================ */
 .notes-resizer {
@@ -557,13 +605,24 @@
 /* ================================================
    響應式設計
    ================================================ */
-@media (max-width: 1400px) {
+@media (max-width: 1200px) {
   .b-layout {
-    grid-template-columns: 240px 1fr;
+    grid-template-columns: 1fr;
+    gap: var(--space-5);
     height: auto;
+    grid-auto-rows: auto;
   }
 
+  /* 筆記欄移到下方，完整顯示 */
   .b-notes {
+    order: 2;
+    width: 100%;
+    margin-top: var(--space-6);
+    padding-top: var(--space-6);
+    border-top: 2px solid var(--gray-200);
+  }
+
+  .sidebar-resizer {
     display: none;
   }
 
@@ -571,9 +630,27 @@
     display: none;
   }
 
+  .notes-toggle {
+    display: none;
+  }
+
+  .b-sidebar {
+    order: -1;
+  }
+
+  .b-main {
+    order: 1;
+  }
+
   .b-sidebar,
   .b-main {
-    height: calc(100vh - 120px);
+    height: auto;
+  }
+
+  /* 筆記欄卡片在平板/手機版調整 */
+  .b-notes-card {
+    width: 100%;
+    max-width: 100%;
   }
 }
 
@@ -627,21 +704,43 @@
     display: none;
   }
 
+  .sidebar-resizer {
+    display: none;
+  }
+
   .notes-toggle {
     display: none;
   }
 
-  .b-main,
+  .notes-resizer {
+    display: none;
+  }
+
+  /* 筆記欄移到下方，完整顯示 */
+  .b-notes {
+    order: 2;
+    width: 100%;
+    margin-top: var(--space-5);
+    padding-top: var(--space-5);
+    border-top: 2px solid var(--gray-200);
+  }
+
+  .b-main {
+    order: 1;
+    padding-bottom: var(--space-4);
+  }
+
   .b-content-wrapper,
   .b-content-scroll,
-  .b-notes,
   .b-notes-card {
     height: auto;
     min-height: auto;
   }
 
-  .b-main {
-    padding-bottom: var(--space-4);
+  /* 筆記欄卡片在手機版調整 */
+  .b-notes-card {
+    width: 100%;
+    max-width: 100%;
   }
 
   .b-main-header .tabs {
@@ -1036,4 +1135,5 @@
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
     transform: translateY(-2px);
 }
+
 

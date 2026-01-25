@@ -6,6 +6,45 @@
 - **MINOR（x.Y.0）**：新增功能或明显改版，但保持向后兼容（旧用法仍可用）。
 - **PATCH（x.y.Z）**：修 bug / 文案 / 样式 / 小优化，不改变对外行为契约。
 
+## [3.6.0] - 2026-01-22
+
+### 🎨 Studio Tab 功能增強：類型選擇器 + 批量發布功能
+
+- ✅ **類型選擇器**：
+  - 在 Studio tab 的預覽面板 header 中添加類型選擇器
+  - 可選擇「部件」或「目標字」兩種類型
+  - 根據選擇的類型載入對應的 Firestore 集合（`components` 或 `target-characters`）
+  - 類型切換時自動重新載入數據
+  - 與 `studio.html` 的實現保持一致
+
+- ✅ **批量發布功能**：
+  - 添加「整課全部發布」按鈕（綠色）
+  - 添加「整課全部取消發布」按鈕（灰色）
+  - 批量操作當前顯示的所有項目（根據選擇的等級和類型）
+  - 使用 Firestore batch 操作提高效率
+  - 同時更新 `is_published` 和 `published` 字段
+  - 發布時自動設置 `published_at` 時間戳
+  - 操作前顯示確認對話框（包含項目數量）
+  - 操作完成後顯示成功提示並自動重新渲染列表
+
+- ✅ **表單欄位完善**：
+  - 在 Studio tab 的表單中添加 `meaning`（意思）欄位
+  - 更新發布狀態檢查邏輯，同時檢查 `is_published` 和 `published` 字段
+  - 發布狀態變更時同時更新兩個字段，保持數據一致性
+
+- ✅ **數據載入優化**：
+  - 根據類型選擇正確的 Firestore 集合路徑
+  - 對於目標字使用無排序查詢（與 `studio.js` 保持一致）
+  - 對於部件嘗試使用 `orderBy` 排序，失敗時回退到無排序查詢
+  - 添加類型匹配驗證，防止載入錯誤類型的數據
+
+### 📁 修改文件
+
+| 文件 | 修改内容 |
+|------|---------|
+| `timeline-admin.html` | 在 Studio tab 預覽面板 header 中添加類型選擇器，在預覽內容區域添加批量發布按鈕 |
+| `assets/js/timeline-admin.js` | 添加類型選擇器事件監聽、實現 `loadStudioComponents()` 支持類型參數、實現 `batchPublishStudioComponents()` 批量發布功能、更新 `updateStudioField()`、`addStudioComponent()`、`deleteStudioComponent()` 支持類型選擇、在 `createStudioFormItem()` 中添加 `meaning` 欄位並更新發布狀態邏輯 |
+
 ## [3.5.0] - 2026-01-22
 
 ### 🎯 BCT Review 系統重大更新：By Difficulty 功能 + UI 優化

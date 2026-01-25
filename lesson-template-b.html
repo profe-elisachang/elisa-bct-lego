@@ -70,6 +70,9 @@
         <div class="b-unit-list" id="sidebar-unit-list"></div>
       </aside>
 
+      <!-- 側邊欄拉條 -->
+      <div class="sidebar-resizer" id="sidebar-resizer"></div>
+
       <!-- 側邊欄收合按鈕 -->
       <button class="sidebar-toggle" id="sidebar-toggle" title="收合/展開課程列表">
         <span class="toggle-icon">◀</span>
@@ -197,18 +200,117 @@
       const layout = document.querySelector('.b-layout');
       const storageKey = 'bct-sidebar-collapsed';
 
+      // 更新按鈕位置的函數
+      function updateSidebarTogglePosition() {
+        if (!toggleBtn) return;
+        const isCollapsed = layout.classList.contains('sidebar-collapsed');
+        if (isCollapsed) {
+          toggleBtn.style.left = '0';
+        } else {
+          const sidebarWidth = getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width') || '260px';
+          const gap = getComputedStyle(document.documentElement).getPropertyValue('--space-5') || '20px';
+          toggleBtn.style.left = `calc(${sidebarWidth} + ${gap})`;
+        }
+      }
+
       const isCollapsed = localStorage.getItem(storageKey) === 'true';
       if (isCollapsed) {
         layout.classList.add('sidebar-collapsed');
         toggleBtn.querySelector('.toggle-icon').textContent = '▶';
       }
 
+      // 初始化按鈕位置
+      setTimeout(updateSidebarTogglePosition, 100);
+
       toggleBtn.addEventListener('click', () => {
         layout.classList.toggle('sidebar-collapsed');
         const collapsed = layout.classList.contains('sidebar-collapsed');
         toggleBtn.querySelector('.toggle-icon').textContent = collapsed ? '▶' : '◀';
         localStorage.setItem(storageKey, collapsed);
+        
+        // 更新按鈕位置
+        setTimeout(updateSidebarTogglePosition, 50);
       });
+
+      // 監聽窗口大小變化
+      window.addEventListener('resize', updateSidebarTogglePosition);
+    })();
+  </script>
+  <!-- 側邊欄拉條功能 -->
+  <script>
+    (function() {
+      const resizer = document.getElementById('sidebar-resizer');
+      const layout = document.querySelector('.b-layout');
+      const sidebarToggle = document.getElementById('sidebar-toggle');
+      const storageKey = 'bct-sidebar-width';
+      
+      // 更新按鈕位置的函數（與收合功能共享）
+      function updateSidebarTogglePosition() {
+        const toggleBtn = document.getElementById('sidebar-toggle');
+        if (!toggleBtn) return;
+        const isCollapsed = layout.classList.contains('sidebar-collapsed');
+        if (isCollapsed) {
+          toggleBtn.style.left = '0';
+        } else {
+          const sidebarWidth = getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width') || '260px';
+          const gap = getComputedStyle(document.documentElement).getPropertyValue('--space-5') || '20px';
+          toggleBtn.style.left = `calc(${sidebarWidth} + ${gap})`;
+        }
+      }
+      
+      // 從 localStorage 讀取保存的寬度
+      const savedWidth = localStorage.getItem(storageKey);
+      if (savedWidth) {
+        document.documentElement.style.setProperty('--sidebar-width', savedWidth + 'px');
+      }
+      
+      // 初始化按鈕位置
+      setTimeout(updateSidebarTogglePosition, 100);
+
+      if (!resizer) return;
+
+      let isResizing = false;
+
+      resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        resizer.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        
+        document.addEventListener('mousemove', handleResize);
+        document.addEventListener('mouseup', stopResize);
+      });
+
+      function handleResize(e) {
+        if (!isResizing) return;
+        
+        const rect = layout.getBoundingClientRect();
+        const sidebarWidth = e.clientX - rect.left;
+        
+        // 限制寬度範圍：最小 30px，最大 400px
+        const minWidth = 30
+        const maxWidth = 400;
+        const clampedWidth = Math.max(minWidth, Math.min(maxWidth, sidebarWidth));
+        
+        // 設置 CSS 變數
+        document.documentElement.style.setProperty('--sidebar-width', clampedWidth + 'px');
+        
+        // 保存到 localStorage
+        localStorage.setItem(storageKey, clampedWidth);
+        
+        // 更新按鈕位置（使用 requestAnimationFrame 確保平滑）
+        requestAnimationFrame(updateSidebarTogglePosition);
+      }
+
+      function stopResize() {
+        isResizing = false;
+        resizer.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        
+        document.removeEventListener('mousemove', handleResize);
+        document.removeEventListener('mouseup', stopResize);
+      }
     })();
   </script>
   <!-- 筆記欄隱藏功能 -->
