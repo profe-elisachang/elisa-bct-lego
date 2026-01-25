@@ -146,7 +146,7 @@
 
 /* 收合狀態 */
 .b-layout.sidebar-collapsed {
-  grid-template-columns: 0 0 1fr 4px var(--notes-width, 350px);
+  grid-template-columns: 1fr 4px var(--notes-width, 350px);
 }
 
 /* 筆記欄隱藏狀態 */
@@ -155,7 +155,7 @@
 }
 
 .b-layout.sidebar-collapsed.notes-hidden {
-  grid-template-columns: 0 0 1fr;
+  grid-template-columns: 1fr;
 }
 
 .b-layout.notes-hidden .b-notes,
@@ -163,16 +163,13 @@
   display: none;
 }
 
+.b-layout.sidebar-collapsed .b-sidebar,
 .b-layout.sidebar-collapsed .sidebar-resizer {
   display: none;
 }
 
-.b-layout.sidebar-collapsed .b-sidebar {
-  width: 0;
-  padding: 0;
-  overflow: hidden;
-  opacity: 0;
-  pointer-events: none;
+.b-layout.sidebar-collapsed .b-main {
+  min-width: 0;
 }
 
 .b-layout.sidebar-collapsed .sidebar-toggle {
@@ -180,6 +177,12 @@
   border-left: 1px solid var(--gray-200);
   border-radius: var(--radius-lg);
   border-right: 1px solid var(--gray-200);
+}
+
+.b-layout.sidebar-collapsed .sidebar-resizer {
+  width: 0;
+  min-width: 0;
+  max-width: 0;
 }
 
 /* ================================================
@@ -636,14 +639,39 @@
 
   .b-sidebar {
     order: -1;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    padding-bottom: var(--space-3);
+  }
+
+  /* 橫條拉桿樣式（與手機版一致） */
+  .b-unit-list {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 var(--space-2);
+    gap: var(--space-2);
+    max-height: none;
+    scroll-behavior: smooth;
+  }
+
+  .b-unit-list::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .b-unit-item {
+    min-width: 150px;
+    flex: 0 0 auto;
+  }
+
+  .sidebar-toggle {
+    display: none;
   }
 
   .b-main {
     order: 1;
-  }
-
-  .b-sidebar,
-  .b-main {
+    width: 100%;
     height: auto;
   }
 
