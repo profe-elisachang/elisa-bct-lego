@@ -1093,6 +1093,16 @@ function setupStudioSystem() {
         });
     }
     
+    // 批量發布按鈕
+    const batchPublishBtn = document.getElementById('studio-batch-publish-btn');
+    const batchUnpublishBtn = document.getElementById('studio-batch-unpublish-btn');
+    if (batchPublishBtn) {
+        batchPublishBtn.addEventListener('click', () => batchPublishStudioComponents(true));
+    }
+    if (batchUnpublishBtn) {
+        batchUnpublishBtn.addEventListener('click', () => batchPublishStudioComponents(false));
+    }
+    
     // 初始化 Cloudinary 上傳功能（Studio 區塊）
     initStudioCloudinaryUpload();
     
@@ -1288,8 +1298,8 @@ function createStudioFormItem(comp, index) {
             </div>
             <div class="form-group">
                 <label style="display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" ${comp.published !== false ? 'checked' : ''} 
-                           onchange="updateStudioField('${comp.id}', 'published', this.checked)">
+                    <input type="checkbox" ${(comp.is_published !== false && comp.published !== false) ? 'checked' : ''} 
+                           onchange="updateStudioField('${comp.id}', 'is_published', this.checked); updateStudioField('${comp.id}', 'published', this.checked)">
                     Published (發布給 Review 系統)
                     <button class="btn-icon delete" onclick="deleteStudioComponent(${index})" title="刪除" style="margin-left: auto;">🗑️</button>
                 </label>
@@ -1536,6 +1546,67 @@ async function deleteStudioComponent(index) {
     } catch (error) {
         console.error('刪除失敗:', error);
         alert('刪除失敗：' + error.message);
+    }
+}
+
+async function batchPublishStudioComponents(publish) {
+    if (!db) {
+        alert('Firebase 尚未初始化');
+        return;
+    }
+    
+    const level = document.getElementById('studio-level-select')?.value || 'btc1';
+    const type = document.getElementById('studio-type-select')?.value || 'component';
+    const collectionName = type === 'component' ? 'components' : 'target-characters';
+    const typeLabel = type === 'component' ? '部件' : '目標字';
+    
+    if (studioComponents.length === 0) {
+        alert(`沒有${typeLabel}可操作`);
+        return;
+    }
+    
+    const action = publish ? '發布' : '取消發布';
+    if (!confirm(`確定要${action}當前顯示的所有${typeLabel}嗎？\n共 ${studioComponents.length} 個項目`)) {
+        return;
+    }
+    
+    try {
+        const now = new Date().toISOString();
+        const batch = db.batch();
+        
+        studioComponents.forEach(comp => {
+            if (!comp.id) return;
+            
+            const updateData = {
+                is_published: publish,
+                published: publish
+            };
+            
+            if (publish && !comp.published_at) {
+                updateData.published_at = now;
+            }
+            
+            const docRef = db.collection(`timeline/${level}/${collectionName}`).doc(comp.id);
+            batch.update(docRef, updateData);
+            
+            // 更新本地數據
+            comp.is_published = publish;
+            comp.published = publish;
+            if (publish && !comp.published_at) {
+                comp.published_at = now;
+            }
+        });
+        
+        await batch.commit();
+        
+        // 重新渲染列表
+        renderStudioFormList();
+        renderStudioPreviewList();
+        
+        alert(publish ? `✅ 所有${typeLabel}已發布！` : `⛔ 所有${typeLabel}已取消發布`);
+    } catch (error) {
+        console.error('批量操作失敗:', error);
+        alert('批量操作失敗：' + error.message);
     }
 }
 
