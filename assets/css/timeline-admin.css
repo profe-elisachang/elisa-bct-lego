@@ -751,10 +751,19 @@ body {
     color: var(--muted);
     font-size: 18px;
     padding: 4px;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    pointer-events: auto;
 }
 
 .drag-handle:hover {
     color: var(--dark);
+}
+
+.drag-handle:active {
+    cursor: grabbing;
 }
 
 .form-item.dragging,

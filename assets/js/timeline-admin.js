@@ -967,6 +967,7 @@ let studioComponents = [];
 let studioDebounceTimers = new Map();
 let studioSortableFormList = null;
 let studioSortablePreviewList = null;
+let studioCollapsedStates = {}; // 保存折疊狀態
 
 function setupStudioSystem() {
     const levelSelect = document.getElementById('studio-level-select');
@@ -1401,7 +1402,36 @@ function initStudioSortable() {
         studioSortableFormList = new Sortable(formList, {
             handle: '.drag-handle',
             animation: 150,
-            onEnd: (evt) => handleStudioSort(evt)
+            filter: '.collapse-toggle, .btn-icon, button, input, textarea, label',
+            preventOnFilter: false,
+            onStart: (evt) => {
+                // 拖拉開始時，保存所有項目的折疊狀態（按組件 ID）
+                const items = formList.querySelectorAll('.form-item');
+                items.forEach((item) => {
+                    const compId = item.dataset.id;
+                    if (compId) {
+                        studioCollapsedStates[compId] = item.dataset.collapsed === 'true';
+                    }
+                });
+            },
+            onEnd: (evt) => {
+                // 拖拉結束時，先恢復所有項目的折疊狀態（防止在 handleStudioSort 重新渲染前狀態被改變）
+                const items = formList.querySelectorAll('.form-item');
+                items.forEach((item) => {
+                    const compId = item.dataset.id;
+                    if (compId && studioCollapsedStates[compId] !== undefined) {
+                        const wasCollapsed = studioCollapsedStates[compId];
+                        item.dataset.collapsed = wasCollapsed ? 'true' : 'false';
+                        item.classList.toggle('collapsed', wasCollapsed);
+                        const toggleBtn = item.querySelector('.collapse-toggle');
+                        if (toggleBtn) {
+                            toggleBtn.textContent = wasCollapsed ? '▶' : '▼';
+                        }
+                    }
+                });
+                // handleStudioSort 會重新渲染並再次恢復狀態
+                handleStudioSort(evt);
+            }
         });
     }
     
@@ -1418,6 +1448,18 @@ function handleStudioSort(evt) {
     const { oldIndex, newIndex } = evt;
     if (oldIndex === newIndex) return;
     
+    // 在重新排序前，保存所有項目的折疊狀態（按組件 ID）
+    const formList = document.getElementById('studio-form-list');
+    if (formList) {
+        const items = formList.querySelectorAll('.form-item');
+        items.forEach((item) => {
+            const compId = item.dataset.id;
+            if (compId) {
+                studioCollapsedStates[compId] = item.dataset.collapsed === 'true';
+            }
+        });
+    }
+    
     const [moved] = studioComponents.splice(oldIndex, 1);
     studioComponents.splice(newIndex, 0, moved);
     
@@ -1428,6 +1470,24 @@ function handleStudioSort(evt) {
     
     renderStudioFormList();
     renderStudioPreviewList();
+    
+    // 重新渲染後，恢復折疊狀態
+    if (formList) {
+        const items = formList.querySelectorAll('.form-item');
+        items.forEach((item) => {
+            const compId = item.dataset.id;
+            if (compId && studioCollapsedStates[compId] !== undefined) {
+                const wasCollapsed = studioCollapsedStates[compId];
+                item.dataset.collapsed = wasCollapsed ? 'true' : 'false';
+                item.classList.toggle('collapsed', wasCollapsed);
+                const toggleBtn = item.querySelector('.collapse-toggle');
+                if (toggleBtn) {
+                    toggleBtn.textContent = wasCollapsed ? '▶' : '▼';
+                }
+            }
+        });
+    }
+    
     initStudioSortable();
 }
 
