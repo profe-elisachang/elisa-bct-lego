@@ -114,6 +114,7 @@ function renderLessonOptions() {
     const lessonSelect = document.getElementById('lessonInput');
     const filterSelect = document.getElementById('filterLesson');
     const cardLessonSelect = document.getElementById('cardLessonInput');
+    const studioLessonSelect = document.getElementById('studio-lesson-select');
     lessons.forEach(id => {
         const opt1 = document.createElement('option');
         opt1.value = id;
@@ -130,6 +131,13 @@ function renderLessonOptions() {
             opt3.value = id;
             opt3.textContent = id.replace('lesson','Lesson ');
             cardLessonSelect.appendChild(opt3);
+        }
+        
+        if (studioLessonSelect) {
+            const opt4 = document.createElement('option');
+            opt4.value = id;
+            opt4.textContent = id.replace('lesson','Lesson ');
+            studioLessonSelect.appendChild(opt4);
         }
     });
 }
@@ -972,10 +980,20 @@ let studioCollapsedStates = {}; // 保存折疊狀態
 function setupStudioSystem() {
     const levelSelect = document.getElementById('studio-level-select');
     const typeSelect = document.getElementById('studio-type-select');
+    const lessonSelect = document.getElementById('studio-lesson-select');
     const addBtn = document.getElementById('studio-add-btn');
     const sidebarToggle = document.getElementById('studio-sidebar-toggle');
     const collapseAllBtn = document.getElementById('studio-collapse-all-btn');
     const expandAllBtn = document.getElementById('studio-expand-all-btn');
+    
+    // lesson 選擇器事件監聽
+    if (lessonSelect) {
+        lessonSelect.addEventListener('change', () => {
+            const level = levelSelect?.value || 'btc1';
+            const type = typeSelect?.value || 'component';
+            loadStudioComponents(level, type);
+        });
+    }
     
     // 類型選擇器事件監聽
     if (typeSelect) {
@@ -1176,6 +1194,15 @@ async function loadStudioComponents(level, type = 'component') {
             }
         });
         
+        // 根據 lesson 選擇器過濾數據
+        const lessonSelect = document.getElementById('studio-lesson-select');
+        const selectedLesson = lessonSelect?.value || '';
+        if (selectedLesson) {
+            const beforeFilter = studioComponents.length;
+            studioComponents = studioComponents.filter(comp => (comp.lesson || '').trim() === selectedLesson.trim());
+            console.log(`🔍 根據課次 "${selectedLesson}" 過濾：${beforeFilter} → ${studioComponents.length} 個${typeLabel}`);
+        }
+        
         console.log(`✅ 載入完成，共 ${studioComponents.length} 個${typeLabel}`);
         
         renderStudioFormList();
@@ -1238,6 +1265,13 @@ function createStudioFormItem(comp, index) {
                    oninput="debounceStudioUpdate('${comp.id}', 'character', this.value)">
         </div>
         <div class="form-item-body">
+            <div class="form-group">
+                <label>Lesson (課次)</label>
+                <select data-field="lesson" onchange="updateStudioField('${comp.id}', 'lesson', this.value)" style="width: 100%; padding: 8px; border: 1px solid var(--gray); border-radius: 6px; font-size: 14px;">
+                    <option value="">未選擇</option>
+                    ${lessons.map(lesson => `<option value="${lesson}" ${(comp.lesson || '').trim() === lesson.trim() ? 'selected' : ''}>${lesson.replace('lesson','Lesson ')}</option>`).join('')}
+                </select>
+            </div>
             <div class="form-group">
                 <label>Display Image (字形補丁圖片)</label>
                 <input type="text" 
@@ -1540,7 +1574,13 @@ async function addStudioComponent() {
     try {
         const level = document.getElementById('studio-level-select')?.value || 'btc1';
         const type = document.getElementById('studio-type-select')?.value || 'component';
+        const lesson = document.getElementById('studio-lesson-select')?.value || '';
         const collectionName = type === 'component' ? 'components' : 'target-characters';
+        
+        if (!lesson) {
+            alert('請選擇課次！');
+            return;
+        }
         
         const newComponent = {
             character: '',
@@ -1550,6 +1590,7 @@ async function addStudioComponent() {
             notes: '',
             image: '',
             type: type,
+            lesson: lesson,
             is_published: true,
             published: true,
             order: studioComponents.length,
