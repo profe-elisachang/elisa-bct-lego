@@ -236,6 +236,29 @@ body {
     gap: 25px;
 }
 
+/* Components 和 汉字 Tab：Grid 卡片佈局 */
+#timeline-components-content.content-group,
+#timeline-target-characters-content.content-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+@media (max-width: 768px) {
+    #timeline-components-content.content-group,
+    #timeline-target-characters-content.content-group {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    #timeline-components-content.content-group,
+    #timeline-target-characters-content.content-group {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    }
+}
+
 
 /* 單字卡片 - 更緊湊的設計 */
 .vocab-card {
@@ -327,6 +350,231 @@ body {
 
 .audio-btn:active {
     transform: scale(0.95);
+}
+
+/* Timeline 卡片樣式（Components 和 汉字） */
+.timeline-card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 18px 20px;
+    border: 2px solid #EEE;
+    transition: all 0.3s;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: pointer;
+    min-height: 120px;
+    position: relative;
+}
+
+.timeline-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    border-color: var(--color-accent);
+}
+
+/* Timeline 卡片預覽層內容 */
+.timeline-card .line-character {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 0;
+    line-height: 1.2;
+}
+
+.timeline-card .line-pinyin {
+    font-size: 0.95rem;
+    color: var(--color-pinyin, #666);
+    margin: 0;
+    font-weight: 500;
+}
+
+.timeline-card .line-en {
+    font-size: 0.9rem;
+    color: var(--gray-600);
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* 卡片提示文字 */
+.timeline-card .card-hint {
+    position: absolute;
+    bottom: 12px;
+    right: 16px;
+    font-size: 0.75rem;
+    color: var(--gray-400);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.timeline-card:hover .card-hint {
+    color: var(--color-accent);
+}
+
+/* 隱藏預覽層不需要的內容 */
+.timeline-card .timeline-notes,
+.timeline-card .timeline-image {
+    display: none;
+}
+
+/* Timeline 卡片彈窗 Modal */
+.timeline-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.timeline-modal.active {
+    display: flex;
+}
+
+.timeline-modal-content {
+    background: white;
+    border-radius: 16px;
+    max-width: 700px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    position: relative;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.timeline-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #EEE;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 1;
+    border-radius: 16px 16px 0 0;
+}
+
+.timeline-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--gray-500);
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: all 0.2s;
+    line-height: 1;
+}
+
+.timeline-modal-close:hover {
+    background: var(--gray-100);
+    color: var(--gray-900);
+}
+
+.timeline-modal-body {
+    padding: 24px;
+}
+
+.timeline-modal-body .line-character {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.timeline-modal-body .line-pinyin {
+    font-size: 1.2rem;
+    color: var(--color-pinyin, #666);
+    margin-bottom: 12px;
+    font-weight: 500;
+}
+
+.timeline-modal-body .line-en {
+    font-size: 1rem;
+    color: var(--gray-600);
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.timeline-modal-body .timeline-image {
+    margin: 20px 0;
+    text-align: center;
+}
+
+.timeline-modal-body .timeline-image img {
+    max-width: 100%;
+    border-radius: 8px;
+}
+
+.timeline-modal-body .timeline-notes {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #EEE;
+}
+
+.timeline-modal-body .timeline-notes h3 {
+    font-size: 0.9rem;
+    color: var(--gray-500);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.timeline-modal-source {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #EEE;
+    font-size: 0.85rem;
+    color: var(--gray-400);
+}
+
+@media (max-width: 768px) {
+    .timeline-modal {
+        padding: 0;
+        align-items: flex-end;
+    }
+
+    .timeline-modal-content {
+        max-height: 90vh;
+        border-radius: 20px 20px 0 0;
+        max-width: 100%;
+    }
+
+    .timeline-modal-header {
+        padding: 16px 20px;
+    }
+
+    .timeline-modal-body {
+        padding: 20px;
+    }
+
+    .timeline-modal-body .line-character {
+        font-size: 2rem;
+    }
 }
 
 /* 練習卡片 */

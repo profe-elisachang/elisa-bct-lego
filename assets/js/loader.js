@@ -1293,7 +1293,7 @@ class LessonLoader {
 
         console.log(`✅ 開始渲染 ${this.lessonData.timelineComponents.length} 個部件`);
         this.lessonData.timelineComponents.forEach((item, index) => {
-            const card = this.createTimelineCard(item, index);
+            const card = this.createTimelineCard(item, true); // Components: isComponent = true
             console.log(`🎴 創建卡片 ${index + 1}:`, { id: item.id, character: item.character, cardElement: card });
             if (!card) {
                 console.error(`❌ 卡片 ${index + 1} 創建失敗！`);
@@ -1321,7 +1321,7 @@ class LessonLoader {
         }
 
         this.lessonData.timelineVocab.forEach((item, index) => {
-            const card = this.createTimelineCard(item, index);
+            const card = this.createTimelineCard(item, false); // Vocab: isComponent = false
             container.appendChild(card);
         });
     }
@@ -1339,7 +1339,7 @@ class LessonLoader {
         }
 
         this.lessonData.timelineTargetCharacters.forEach((item, index) => {
-            const card = this.createTimelineCard(item, index);
+            const card = this.createTimelineCard(item, false); // 汉字: isComponent = false
             container.appendChild(card);
         });
     }
@@ -1462,7 +1462,7 @@ class LessonLoader {
     }
 
     // 創建 Timeline 卡片（用於 components 和 vocabulary）
-    createTimelineCard(data) {
+    createTimelineCard(data, isComponent = false) {
         const card = document.createElement('div');
         // 為字卡添加特殊標記
         if (data.isCharacterCard) {
@@ -1471,6 +1471,10 @@ class LessonLoader {
         } else {
             card.className = 'timeline-card';
         }
+
+        // 儲存完整數據到卡片，供彈窗使用
+        card.dataset.cardData = JSON.stringify(data);
+        card.dataset.isComponent = isComponent ? 'true' : 'false';
 
         // 字（優先顯示文字，否則顯示字形補丁圖片）
         const charDiv = document.createElement('div');
@@ -1484,19 +1488,10 @@ class LessonLoader {
         }
         charDiv.innerHTML = charDisplay;
 
-        // 加入發音按鈕（只有文字時才顯示）
-        if (data.character && data.character.trim()) {
-            const audioBtn = document.createElement('button');
-            audioBtn.className = 'audio-btn';
-            audioBtn.textContent = '🔊';
-            audioBtn.onclick = () => audioController.speak(data.character || '');
-            charDiv.appendChild(audioBtn);
-        }
-
         card.appendChild(charDiv);
 
-        // 拼音
-        if (data.pinyin) {
+        // 拼音（Components 預覽層不顯示，汉字顯示）
+        if (data.pinyin && !isComponent) {
             const pinyinDiv = document.createElement('div');
             pinyinDiv.className = 'line-pinyin';
             pinyinDiv.textContent = data.pinyin;
@@ -1511,21 +1506,37 @@ class LessonLoader {
             card.appendChild(meaningDiv);
         }
 
-        // 輔助插圖（如果有的話）
+        // 輔助插圖（預覽層隱藏，彈窗中顯示）
         if (data.image && data.image.trim()) {
             const imageDiv = document.createElement('div');
+            imageDiv.className = 'timeline-image';
             imageDiv.style.marginTop = '10px';
             imageDiv.innerHTML = `<img src="${data.image}" style="max-width:100%;border-radius:6px;" onerror="this.style.display='none';">`;
             card.appendChild(imageDiv);
         }
 
-        // 補充說明（支援 Markdown）
+        // 補充說明（預覽層隱藏，彈窗中顯示）
         if (data.notes) {
             const notesDiv = document.createElement('div');
             notesDiv.className = 'timeline-notes markdown-body';
             notesDiv.innerHTML = this.renderMarkdown(data.notes);
             card.appendChild(notesDiv);
         }
+
+        // 添加提示文字
+        const hintDiv = document.createElement('div');
+        hintDiv.className = 'card-hint';
+        hintDiv.innerHTML = '<span>Tap for details</span> <span>→</span>';
+        card.appendChild(hintDiv);
+
+        // 添加點擊事件打開彈窗
+        card.addEventListener('click', (e) => {
+            // 防止發音按鈕觸發卡片點擊
+            if (e.target.closest('.audio-btn')) {
+                return;
+            }
+            this.openTimelineModal(data, isComponent);
+        });
 
         return card;
     }
@@ -1585,6 +1596,133 @@ class LessonLoader {
         // 转换 cohort ID 为显示标签
         const cohortLabel = this.currentCohort === 'taigen-a' ? 'A' : 'B';
         vocabTab.textContent = `Vocab ${cohortLabel}`;
+    }
+
+    // 打開 Timeline 卡片彈窗
+    openTimelineModal(data, isComponent = false) {
+        const modal = document.getElementById('timelineCardModal');
+        const modalBody = document.getElementById('timelineModalBody');
+        if (!modal || !modalBody) return;
+
+        // 清空內容
+        modalBody.innerHTML = '';
+
+        // 創建汉字/字形區域
+        const charDiv = document.createElement('div');
+        charDiv.className = 'line-character';
+        
+        let charDisplay = '';
+        if (data.character && data.character.trim()) {
+            charDisplay = data.character;
+        } else if (data.display_image && data.display_image.trim()) {
+            charDisplay = `<img src="${data.display_image}" class="img-comp" alt="comp" style="height: 2em; width: auto; vertical-align: middle;">`;
+        }
+        charDiv.innerHTML = charDisplay;
+
+        // 添加發音按鈕（只有文字時才顯示）
+        if (data.character && data.character.trim()) {
+            const audioBtn = document.createElement('button');
+            audioBtn.className = 'audio-btn';
+            audioBtn.textContent = '🔊';
+            audioBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (audioController && typeof audioController.speak === 'function') {
+                    audioController.speak(data.character || '');
+                }
+            };
+            charDiv.appendChild(audioBtn);
+        }
+        modalBody.appendChild(charDiv);
+
+        // 拼音（彈窗中 Components 也顯示）
+        if (data.pinyin) {
+            const pinyinDiv = document.createElement('div');
+            pinyinDiv.className = 'line-pinyin';
+            pinyinDiv.textContent = data.pinyin;
+            modalBody.appendChild(pinyinDiv);
+        }
+
+        // 意思
+        if (data.meaning) {
+            const meaningDiv = document.createElement('div');
+            meaningDiv.className = 'line-en';
+            meaningDiv.textContent = data.meaning;
+            modalBody.appendChild(meaningDiv);
+        }
+
+        // 輔助插圖
+        if (data.image && data.image.trim()) {
+            const imageDiv = document.createElement('div');
+            imageDiv.className = 'timeline-image';
+            imageDiv.innerHTML = `<img src="${data.image}" style="max-width:100%;border-radius:8px;" onerror="this.style.display='none';">`;
+            modalBody.appendChild(imageDiv);
+        }
+
+        // 補充說明（支援 Markdown）
+        if (data.notes) {
+            const notesContainer = document.createElement('div');
+            notesContainer.className = 'timeline-notes';
+            
+            const notesTitle = document.createElement('h3');
+            notesTitle.textContent = 'Notes';
+            notesContainer.appendChild(notesTitle);
+            
+            const notesContent = document.createElement('div');
+            notesContent.className = 'markdown-body';
+            notesContent.innerHTML = this.renderMarkdown(data.notes);
+            notesContainer.appendChild(notesContent);
+            
+            modalBody.appendChild(notesContainer);
+        }
+
+        // 來源標籤
+        const sourceDiv = document.createElement('div');
+        sourceDiv.className = 'timeline-modal-source';
+        let sourceText = '';
+        if (data.isCharacterCard) {
+            sourceText = 'Character Card';
+        } else if (data.source === 'timeline') {
+            sourceText = `Timeline ${data.sourceDate?.replace('timeline-', '') || ''}`;
+        } else {
+            sourceText = `Lesson ${data.lesson?.replace('lesson', '') || ''}`;
+        }
+        sourceDiv.textContent = `Source: ${sourceText}`;
+        modalBody.appendChild(sourceDiv);
+
+        // 顯示彈窗
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden'; // 防止背景滾動
+
+        // 關閉按鈕事件
+        const closeBtn = modal.querySelector('.timeline-modal-close');
+        if (closeBtn) {
+            closeBtn.onclick = () => this.closeTimelineModal();
+        }
+
+        // 點擊背景關閉
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                this.closeTimelineModal();
+            }
+        };
+
+        // ESC 鍵關閉
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                this.closeTimelineModal();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    }
+
+    // 關閉 Timeline 卡片彈窗
+    closeTimelineModal() {
+        const modal = document.getElementById('timelineCardModal');
+        if (modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = ''; // 恢復滾動
+        }
     }
 
 }
