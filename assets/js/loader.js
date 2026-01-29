@@ -230,11 +230,15 @@ class LessonLoader {
             console.log('📊 Timeline 類型分布:', typeCounts);
             console.log('📊 Timeline 完整內容（前5個）:', timeline.slice(0, 5).map(t => ({ id: t.id, type: t.type, lesson: t.lesson, is_published: t.is_published })));
             
-            // Components：只包含 component 類型
-            this.lessonData.timelineComponents = timeline.filter(t => t.type === 'component');
-            console.log(`📦 過濾後的 timelineComponents 數量: ${this.lessonData.timelineComponents.length}`);
+            // Components：只包含 component 類型，且只包含已發布的（雙重檢查確保安全）
+            this.lessonData.timelineComponents = timeline.filter(t => 
+                t.type === 'component' && t.is_published === true
+            );
+            console.log(`📦 過濾後的 timelineComponents 數量（已發布）: ${this.lessonData.timelineComponents.length}`);
             if (this.lessonData.timelineComponents.length > 0) {
                 console.log('📦 前3個 timelineComponents:', this.lessonData.timelineComponents.slice(0, 3).map(c => ({ id: c.id, character: c.character, is_published: c.is_published })));
+            } else {
+                console.warn('⚠️ 沒有已發布的部件！請檢查 is_published 狀態');
             }
             
             // Vocab：只包含 vocab 類型（生詞補充，不包括目標字）
