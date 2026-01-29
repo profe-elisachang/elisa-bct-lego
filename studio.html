@@ -182,11 +182,40 @@
       background: var(--primary-bg);
     }
 
+    /* 選中卡片的視覺提示 */
+    .form-item.selected {
+      border-color: var(--primary);
+      background: var(--primary-bg);
+      box-shadow: 0 0 0 3px rgba(255, 140, 66, 0.3);
+      position: relative;
+    }
+
+    .form-item.selected::before {
+      content: '👁️ 正在預覽';
+      position: absolute;
+      top: -8px;
+      right: 12px;
+      background: var(--primary);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      z-index: 10;
+      white-space: nowrap;
+    }
+
+    .form-item.selected .form-item-title {
+      color: var(--primary);
+      font-weight: 700;
+    }
+
     .form-item-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-bottom: var(--space-3);
+      gap: var(--space-2);
     }
 
     .form-item-title {
@@ -354,72 +383,94 @@
       gap: var(--space-4);
     }
 
-    /* 教學模態框 */
-    .teaching-modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .teaching-modal.active {
-      display: flex;
-    }
-
-    .teaching-modal-content {
-      width: 60%;
-      max-height: 90vh;
-      background: var(--bg-card);
-      border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-2xl);
+    /* 簡報式預覽樣式 */
+    .preview-single {
+      width: 100%;
+      min-height: 100%;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
-    }
-
-    .teaching-modal-header {
-      padding: var(--space-4);
-      border-bottom: 1px solid var(--gray-200);
-      display: flex;
+      justify-content: flex-start;
       align-items: center;
-      justify-content: space-between;
-      background: var(--gray-50);
+      padding: var(--space-8);
     }
 
-    .teaching-modal-header h3 {
-      margin: 0;
-      font-size: var(--text-xl);
-      font-weight: var(--font-bold);
-      color: var(--gray-900);
+    .presentation-card {
+      width: 100%;
+      max-width: 900px;
+      background: var(--bg-card);
+      border-radius: var(--radius-xl);
+      padding: var(--space-8);
+      box-shadow: var(--shadow-lg);
+      animation: fadeIn 0.3s ease-in;
     }
 
-    .teaching-modal-close {
-      padding: var(--space-2);
-      border: none;
-      background: transparent;
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* 簡報式字體大小 */
+    .presentation-char {
+      font-size: 8rem;
+      font-weight: 700;
+      text-align: center;
+      color: var(--primary);
+      margin: var(--space-4) 0;
+      line-height: 1.2;
+    }
+
+    .presentation-char img {
+      height: 8rem !important;
+      width: auto !important;
+    }
+
+    .presentation-pinyin {
+      font-size: 2.5rem;
+      text-align: center;
+      color: #dc2626;
+      margin: var(--space-2) 0;
+      font-weight: 600;
+    }
+
+    .presentation-meaning {
+      font-size: 1.5rem;
+      text-align: center;
+      color: #059669;
+      margin: var(--space-4) 0 var(--space-6);
+      font-weight: 500;
+    }
+
+    .presentation-content {
+      margin-top: var(--space-6);
+      font-size: 1.1rem;
+      line-height: 1.8;
+    }
+
+    .presentation-content img {
+      max-width: 100%;
+      border-radius: var(--radius-lg);
+      margin: var(--space-4) 0;
+    }
+
+    /* 點擊卡片標題區域 */
+    .form-item-header {
       cursor: pointer;
-      color: var(--gray-600);
-      font-size: var(--text-xl);
+      user-select: none;
+    }
+
+    .form-item-header:hover {
+      background: var(--gray-100);
       border-radius: var(--radius-md);
-      transition: all var(--duration-fast) var(--ease-out);
+      padding: var(--space-1);
+      margin: calc(-1 * var(--space-1));
     }
 
-    .teaching-modal-close:hover {
-      background: var(--gray-200);
-      color: var(--gray-900);
-    }
-
-    .teaching-modal-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: var(--space-6);
-    }
 
     /* 拖拽手柄 */
     .drag-handle {
@@ -466,6 +517,28 @@
 
     .form-item.collapsed .form-item-header {
       margin-bottom: 0;
+    }
+
+    /* 標題區域的發布按鈕樣式 */
+    .form-item-header .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+    }
+
+    .form-item-header .checkbox-group input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .form-item-header .checkbox-group label {
+      margin: 0;
+      font-size: var(--text-xs);
+      color: var(--gray-600);
+      cursor: pointer;
+      white-space: nowrap;
+      user-select: none;
     }
 
     /* 確保「字」欄位始終可見（即使在折疊狀態） */
@@ -580,6 +653,8 @@
             <h2>編輯表單</h2>
             <button class="btn-icon" id="collapse-all-btn" title="全部折疊">全部折疊</button>
             <button class="btn-icon" id="expand-all-btn" title="全部展開">全部展開</button>
+            <button class="btn-icon" id="batch-publish-btn" title="全部發布" style="background: var(--success, #16a34a); color: white; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-semibold);">✅ 全部發布</button>
+            <button class="btn-icon" id="batch-unpublish-btn" title="全部取消發布" style="background: var(--gray-200); color: var(--gray-700); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-semibold);">⛔ 全部取消發布</button>
           </div>
           <button class="btn-icon" id="add-component-btn" title="添加新項目" style="background: var(--primary); color: white; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-semibold);">
             + 新增
@@ -604,26 +679,14 @@
           </div>
         </div>
         <div class="preview-content">
-          <div class="preview-list" id="preview-list">
-            <!-- 預覽卡片將由 JavaScript 動態生成 -->
+          <div class="preview-single" id="preview-single">
+            <!-- 簡報式預覽將由 JavaScript 動態生成 -->
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 教學模態框 -->
-  <div class="teaching-modal" id="teaching-modal">
-    <div class="teaching-modal-content">
-      <div class="teaching-modal-header">
-        <h3>教學視圖</h3>
-        <button class="teaching-modal-close" id="modal-close">×</button>
-      </div>
-      <div class="teaching-modal-body" id="modal-body">
-        <!-- 模態框內容將由 JavaScript 動態生成 -->
-      </div>
-    </div>
-  </div>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>

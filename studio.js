@@ -15,6 +15,7 @@ class StudioManager {
         this.imageWidget = null;
         this.currentUploadComponentId = null;
         this.currentUploadType = null;
+        this.selectedIndex = null; // 當前選中的卡片索引
         
         this.init();
     }
@@ -190,17 +191,6 @@ class StudioManager {
             });
         }
 
-        // 模態框關閉
-        const modalClose = document.getElementById('modal-close');
-        const modal = document.getElementById('teaching-modal');
-        modalClose.addEventListener('click', () => {
-            modal.classList.remove('active');
-        });
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.remove('active');
-            }
-        });
 
         // 添加新項目按鈕
         const addBtn = document.getElementById('add-component-btn');
@@ -223,10 +213,34 @@ class StudioManager {
                 this.expandAll();
             });
         }
+
+        // 批量發布按鈕
+        const batchPublishBtn = document.getElementById('batch-publish-btn');
+        if (batchPublishBtn) {
+            batchPublishBtn.addEventListener('click', () => {
+                this.batchPublishComponents(true);
+            });
+        }
+
+        // 批量取消發布按鈕
+        const batchUnpublishBtn = document.getElementById('batch-unpublish-btn');
+        if (batchUnpublishBtn) {
+            batchUnpublishBtn.addEventListener('click', () => {
+                this.batchPublishComponents(false);
+            });
+        }
     }
 
     async loadComponents() {
         try {
+            // 如果沒有選擇課次，不載入數據
+            if (!this.currentLesson || this.currentLesson.trim() === '') {
+                this.components = [];
+                this.selectedIndex = null;
+                this.render();
+                return;
+            }
+            
             const collectionName = this.currentType === 'component' ? 'components' : 'target-characters';
             const typeLabel = this.currentType === 'component' ? '部件' : '目標字';
             console.log(`📦 開始載入 ${typeLabel}，Level: ${this.currentLevel}, Lesson: ${this.currentLesson || '全部'}`);
@@ -356,6 +370,14 @@ class StudioManager {
             });
 
             console.log(`✅ 載入完成，共 ${this.components.length} 個${typeLabel}`);
+            
+            // 自動選擇第一個卡片
+            if (this.components.length > 0) {
+                this.selectedIndex = 0;
+            } else {
+                this.selectedIndex = null;
+            }
+            
             this.render();
         } catch (error) {
             console.error('❌ 載入數據失敗:', error);
@@ -363,7 +385,7 @@ class StudioManager {
             const typeLabel = this.currentType === 'component' ? '部件' : '目標字';
             // 顯示錯誤信息在頁面上
             const formList = document.getElementById('form-list');
-            const previewList = document.getElementById('preview-list');
+            const previewSingle = document.getElementById('preview-single');
             if (formList) {
                 formList.innerHTML = `<div style="padding: var(--space-4); color: var(--danger);">
                     <p>❌ 載入數據失敗：${error.message}</p>
@@ -375,8 +397,8 @@ class StudioManager {
                     </ul>
                 </div>`;
             }
-            if (previewList) {
-                previewList.innerHTML = `<div style="padding: var(--space-4); color: var(--danger);">
+            if (previewSingle) {
+                previewSingle.innerHTML = `<div style="padding: var(--space-4); color: var(--danger);">
                     <p>❌ 載入${typeLabel}失敗</p>
                 </div>`;
             }
@@ -386,21 +408,54 @@ class StudioManager {
     render() {
         this.renderFormList();
         this.renderPreviewList();
+        this.updateBatchPublishButtons();
+    }
+
+    // 更新批量發布按鈕狀態
+    updateBatchPublishButtons() {
+        const batchPublishBtn = document.getElementById('batch-publish-btn');
+        const batchUnpublishBtn = document.getElementById('batch-unpublish-btn');
+        
+        const hasLesson = this.currentLesson && this.currentLesson.trim() !== '';
+        const hasData = this.components.length > 0;
+        const isEnabled = hasLesson && hasData;
+
+        if (batchPublishBtn) {
+            batchPublishBtn.disabled = !isEnabled;
+            batchPublishBtn.style.opacity = isEnabled ? '1' : '0.5';
+            batchPublishBtn.style.cursor = isEnabled ? 'pointer' : 'not-allowed';
+        }
+
+        if (batchUnpublishBtn) {
+            batchUnpublishBtn.disabled = !isEnabled;
+            batchUnpublishBtn.style.opacity = isEnabled ? '1' : '0.5';
+            batchUnpublishBtn.style.cursor = isEnabled ? 'pointer' : 'not-allowed';
+        }
     }
 
     renderFormList() {
         const formList = document.getElementById('form-list');
         formList.innerHTML = '';
 
+        // 如果沒有選擇課次，顯示提示
+        if (!this.currentLesson || this.currentLesson.trim() === '') {
+            formList.innerHTML = `
+                <div style="padding: var(--space-8); text-align: center; color: var(--gray-500);">
+                    <p style="font-size: var(--text-lg); margin-bottom: var(--space-2);">👆 請先選擇課次</p>
+                    <p style="font-size: var(--text-sm);">在上方選擇一個課次以載入數據</p>
+                </div>
+            `;
+            return;
+        }
+
         if (this.components.length === 0) {
             const collectionName = this.currentType === 'component' ? 'components' : 'target-characters';
             const typeLabel = this.currentType === 'component' ? '部件' : '目標字';
-            const lessonFilter = this.currentLesson ? `，課次: ${this.currentLesson}` : '';
             formList.innerHTML = `
                 <div style="padding: var(--space-8); text-align: center; color: var(--gray-500);">
                     <p style="font-size: var(--text-lg); margin-bottom: var(--space-2);">📭 尚無數據</p>
                     <p style="font-size: var(--text-sm);">當前 Level: <strong>${this.currentLevel}</strong></p>
-                    <p style="font-size: var(--text-sm);">類型: <strong>${typeLabel}</strong>${lessonFilter}</p>
+                    <p style="font-size: var(--text-sm);">類型: <strong>${typeLabel}</strong>，課次: <strong>${this.currentLesson}</strong></p>
                     <p style="font-size: var(--text-sm); margin-top: var(--space-2);">
                         路徑：timeline/${this.currentLevel}/${collectionName}
                     </p>
@@ -413,6 +468,9 @@ class StudioManager {
             const formItem = this.createFormItem(comp, index);
             formList.appendChild(formItem);
         });
+        
+        // 預設全部折疊
+        this.collapseAll();
     }
 
     createFormItem(comp, index) {
@@ -420,18 +478,30 @@ class StudioManager {
         item.className = 'form-item';
         item.dataset.id = comp.id;
         item.dataset.index = index;
-        // 添加折疊狀態數據屬性，預設為展開
-        item.dataset.collapsed = 'false';
+        // 添加折疊狀態數據屬性，預設為折疊
+        item.dataset.collapsed = 'true';
+        
+        // 如果這是選中的卡片，添加 selected class
+        if (this.selectedIndex === index) {
+            item.classList.add('selected');
+        }
 
         item.innerHTML = `
-            <div class="form-item-header">
+            <div class="form-item-header" onclick="studioManager.selectCard(${index})">
                 <span class="drag-handle">☰</span>
                 <span class="form-item-title">項目 #${index + 1}</span>
-                <div class="form-item-actions">
-                    <button class="collapse-toggle" onclick="studioManager.toggleCollapse(${index})" title="折疊/展開">
+                <div class="form-item-actions" style="display: flex; align-items: center; gap: var(--space-2);">
+                    <div class="checkbox-group" style="display: flex; align-items: center; gap: var(--space-1); margin-right: var(--space-2);" onclick="event.stopPropagation();">
+                        <input type="checkbox" 
+                               id="published-${comp.id}" 
+                               ${(comp.is_published !== false && comp.published !== false) ? 'checked' : ''} 
+                               onchange="studioManager.updatePublishedStatus('${comp.id}', this.checked)"
+                               style="margin: 0; cursor: pointer;">
+                        <label for="published-${comp.id}" style="margin: 0; font-size: var(--text-xs); color: var(--gray-600); cursor: pointer; white-space: nowrap;">已發布</label>
+                    </div>
+                    <button class="collapse-toggle" onclick="event.stopPropagation(); studioManager.toggleCollapse(${index})" title="折疊/展開">
                         ▼
                     </button>
-                    <button class="btn-icon" onclick="studioManager.openTeachingModal(${index})" title="教學視圖">👁️</button>
                 </div>
             </div>
             <div class="form-group character-group">
@@ -510,12 +580,7 @@ class StudioManager {
                     </div>
                 </div>
                 <div class="form-group">
-                    <div class="checkbox-group" style="display: flex; align-items: center; gap: var(--space-2);">
-                        <input type="checkbox" 
-                               id="published-${comp.id}" 
-                               ${(comp.is_published !== false && comp.published !== false) ? 'checked' : ''} 
-                               onchange="studioManager.updateField('${comp.id}', 'is_published', this.checked)">
-                        <label for="published-${comp.id}" style="margin: 0;">Published (發布給 Review 系統)</label>
+                    <div style="display: flex; align-items: center; gap: var(--space-2);">
                         <button class="btn-icon delete" onclick="studioManager.deleteComponent(${index})" title="刪除" style="margin-left: auto;">🗑️</button>
                     </div>
                 </div>
@@ -526,91 +591,99 @@ class StudioManager {
     }
 
     renderPreviewList() {
-        const previewList = document.getElementById('preview-list');
-        previewList.innerHTML = '';
+        const previewSingle = document.getElementById('preview-single');
+        if (!previewSingle) return;
 
-        if (this.components.length === 0) {
-            previewList.innerHTML = `
+        // 如果沒有選擇課次，顯示提示
+        if (!this.currentLesson || this.currentLesson.trim() === '') {
+            previewSingle.innerHTML = `
                 <div style="padding: var(--space-8); text-align: center; color: var(--gray-500);">
-                    <p style="font-size: var(--text-lg); margin-bottom: var(--space-2);">📭 尚無預覽內容</p>
-                    <p style="font-size: var(--text-sm);">請在左側編輯面板添加數據</p>
+                    <p style="font-size: var(--text-lg); margin-bottom: var(--space-2);">👆 請先選擇課次</p>
+                    <p style="font-size: var(--text-sm);">在上方選擇一個課次以載入數據</p>
                 </div>
             `;
             return;
         }
 
-        this.components.forEach((comp, index) => {
-            const card = this.createPreviewCard(comp, index);
-            previewList.appendChild(card);
-        });
+        // 如果有選中的卡片，顯示該卡片的預覽
+        if (this.selectedIndex !== null && this.components[this.selectedIndex]) {
+            const comp = this.components[this.selectedIndex];
+            previewSingle.innerHTML = '';
+            const presentation = this.createPresentationPreview(comp, this.selectedIndex);
+            previewSingle.appendChild(presentation);
+            // 自動滾動到頂部
+            previewSingle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (this.components.length === 0) {
+            previewSingle.innerHTML = `
+                <div style="padding: var(--space-8); text-align: center; color: var(--gray-500);">
+                    <p style="font-size: var(--text-lg); margin-bottom: var(--space-2);">📭 尚無預覽內容</p>
+                    <p style="font-size: var(--text-sm);">請在左側編輯面板添加數據</p>
+                </div>
+            `;
+        } else {
+            previewSingle.innerHTML = `
+                <div style="padding: var(--space-8); text-align: center; color: var(--gray-500);">
+                    <p style="font-size: var(--text-lg); margin-bottom: var(--space-2);">👆 點擊左側卡片查看預覽</p>
+                    <p style="font-size: var(--text-sm);">選擇一個項目以查看完整預覽</p>
+                </div>
+            `;
+        }
     }
 
-    createPreviewCard(comp, index) {
+    // 新增：創建簡報式預覽
+    createPresentationPreview(comp, index) {
         const card = document.createElement('div');
-        card.className = 'timeline-card';
-        if (comp.isCharacterCard) {
-            card.classList.add('character-card');
-        }
-        card.dataset.id = comp.id;
-        card.dataset.index = index;
-        card.style.cursor = 'pointer';
+        card.className = 'presentation-card';
         
-        // 單擊：打開教學模態框
-        card.addEventListener('click', () => {
-            this.openTeachingModal(index);
-        });
-        
-        // 雙擊：跳轉到對應的編輯表單項目
-        card.addEventListener('dblclick', () => {
-            this.scrollToFormItem(comp.id, index);
-        });
-
-        // 字（優先顯示文字，否則顯示圖片）
+        // 字（大字顯示）
         const charDiv = document.createElement('div');
-        charDiv.className = 'line-character';
-        
+        charDiv.className = 'presentation-char';
         let charDisplay = '';
         if (comp.character && comp.character.trim()) {
             charDisplay = comp.character;
         } else if (comp.display_image && comp.display_image.trim()) {
-            charDisplay = `<img src="${comp.display_image}" class="img-comp" alt="comp" style="height: 1.8em; width: auto; vertical-align: middle;">`;
+            charDisplay = `<img src="${comp.display_image}" alt="comp">`;
         }
-        // 如果都沒有，顯示提示
         if (!charDisplay) {
-            charDisplay = '<span style="color: var(--gray-400); font-style: italic;">（無字或圖片）</span>';
+            charDisplay = '<span style="color: var(--gray-400); font-style: italic; font-size: 3rem;">（無字或圖片）</span>';
         }
         charDiv.innerHTML = charDisplay;
         card.appendChild(charDiv);
-
-        // 拼音
-        const pinyinDiv = document.createElement('div');
-        pinyinDiv.className = 'line-pinyin';
-        pinyinDiv.textContent = comp.pinyin || '';
-        card.appendChild(pinyinDiv);
-
-        // 意思
-        const meaningDiv = document.createElement('div');
-        meaningDiv.className = 'line-en';
-        meaningDiv.textContent = comp.meaning || '';
-        card.appendChild(meaningDiv);
-
+        
+        // 拼音（大字顯示）
+        if (comp.pinyin && comp.pinyin.trim()) {
+            const pinyinDiv = document.createElement('div');
+            pinyinDiv.className = 'presentation-pinyin';
+            pinyinDiv.textContent = comp.pinyin;
+            card.appendChild(pinyinDiv);
+        }
+        
+        // 意思（大字顯示）
+        if (comp.meaning && comp.meaning.trim()) {
+            const meaningDiv = document.createElement('div');
+            meaningDiv.className = 'presentation-meaning';
+            meaningDiv.textContent = comp.meaning;
+            card.appendChild(meaningDiv);
+        }
+        
         // 輔助插圖
         if (comp.image && comp.image.trim()) {
             const imageDiv = document.createElement('div');
-            imageDiv.style.marginTop = '10px';
-            imageDiv.innerHTML = `<img src="${comp.image}" style="max-width:100%;border-radius:6px;" onerror="this.style.display='none';">`;
+            imageDiv.style.textAlign = 'center';
+            imageDiv.style.margin = 'var(--space-6) 0';
+            imageDiv.innerHTML = `<img src="${comp.image}" style="max-width:90%;border-radius:var(--radius-lg);" onerror="this.style.display='none';">`;
             card.appendChild(imageDiv);
         }
-
-        // 補充說明（支援 Markdown，但使用簡化樣式）
+        
+        // 補充說明（Markdown）
         if (comp.notes && comp.notes.trim()) {
             const notesDiv = document.createElement('div');
-            notesDiv.className = 'timeline-notes';
+            notesDiv.className = 'presentation-content timeline-notes';
             notesDiv.innerHTML = renderMarkdown(comp.notes);
             card.appendChild(notesDiv);
         }
-
-        // 如果卡片完全空白，顯示提示
+        
+        // 如果完全空白，顯示提示
         const hasContent = (comp.character && comp.character.trim()) || 
                           (comp.display_image && comp.display_image.trim()) ||
                           (comp.pinyin && comp.pinyin.trim()) ||
@@ -620,7 +693,7 @@ class StudioManager {
         
         if (!hasContent) {
             const emptyDiv = document.createElement('div');
-            emptyDiv.style.padding = '20px';
+            emptyDiv.style.padding = 'var(--space-8)';
             emptyDiv.style.textAlign = 'center';
             emptyDiv.style.color = 'var(--gray-400)';
             emptyDiv.style.fontStyle = 'italic';
@@ -631,33 +704,41 @@ class StudioManager {
         return card;
     }
 
+    // 新增：選擇卡片（點擊標題時調用）
+    selectCard(index) {
+        if (index < 0 || index >= this.components.length) return;
+        this.selectedIndex = index;
+        
+        // 更新視覺提示：移除所有 selected class，添加當前選中的
+        const formList = document.getElementById('form-list');
+        if (formList) {
+            const items = formList.querySelectorAll('.form-item');
+            items.forEach((item, idx) => {
+                if (idx === index) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+        
+        this.renderPreviewList();
+    }
+
     initSortable() {
         const formList = document.getElementById('form-list');
-        const previewList = document.getElementById('preview-list');
 
         // 銷毀舊的實例
         if (this.sortableFormList) {
             this.sortableFormList.destroy();
         }
-        if (this.sortablePreviewList) {
-            this.sortablePreviewList.destroy();
-        }
 
-        // 表單列表拖拽
+        // 表單列表拖拽（右側現在是單個預覽，不需要拖拽）
         this.sortableFormList = new Sortable(formList, {
             handle: '.drag-handle',
             animation: 150,
             onEnd: (evt) => {
                 this.handleSort(evt, 'form');
-            }
-        });
-
-        // 預覽列表拖拽
-        this.sortablePreviewList = new Sortable(previewList, {
-            handle: '.timeline-card',
-            animation: 150,
-            onEnd: (evt) => {
-                this.handleSort(evt, 'preview');
             }
         });
     }
@@ -666,16 +747,18 @@ class StudioManager {
         const { oldIndex, newIndex } = evt;
         if (oldIndex === newIndex) return;
 
-        // 暫時禁用另一個列表的拖拽，避免衝突
-        if (source === 'form' && this.sortablePreviewList) {
-            this.sortablePreviewList.option('disabled', true);
-        } else if (source === 'preview' && this.sortableFormList) {
-            this.sortableFormList.option('disabled', true);
-        }
-
         // 更新數組順序
         const [moved] = this.components.splice(oldIndex, 1);
         this.components.splice(newIndex, 0, moved);
+
+        // 更新選中索引（如果選中的卡片被移動了）
+        if (this.selectedIndex === oldIndex) {
+            this.selectedIndex = newIndex;
+        } else if (this.selectedIndex > oldIndex && this.selectedIndex <= newIndex) {
+            this.selectedIndex--;
+        } else if (this.selectedIndex < oldIndex && this.selectedIndex >= newIndex) {
+            this.selectedIndex++;
+        }
 
         // 更新所有項目的 order 字段
         const updatePromises = this.components.map((comp, index) => {
@@ -737,47 +820,180 @@ class StudioManager {
         }
     }
 
-    scrollToFormItem(componentId, index) {
-        // 檢查編輯面板是否被最小化，如果是則展開
-        const layout = document.getElementById('studio-layout');
-        const sidebarToggle = document.getElementById('sidebar-toggle');
-        
-        if (layout && layout.classList.contains('sidebar-hidden')) {
-            layout.classList.remove('sidebar-hidden');
-            if (sidebarToggle) {
-                sidebarToggle.textContent = '◀';
-                sidebarToggle.title = '隱藏編輯面板';
+    // 新增：批量發布/取消發布
+    async batchPublishComponents(publish) {
+        try {
+            console.log('🔄 批量發布操作開始:', {
+                publish,
+                currentType: this.currentType,
+                currentLevel: this.currentLevel,
+                currentLesson: this.currentLesson,
+                componentsCount: this.components.length
+            });
+
+            // 檢查是否有選擇課次
+            if (!this.currentLesson || this.currentLesson.trim() === '') {
+                alert('請先選擇課次');
+                return;
+            }
+
+            // 檢查是否有數據
+            if (this.components.length === 0) {
+                const typeLabel = this.currentType === 'component' ? '部件' : '目標字';
+                alert(`沒有${typeLabel}可操作`);
+                return;
+            }
+
+            const typeLabel = this.currentType === 'component' ? '部件' : '目標字';
+            const action = publish ? '發布' : '取消發布';
+            const count = this.components.length;
+            
+            console.log(`📋 準備${action} ${count} 個${typeLabel}`);
+            
+            if (!confirm(`確定要${action}本課所有${typeLabel}嗎？\n共 ${count} 個項目`)) {
+                console.log('❌ 用戶取消操作');
+                return;
+            }
+
+            // 根據類型選擇正確的 collection
+            const collectionName = this.currentType === 'component' ? 'components' : 'target-characters';
+            console.log(`📦 使用 collection: timeline/${this.currentLevel}/${collectionName}`);
+
+            // 使用 Firestore batch 批量更新
+            const batch = this.db.batch();
+            const updateData = {
+                is_published: publish,
+                published: publish
+            };
+
+            let updateCount = 0;
+            this.components.forEach(comp => {
+                if (!comp.id) {
+                    console.warn('⚠️ 跳過沒有 ID 的組件:', comp);
+                    return;
+                }
+                const docRef = this.db
+                    .collection('timeline')
+                    .doc(this.currentLevel)
+                    .collection(collectionName)
+                    .doc(comp.id);
+                batch.update(docRef, updateData);
+                updateCount++;
+                
+                // 同時更新本地數據
+                comp.is_published = publish;
+                comp.published = publish;
+                
+                console.log(`📝 準備更新: ${comp.id} -> ${publish ? '已發布' : '未發布'}`);
+            });
+
+            console.log(`📦 準備批量更新 ${updateCount} 個文檔`);
+
+            // 執行批量更新
+            await batch.commit();
+
+            console.log(`✅ 批量${action}完成: ${updateCount} 個${typeLabel}`);
+
+            // 更新 UI：更新所有 checkbox 狀態
+            this.updateAllCheckboxes(publish);
+
+            // 顯示成功訊息
+            alert(`✅ 已${action} ${updateCount} 個${typeLabel}`);
+        } catch (error) {
+            console.error(`❌ 批量${publish ? '發布' : '取消發布'}失敗:`, error);
+            console.error('錯誤詳情:', {
+                publish,
+                currentType: this.currentType,
+                currentLevel: this.currentLevel,
+                currentLesson: this.currentLesson,
+                componentsCount: this.components.length,
+                errorMessage: error.message,
+                errorStack: error.stack
+            });
+            alert(`批量${publish ? '發布' : '取消發布'}失敗：${error.message}\n\n請檢查瀏覽器控制台以獲取更多信息。`);
+        }
+    }
+
+    // 更新所有 checkbox 狀態
+    updateAllCheckboxes(isPublished) {
+        let updatedCount = 0;
+        let notFoundCount = 0;
+        this.components.forEach(comp => {
+            const checkbox = document.getElementById(`published-${comp.id}`);
+            if (checkbox) {
+                checkbox.checked = isPublished;
+                updatedCount++;
+            } else {
+                console.warn(`⚠️ 找不到 checkbox: published-${comp.id}`, comp);
+                notFoundCount++;
+            }
+        });
+        console.log(`✅ 已更新 ${updatedCount} 個 checkbox 狀態${notFoundCount > 0 ? `，${notFoundCount} 個未找到` : ''}`);
+    }
+
+    // 新增：更新發布狀態（同時更新 is_published 和 published）
+    async updatePublishedStatus(componentId, isPublished) {
+        try {
+            const component = this.components.find(c => c.id === componentId);
+            if (!component) {
+                console.error('❌ 找不到組件:', componentId);
+                return;
+            }
+
+            // 根據類型選擇正確的 collection
+            const collectionName = this.currentType === 'component' ? 'components' : 'target-characters';
+            const typeLabel = this.currentType === 'component' ? '部件' : '目標字';
+            
+            console.log(`🔄 開始更新發布狀態:`, {
+                componentId,
+                isPublished,
+                currentType: this.currentType,
+                collectionName,
+                level: this.currentLevel
+            });
+
+            // 更新本地數據
+            component.is_published = isPublished;
+            component.published = isPublished;
+
+            // 同時更新兩個字段到 Firestore
+            const updateData = {
+                is_published: isPublished,
+                published: isPublished
+            };
+            
+            console.log(`📝 準備更新 Firestore:`, {
+                path: `timeline/${this.currentLevel}/${collectionName}/${componentId}`,
+                data: updateData
+            });
+
+            await this.db
+                .collection('timeline')
+                .doc(this.currentLevel)
+                .collection(collectionName)
+                .doc(componentId)
+                .update(updateData);
+
+            console.log(`✅ ${typeLabel}發布狀態已更新: ${componentId} -> ${isPublished ? '已發布' : '未發布'}`);
+        } catch (error) {
+            console.error('❌ 更新發布狀態失敗:', error);
+            console.error('錯誤詳情:', {
+                componentId,
+                isPublished,
+                currentType: this.currentType,
+                currentLevel: this.currentLevel,
+                errorMessage: error.message,
+                errorStack: error.stack
+            });
+            alert(`更新發布狀態失敗：${error.message}\n\n請檢查瀏覽器控制台以獲取更多信息。`);
+            // 恢復 checkbox 狀態
+            const checkbox = document.getElementById(`published-${componentId}`);
+            if (checkbox) {
+                checkbox.checked = !isPublished;
             }
         }
-        
-        // 找到對應的編輯表單項目
-        const formList = document.getElementById('form-list');
-        if (!formList) return;
-        
-        const formItem = formList.querySelector(`[data-id="${componentId}"]`);
-        if (formItem) {
-            // 滾動到該項目
-            formItem.scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'center' 
-            });
-        }
     }
 
-    openTeachingModal(index) {
-        const component = this.components[index];
-        if (!component) return;
-
-        const modal = document.getElementById('teaching-modal');
-        const modalBody = document.getElementById('modal-body');
-
-        // 創建教學視圖卡片
-        const card = this.createPreviewCard(component, index);
-        modalBody.innerHTML = '';
-        modalBody.appendChild(card);
-
-        modal.classList.add('active');
-    }
 
     async deleteComponent(index) {
         const component = this.components[index];
@@ -800,6 +1016,19 @@ class StudioManager {
                 .delete();
 
             this.components.splice(index, 1);
+            
+            // 更新選中索引（如果刪除的是選中的卡片）
+            if (this.selectedIndex === index) {
+                // 如果還有卡片，選擇下一個或第一個
+                if (this.components.length > 0) {
+                    this.selectedIndex = Math.min(index, this.components.length - 1);
+                } else {
+                    this.selectedIndex = null;
+                }
+            } else if (this.selectedIndex > index) {
+                // 如果選中的卡片在刪除的卡片之後，索引減1
+                this.selectedIndex--;
+            }
             
             // 更新 order
             this.components.forEach((comp, idx) => {
@@ -849,12 +1078,18 @@ class StudioManager {
             await this.loadComponents();
             this.initSortable();
 
+            // 自動選擇新添加的項目
+            const newIndex = this.components.findIndex(c => c.id === docRef.id);
+            if (newIndex !== -1) {
+                this.selectedIndex = newIndex;
+                this.renderPreviewList();
+            }
+
             // 滾動到新項目
             setTimeout(() => {
                 const newItem = document.querySelector(`[data-id="${docRef.id}"]`);
                 if (newItem) {
                     newItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    newItem.classList.add('active');
                     // 聚焦到第一個輸入框
                     const firstInput = newItem.querySelector('input[data-field="character"]');
                     if (firstInput) {
