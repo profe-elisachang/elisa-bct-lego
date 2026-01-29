@@ -630,18 +630,32 @@ class FirestoreService {
                     .get();  // 不用 where，全部读取
 
                 console.log('📦 Components 原始数量：', compSnapshot.size);
+                console.log('🔴 測試：這是新版本的代碼！如果看到這行，說明新代碼已載入');
+                let lessonMatchCount = 0;
+                let publishedCount = 0;
+                let unpublishedCount = 0;
                 compSnapshot.forEach(doc => {
                     const data = doc.data();
                     // 客户端过滤（去除空格）
                     if ((data.lesson || '').trim() === lessonId.trim()) {
-                        timelineItems.push({
-                            id: doc.id,
-                            type: 'component',
-                            ...data
-                        });
+                        lessonMatchCount++;
+                        // 只載入已發布的部件（明確檢查 is_published === true）
+                        console.log(`🔍 檢查部件: ${doc.id}, lesson=${data.lesson}, is_published=${data.is_published} (type: ${typeof data.is_published})`);
+                        if (data.is_published === true) {
+                            publishedCount++;
+                            timelineItems.push({
+                                id: doc.id,
+                                type: 'component',
+                                ...data
+                            });
+                        } else {
+                            unpublishedCount++;
+                            console.log(`⏭️ 跳過未發布部件: ${doc.id}, is_published=${data.is_published} (type: ${typeof data.is_published}), published=${data.published}`);
+                        }
                     }
                 });
-                console.log('📦 过滤后 Components：', timelineItems.filter(i => i.type === 'component').length, '个');
+                console.log(`📦 過濾統計: 匹配課次=${lessonMatchCount}, 已發布=${publishedCount}, 未發布=${unpublishedCount}`);
+                console.log('📦 过滤后 Components（已發布）：', timelineItems.filter(i => i.type === 'component').length, '个');
             } catch (error) {
                 console.warn('❌ Error loading timeline components:', error);
             }

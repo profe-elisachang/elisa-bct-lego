@@ -218,8 +218,25 @@ class LessonLoader {
             console.log('🔄 当前 Level：', this.currentLevel);
             const timeline = await firestoreService.getTimelineForLesson(timelineLessonId, this.currentCohort, this.currentLevel);
             this.lessonData.timeline = timeline;
+            
+            console.log('🟢 測試：loader.js 新版本已載入！');
+            console.log('🟢 timeline 總數:', timeline.length);
+            
+            // 調試：檢查 timeline 中的類型分布
+            const typeCounts = {};
+            timeline.forEach(t => {
+                typeCounts[t.type] = (typeCounts[t.type] || 0) + 1;
+            });
+            console.log('📊 Timeline 類型分布:', typeCounts);
+            console.log('📊 Timeline 完整內容（前5個）:', timeline.slice(0, 5).map(t => ({ id: t.id, type: t.type, lesson: t.lesson, is_published: t.is_published })));
+            
             // Components：只包含 component 類型
             this.lessonData.timelineComponents = timeline.filter(t => t.type === 'component');
+            console.log(`📦 過濾後的 timelineComponents 數量: ${this.lessonData.timelineComponents.length}`);
+            if (this.lessonData.timelineComponents.length > 0) {
+                console.log('📦 前3個 timelineComponents:', this.lessonData.timelineComponents.slice(0, 3).map(c => ({ id: c.id, character: c.character, is_published: c.is_published })));
+            }
+            
             // Vocab：只包含 vocab 類型（生詞補充，不包括目標字）
             this.lessonData.timelineVocab = timeline.filter(t => t.type === 'vocab');
             // Target Characters：目標字
@@ -1253,17 +1270,39 @@ class LessonLoader {
 
     // 渲染 Timeline 部件
     renderTimelineComponents() {
+        console.log('🎨 開始渲染 Timeline Components');
+        console.log('🎨 timelineComponents 數量:', this.lessonData.timelineComponents.length);
+        console.log('🎨 timelineComponents 內容（前3個）:', this.lessonData.timelineComponents.slice(0, 3));
+        
         const container = document.getElementById('timeline-components-content');
+        if (!container) {
+            console.error('❌ 找不到 timeline-components-content 容器');
+            return;
+        }
         container.innerHTML = '';
 
         if (!this.lessonData.timelineComponents.length) {
+            console.log('⚠️ 沒有部件數據，顯示佔位符');
             container.innerHTML = '<p class="placeholder">尚無部件補充</p>';
             return;
         }
 
+        console.log(`✅ 開始渲染 ${this.lessonData.timelineComponents.length} 個部件`);
         this.lessonData.timelineComponents.forEach((item, index) => {
             const card = this.createTimelineCard(item, index);
+            console.log(`🎴 創建卡片 ${index + 1}:`, { id: item.id, character: item.character, cardElement: card });
+            if (!card) {
+                console.error(`❌ 卡片 ${index + 1} 創建失敗！`);
+                return;
+            }
             container.appendChild(card);
+            console.log(`✅ 卡片 ${index + 1} 已添加到 DOM，容器子元素數量: ${container.children.length}`);
+        });
+        console.log('✅ Timeline Components 渲染完成');
+        console.log('🔍 最終容器狀態:', {
+            containerId: container.id,
+            childrenCount: container.children.length,
+            innerHTML: container.innerHTML.substring(0, 200) + '...'
         });
     }
 

@@ -323,12 +323,17 @@ class BCTReviewSystem {
                 
                 compSnap.forEach(doc => {
                     const data = doc.data();
-                    this.componentVocab.push({
-                        ...data,
-                        source: 'timeline',
-                        lesson: data.lesson || 'unknown',
-                        firestoreId: doc.id
-                    });
+                    // 只載入已發布的部件（明確檢查 is_published === true）
+                    if (data.is_published === true) {
+                        this.componentVocab.push({
+                            ...data,
+                            source: 'timeline',
+                            lesson: data.lesson || 'unknown',
+                            firestoreId: doc.id
+                        });
+                    } else {
+                        console.log(`⏭️ 跳過未發布部件: ${doc.id}, is_published=${data.is_published}, lesson=${data.lesson}`);
+                    }
                 });
             } catch (error) {
                 console.log(`No timeline components for ${this.currentLevel}:`, error.message);
@@ -348,9 +353,14 @@ class BCTReviewSystem {
                         lesson: data.lesson || 'unknown',
                         firestoreId: doc.id
                     };
-                    // 根据 type 分类
+                    // 根据 type 分类（vocab 集合中的 component 類型也需要檢查發布狀態）
                     if (data.type === 'component') {
-                        this.componentVocab.push(vocabItem);
+                        // 只載入已發布的部件
+                        if (data.is_published === true) {
+                            this.componentVocab.push(vocabItem);
+                        } else {
+                            console.log(`⏭️ 跳過未發布部件（來自vocab）: ${doc.id}, is_published=${data.is_published}`);
+                        }
                     } else if (data.type === 'vocab' || !data.type) {
                         this.lessonVocab.push(vocabItem);
                     } else {
