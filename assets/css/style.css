@@ -236,9 +236,10 @@ body {
     gap: 25px;
 }
 
-/* Components 和 汉字 Tab：Grid 卡片佈局 */
+/* Components、汉字和 Vocab Tab：Grid 卡片佈局 */
 #timeline-components-content.content-group,
-#timeline-target-characters-content.content-group {
+#timeline-target-characters-content.content-group,
+#timeline-vocab-content.content-group {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 20px;
@@ -246,7 +247,8 @@ body {
 
 @media (max-width: 768px) {
     #timeline-components-content.content-group,
-    #timeline-target-characters-content.content-group {
+    #timeline-target-characters-content.content-group,
+    #timeline-vocab-content.content-group {
         grid-template-columns: 1fr;
         gap: 16px;
     }
@@ -254,7 +256,8 @@ body {
 
 @media (min-width: 769px) and (max-width: 1024px) {
     #timeline-components-content.content-group,
-    #timeline-target-characters-content.content-group {
+    #timeline-target-characters-content.content-group,
+    #timeline-vocab-content.content-group {
         grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     }
 }

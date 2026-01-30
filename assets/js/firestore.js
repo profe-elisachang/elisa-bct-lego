@@ -689,18 +689,32 @@ class FirestoreService {
                 console.warn('❌ Error loading timeline vocab:', error);
             }
 
-            // 3. 载入 Notes（分班）- 客户端过滤
+            // 3. 载入 Notes（分班）- 客户端过滤，按 order 排序
             try {
                 console.log('📒 读取 Notes：timeline/' + level + '/notes/' + cohort + '/items/');
-                const notesSnapshot = await this.db
-                    .collection('timeline')
-                    .doc(level)
-                    .collection('notes')
-                    .doc(cohort)
-                    .collection('items')
-                    .get();  // 不用 where，全部读取
+                let notesSnapshot;
+                try {
+                    notesSnapshot = await this.db
+                        .collection('timeline')
+                        .doc(level)
+                        .collection('notes')
+                        .doc(cohort)
+                        .collection('items')
+                        .orderBy('order', 'asc')
+                        .get();
+                } catch (orderError) {
+                    console.warn('⚠️ Notes orderBy 失敗，改用無排序查詢:', orderError);
+                    notesSnapshot = await this.db
+                        .collection('timeline')
+                        .doc(level)
+                        .collection('notes')
+                        .doc(cohort)
+                        .collection('items')
+                        .get();
+                }
 
                 console.log('📒 Notes 原始数量：', notesSnapshot.size);
+                const notesForLesson = [];
                 notesSnapshot.forEach(doc => {
                     const data = doc.data();
                     // 去除首尾空格后再比较
@@ -714,15 +728,25 @@ class FirestoreService {
                             id: doc.id,
                             type: 'note',
                             cohort: cohort,
+                            order: data.order !== undefined ? data.order : 999999,
                             ...data
                         };
                         console.log('✅ Note 对象：', noteItem);
-                        timelineItems.push(noteItem);
-                        console.log('✅ 当前 timelineItems 长度：', timelineItems.length);
+                        notesForLesson.push(noteItem);
                     } else {
                         console.log('❌ 不匹配，跳过');
                     }
                 });
+                
+                // 按 order 排序（如果 orderBy 失敗，需要手動排序）
+                notesForLesson.sort((a, b) => {
+                    if (a.order !== b.order) {
+                        return a.order - b.order;
+                    }
+                    return a.id.localeCompare(b.id);
+                });
+                
+                timelineItems.push(...notesForLesson);
                 console.log('📒 过滤后 Notes：', timelineItems.filter(i => i.type === 'note').length, '个');
                 console.log('📒 timelineItems 完整内容：', timelineItems);
             } catch (error) {

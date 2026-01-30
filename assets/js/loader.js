@@ -681,7 +681,7 @@ class LessonLoader {
                         .collection('lessons')
                         .doc(lessonDocId)
                         .collection('grammar')
-                        .orderBy('updatedAt', 'desc')
+                        .orderBy('order', 'asc')
                         .get();
                     console.log('✅ orderBy 查詢成功，找到', grammarSnapshot.size, '個文件');
                 } catch (orderError) {
@@ -734,7 +734,7 @@ class LessonLoader {
                         .collection('lessons')
                         .doc(lessonDocId)
                         .collection('practice')
-                        .orderBy('updatedAt', 'desc')
+                        .orderBy('order', 'asc')
                         .get();
                 } catch (orderError) {
                     console.warn('⚠️ Practice orderBy 失敗，改用無排序查詢:', orderError.message);
@@ -1487,6 +1487,20 @@ class LessonLoader {
             charDisplay = `<img src="${data.display_image}" class="img-comp" alt="comp" style="height: 1.8em; width: auto; vertical-align: middle;">`;
         }
         charDiv.innerHTML = charDisplay;
+
+        // 加入發音按鈕（只有文字時才顯示，類似 Vocabulary 卡片）
+        if (data.character && data.character.trim()) {
+            const audioBtn = document.createElement('button');
+            audioBtn.className = 'audio-btn';
+            audioBtn.textContent = '🔊';
+            audioBtn.onclick = (e) => {
+                e.stopPropagation(); // 防止觸發卡片點擊事件
+                if (audioController && typeof audioController.speak === 'function') {
+                    audioController.speak(data.character || '');
+                }
+            };
+            charDiv.appendChild(audioBtn);
+        }
 
         card.appendChild(charDiv);
 

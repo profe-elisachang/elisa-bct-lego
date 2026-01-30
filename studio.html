@@ -24,22 +24,40 @@
       flex-direction: column;
     }
 
-    .studio-header {
+    /* 標題已移除 */
+
+    /* 合併導航欄（等級/課次 + 模式切換） */
+    .studio-navbar {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: var(--space-4);
+      padding: var(--space-3) var(--space-4);
       margin-bottom: var(--space-4);
-      padding: var(--space-4);
       background: var(--bg-card);
-      border-radius: var(--radius-xl);
+      border-radius: var(--radius-lg);
       border: 1px solid var(--gray-200);
+      flex-wrap: wrap;
     }
 
-    .studio-header h1 {
-      margin: 0;
-      font-size: var(--text-2xl);
-      font-weight: var(--font-bold);
-      color: var(--gray-900);
+    .navbar-selectors {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .navbar-divider {
+      width: 1px;
+      height: 24px;
+      background: var(--gray-300);
+      margin: 0 var(--space-2);
+    }
+
+    .navbar-modes {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      flex: 1;
+      flex-wrap: wrap;
     }
 
     .level-selector {
@@ -55,12 +73,13 @@
     }
 
     .level-selector select {
-      padding: var(--space-2) var(--space-3);
+      padding: var(--space-1) var(--space-2);
       border: 1px solid var(--gray-300);
-      border-radius: var(--radius-lg);
+      border-radius: var(--radius-md);
       font-size: var(--text-sm);
       background: var(--bg-card);
       color: var(--gray-900);
+      min-width: 80px;
     }
 
     .studio-layout {
@@ -355,26 +374,13 @@
       min-width: 0;
     }
 
-    .preview-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: var(--space-4);
-      border-bottom: 1px solid var(--gray-200);
-      background: var(--gray-50);
-    }
-
-    .preview-header h2 {
-      margin: 0;
-      font-size: var(--text-lg);
-      font-weight: var(--font-bold);
-      color: var(--gray-900);
-    }
+    /* 移除 preview-header，不再需要 */
 
     .preview-content {
       flex: 1;
-      overflow-y: auto;
-      padding: var(--space-5) var(--space-6);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
 
     .preview-list {
@@ -386,20 +392,21 @@
     /* 簡報式預覽樣式 */
     .preview-single {
       width: 100%;
-      min-height: 100%;
+      height: 100%;
       display: flex;
       flex-direction: column;
-      justify-content: flex-start;
       align-items: center;
-      padding: var(--space-8);
+      padding: 0;
+      overflow: hidden;
     }
 
     .presentation-card {
       width: 100%;
-      max-width: 900px;
+      max-width: 1200px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
       background: var(--bg-card);
-      border-radius: var(--radius-xl);
-      padding: var(--space-8);
       box-shadow: var(--shadow-lg);
       animation: fadeIn 0.3s ease-in;
     }
@@ -415,47 +422,134 @@
       }
     }
 
-    /* 簡報式字體大小 */
+    /* 固定頂部區域（形音義）- 極致緊湊設計 */
+    .presentation-header {
+      flex-shrink: 0;
+      background: var(--gray-50);
+      border-bottom: 2px solid var(--gray-200);
+      padding: var(--space-1) var(--space-4); /* 極小 padding，只保留左右 */
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start; /* 從 center 改為 flex-start，讓內容貼頂 */
+      align-items: center;
+    }
+
+    /* 可滾動內容區域 */
+    .presentation-scrollable {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-6) var(--space-8);
+      background: var(--bg-card);
+    }
+
+    /* 簡報式字體大小（適合65寸電視投影片模式）- 極致緊湊 */
     .presentation-char {
-      font-size: 8rem;
+      font-size: 64px;
       font-weight: 700;
       text-align: center;
       color: var(--primary);
-      margin: var(--space-4) 0;
-      line-height: 1.2;
+      margin: 0; /* 移除上下 margin */
+      line-height: 1.1; /* 從 1.2 減少到 1.1 */
     }
 
     .presentation-char img {
-      height: 8rem !important;
+      height: 64px !important;
       width: auto !important;
     }
 
     .presentation-pinyin {
-      font-size: 2.5rem;
+      font-size: 56px; /* 從 64px 稍微減小 */
       text-align: center;
       color: #dc2626;
-      margin: var(--space-2) 0;
+      margin: 0; /* 移除上下 margin */
+      line-height: 1.1;
       font-weight: 600;
     }
 
     .presentation-meaning {
-      font-size: 1.5rem;
+      font-size: 56px; /* 從 64px 稍微減小 */
       text-align: center;
       color: #059669;
-      margin: var(--space-4) 0 var(--space-6);
+      margin: 0; /* 移除上下 margin */
+      line-height: 1.1;
       font-weight: 500;
     }
 
+    /* 可滾動內容區域 - 字體增大，與固定區塊接近 */
     .presentation-content {
-      margin-top: var(--space-6);
-      font-size: 1.1rem;
+      font-size: 2rem; /* 32px，接近固定區塊的字體大小 */
       line-height: 1.8;
+    }
+
+    .presentation-content h1 {
+      font-size: 3rem; /* 48px */
+      line-height: 1.4;
+      margin: var(--space-4) 0 var(--space-2);
+    }
+
+    .presentation-content h2 {
+      font-size: 2.5rem; /* 40px */
+      line-height: 1.4;
+      margin: var(--space-3) 0 var(--space-2);
+    }
+
+    .presentation-content h3 {
+      font-size: 2rem; /* 32px */
+      line-height: 1.4;
+      margin: var(--space-2) 0;
+    }
+
+    .presentation-content p {
+      font-size: 2rem; /* 32px */
+      line-height: 1.8;
+      margin: var(--space-3) 0;
+    }
+
+    .presentation-content ul,
+    .presentation-content ol {
+      font-size: 2rem; /* 32px */
+      line-height: 1.8;
+      margin: var(--space-3) 0;
+    }
+
+    .presentation-content li {
+      margin: var(--space-2) 0;
+    }
+
+    .presentation-content strong,
+    .presentation-content b {
+      font-weight: 700;
+    }
+
+    .presentation-content code {
+      font-size: 1.75rem; /* 28px */
+      background: var(--gray-100);
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-sm);
     }
 
     .presentation-content img {
       max-width: 100%;
       border-radius: var(--radius-lg);
       margin: var(--space-4) 0;
+    }
+
+    /* 美化滾動條（可滾動區域） */
+    .presentation-scrollable::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .presentation-scrollable::-webkit-scrollbar-track {
+      background: var(--gray-100);
+    }
+
+    .presentation-scrollable::-webkit-scrollbar-thumb {
+      background: var(--gray-300);
+      border-radius: 4px;
+    }
+
+    .presentation-scrollable::-webkit-scrollbar-thumb:hover {
+      background: var(--gray-400);
     }
 
     /* 點擊卡片標題區域 */
@@ -594,13 +688,54 @@
     .resizer.dragging {
       background: var(--primary);
     }
+
+    /* 模式切換器樣式 */
+    .mode-switcher {
+      display: flex;
+      gap: var(--space-2);
+    }
+
+    .mode-btn {
+      padding: var(--space-1) var(--space-3);
+      border: 1px solid var(--gray-300);
+      background: var(--bg-card);
+      color: var(--gray-700);
+      border-radius: var(--radius-md);
+      font-size: var(--text-sm);
+      font-weight: var(--font-semibold);
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--ease-out);
+      white-space: nowrap;
+    }
+
+    .mode-btn:hover {
+      background: var(--gray-100);
+      border-color: var(--gray-400);
+    }
+
+    .mode-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .mode-content {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .preview-mode {
+      width: 100%;
+      height: 100%;
+    }
   </style>
 </head>
 <body>
   <div class="studio-container">
-    <div class="studio-header">
-      <h1>Studio - 部件與目標字管理 2.0</h1>
-      <div style="display: flex; gap: var(--space-4); align-items: center; flex-wrap: wrap;">
+    <!-- 合併導航欄 -->
+    <div class="studio-navbar">
+      <div class="navbar-selectors">
         <div class="level-selector">
           <label for="level-select">等級:</label>
           <select id="level-select">
@@ -610,16 +745,9 @@
           </select>
         </div>
         <div class="level-selector">
-          <label for="type-select">類型:</label>
-          <select id="type-select">
-            <option value="component">部件</option>
-            <option value="target-character">目標字</option>
-          </select>
-        </div>
-        <div class="level-selector">
           <label for="lesson-select">課次:</label>
           <select id="lesson-select">
-            <option value="">全部課次</option>
+            <option value="">選擇課次...</option>
             <option value="lesson1">Lesson 1</option>
             <option value="lesson2">Lesson 2</option>
             <option value="lesson3">Lesson 3</option>
@@ -643,26 +771,120 @@
           </select>
         </div>
       </div>
+      <div class="navbar-divider"></div>
+      <div class="navbar-modes">
+        <button class="mode-btn active" data-mode="component">📦 部件與目標字</button>
+        <button class="mode-btn" data-mode="vocab">⚡ 快速補充生詞</button>
+        <button class="mode-btn" data-mode="note">📝 Live Note</button>
+        <button class="mode-btn" data-mode="grammar">📚 Grammar</button>
+        <button class="mode-btn" data-mode="practice">✏️ Practice</button>
+      </div>
     </div>
 
     <div class="studio-layout" id="studio-layout">
       <!-- 左側：編輯面板 -->
       <div class="studio-editor" id="studio-editor">
-        <div class="editor-header">
-          <div style="display: flex; align-items: center; gap: var(--space-2);">
-            <h2>編輯表單</h2>
-            <button class="btn-icon" id="collapse-all-btn" title="全部折疊">全部折疊</button>
-            <button class="btn-icon" id="expand-all-btn" title="全部展開">全部展開</button>
-            <button class="btn-icon" id="batch-publish-btn" title="全部發布" style="background: var(--success, #16a34a); color: white; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-semibold);">✅ 全部發布</button>
-            <button class="btn-icon" id="batch-unpublish-btn" title="全部取消發布" style="background: var(--gray-200); color: var(--gray-700); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-semibold);">⛔ 全部取消發布</button>
+        <!-- 部件與目標字模式 -->
+        <div id="component-mode" class="mode-content">
+          <div class="editor-header">
+            <div style="display: flex; align-items: center; gap: var(--space-2);">
+              <h2>編輯表單</h2>
+              <div class="level-selector" style="margin-left: var(--space-2);">
+                <label for="type-select" style="margin-right: var(--space-1);">類型:</label>
+                <select id="type-select" style="padding: var(--space-1) var(--space-2); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: var(--text-sm);">
+                  <option value="component">部件</option>
+                  <option value="target-character">目標字</option>
+                </select>
+              </div>
+              <button class="btn-icon" id="collapse-all-btn" title="全部折疊">全部折疊</button>
+              <button class="btn-icon" id="expand-all-btn" title="全部展開">全部展開</button>
+              <button class="btn-icon" id="batch-publish-btn" title="全部發布" style="background: var(--success, #16a34a); color: white; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-semibold);">✅ 全部發布</button>
+              <button class="btn-icon" id="batch-unpublish-btn" title="全部取消發布" style="background: var(--gray-200); color: var(--gray-700); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-semibold);">⛔ 全部取消發布</button>
+            </div>
+            <button class="btn-icon" id="add-component-btn" title="添加新項目" style="background: var(--primary); color: white; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-semibold);">
+              + 新增
+            </button>
           </div>
-          <button class="btn-icon" id="add-component-btn" title="添加新項目" style="background: var(--primary); color: white; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-semibold);">
-            + 新增
-          </button>
+          <div class="editor-content">
+            <div class="form-list" id="form-list">
+              <!-- 表單項目將由 JavaScript 動態生成 -->
+            </div>
+          </div>
         </div>
-        <div class="editor-content">
-          <div class="form-list" id="form-list">
-            <!-- 表單項目將由 JavaScript 動態生成 -->
+
+        <!-- 快速補充生詞模式 -->
+        <div id="vocab-mode" class="mode-content" style="display: none;">
+          <div class="editor-header">
+            <div style="display: flex; align-items: center; gap: var(--space-2);">
+              <h2>⚡ 快速補充生詞 - Taigen A 班</h2>
+              <button class="btn-icon" id="vocab-collapse-all-btn" title="全部折疊">全部折疊</button>
+              <button class="btn-icon" id="vocab-expand-all-btn" title="全部展開">全部展開</button>
+            </div>
+            <button class="btn-icon" id="vocab-new-btn" title="添加新項目" style="background: var(--primary); color: white; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-semibold);">
+              + 新增生詞
+            </button>
+          </div>
+          <div class="editor-content">
+            <div class="form-list" id="vocab-list">
+              <!-- 生詞卡片將由 JavaScript 動態生成 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Note 模式 -->
+        <div id="note-mode" class="mode-content" style="display: none;">
+          <div class="editor-header">
+            <div style="display: flex; align-items: center; gap: var(--space-2);">
+              <h2>📝 Live Note</h2>
+              <button class="btn-icon" id="note-collapse-all-btn" title="全部折疊">全部折疊</button>
+              <button class="btn-icon" id="note-expand-all-btn" title="全部展開">全部展開</button>
+            </div>
+            <button class="btn-icon" id="note-new-btn" title="添加新項目" style="background: var(--primary); color: white; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-semibold);">
+              + 新增筆記
+            </button>
+          </div>
+          <div class="editor-content">
+            <div class="form-list" id="note-list">
+              <!-- 筆記卡片將由 JavaScript 動態生成 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Grammar 模式 -->
+        <div id="grammar-mode" class="mode-content" style="display: none;">
+          <div class="editor-header">
+            <div style="display: flex; align-items: center; gap: var(--space-2);">
+              <h2>📚 Grammar 管理</h2>
+              <button class="btn-icon" id="grammar-collapse-all-btn" title="全部折疊">全部折疊</button>
+              <button class="btn-icon" id="grammar-expand-all-btn" title="全部展開">全部展開</button>
+            </div>
+            <button class="btn-icon" id="grammar-new-btn" title="添加新項目" style="background: var(--primary); color: white; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-semibold);">
+              + 新增文法
+            </button>
+          </div>
+          <div class="editor-content">
+            <div class="form-list" id="grammar-list">
+              <!-- 文法卡片將由 JavaScript 動態生成 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Practice 模式 -->
+        <div id="practice-mode" class="mode-content" style="display: none;">
+          <div class="editor-header">
+            <div style="display: flex; align-items: center; gap: var(--space-2);">
+              <h2>✏️ Practice 管理</h2>
+              <button class="btn-icon" id="practice-collapse-all-btn" title="全部折疊">全部折疊</button>
+              <button class="btn-icon" id="practice-expand-all-btn" title="全部展開">全部展開</button>
+            </div>
+            <button class="btn-icon" id="practice-new-btn" title="添加新項目" style="background: var(--primary); color: white; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-semibold);">
+              + 新增練習
+            </button>
+          </div>
+          <div class="editor-content">
+            <div class="form-list" id="practice-list">
+              <!-- 練習卡片將由 JavaScript 動態生成 -->
+            </div>
           </div>
         </div>
       </div>
@@ -672,15 +894,36 @@
 
       <!-- 右側：預覽面板 -->
       <div class="studio-preview">
-        <div class="preview-header">
-          <h2>實時預覽</h2>
-          <div style="display: flex; gap: var(--space-2); align-items: center;">
-            <button class="sidebar-toggle-btn" id="sidebar-toggle" title="顯示/隱藏編輯面板" style="display: inline-block !important; visibility: visible !important; opacity: 1 !important;">◀</button>
+        <div class="preview-content" id="preview-content">
+          <!-- 部件與目標字預覽 -->
+          <div id="component-preview" class="preview-mode">
+            <div class="preview-single" id="preview-single">
+              <!-- 簡報式預覽將由 JavaScript 動態生成 -->
+            </div>
           </div>
-        </div>
-        <div class="preview-content">
-          <div class="preview-single" id="preview-single">
-            <!-- 簡報式預覽將由 JavaScript 動態生成 -->
+          <!-- 快速補充生詞預覽 -->
+          <div id="vocab-preview" class="preview-mode" style="display: none;">
+            <div class="preview-single" id="vocab-preview-content">
+              <div style="padding: 40px; text-align: center; color: var(--muted);">請在左側輸入生詞以查看預覽</div>
+            </div>
+          </div>
+          <!-- Live Note 預覽 -->
+          <div id="note-preview" class="preview-mode" style="display: none;">
+            <div class="preview-single" id="note-preview-content" style="padding: 20px;">
+              <div style="padding: 40px; text-align: center; color: var(--muted);">請在左側輸入內容以查看預覽</div>
+            </div>
+          </div>
+          <!-- Grammar 預覽 -->
+          <div id="grammar-preview" class="preview-mode" style="display: none;">
+            <div class="preview-single" id="grammar-preview-content" style="padding: 20px;">
+              <div style="padding: 40px; text-align: center; color: var(--muted);">請在左側輸入內容以查看預覽</div>
+            </div>
+          </div>
+          <!-- Practice 預覽 -->
+          <div id="practice-preview" class="preview-mode" style="display: none;">
+            <div class="preview-single" id="practice-preview-content" style="padding: 20px;">
+              <div style="padding: 40px; text-align: center; color: var(--muted);">請在左側輸入內容以查看預覽</div>
+            </div>
           </div>
         </div>
       </div>
