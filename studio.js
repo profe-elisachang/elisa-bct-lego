@@ -3066,9 +3066,12 @@ class StudioManager {
         }
 
         try {
+            const queryPath = `courses/${this.currentLevel}/lessons/${this.currentLesson}/grammar`;
+            console.log('📚 查詢路徑:', queryPath);
             console.log('📚 查詢條件: level=' + this.currentLevel + ', lesson=' + this.currentLesson);
             
             let snapshot;
+            // 先嘗試使用 updatedAt 排序（與 timeline-admin.js 一致）
             try {
                 snapshot = await this.db
                     .collection('courses')
@@ -3076,22 +3079,38 @@ class StudioManager {
                     .collection('lessons')
                     .doc(this.currentLesson)
                     .collection('grammar')
-                    .orderBy('order', 'asc')
+                    .orderBy('updatedAt', 'desc')
                     .get();
-            } catch (orderError) {
-                console.warn('⚠️ orderBy 查詢失敗，改用無排序查詢:', orderError);
-                snapshot = await this.db
-                    .collection('courses')
-                    .doc(this.currentLevel)
-                    .collection('lessons')
-                    .doc(this.currentLesson)
-                    .collection('grammar')
-                    .get();
+                console.log('📚 使用 updatedAt 排序查詢成功，找到', snapshot.size, '個文檔');
+            } catch (updatedAtError) {
+                console.warn('⚠️ updatedAt 排序查詢失敗，嘗試使用 order 排序:', updatedAtError);
+                try {
+                    snapshot = await this.db
+                        .collection('courses')
+                        .doc(this.currentLevel)
+                        .collection('lessons')
+                        .doc(this.currentLesson)
+                        .collection('grammar')
+                        .orderBy('order', 'asc')
+                        .get();
+                    console.log('📚 使用 order 排序查詢成功，找到', snapshot.size, '個文檔');
+                } catch (orderError) {
+                    console.warn('⚠️ orderBy 查詢失敗，改用無排序查詢:', orderError);
+                    snapshot = await this.db
+                        .collection('courses')
+                        .doc(this.currentLevel)
+                        .collection('lessons')
+                        .doc(this.currentLesson)
+                        .collection('grammar')
+                        .get();
+                    console.log('📚 無排序查詢成功，找到', snapshot.size, '個文檔');
+                }
             }
 
             this.grammarList = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
+                console.log('📚 處理文檔:', doc.id, 'data:', data);
                 this.grammarList.push({
                     id: doc.id,
                     order: data.order !== undefined ? data.order : 999999,
@@ -3100,10 +3119,16 @@ class StudioManager {
                 });
             });
 
-            // 按 order 排序
+            console.log('📚 處理後 grammarList 數量:', this.grammarList.length);
+
+            // 按 order 排序（如果有的話）
             this.grammarList.sort((a, b) => {
                 if (a.order !== b.order) {
                     return a.order - b.order;
+                }
+                // 如果 order 相同，按 updatedAt 排序（降序）
+                if (a.updatedAt && b.updatedAt) {
+                    return b.updatedAt.toMillis() - a.updatedAt.toMillis();
                 }
                 return a.id.localeCompare(b.id);
             });
@@ -3124,7 +3149,8 @@ class StudioManager {
             
             this.renderGrammarList();
         } catch (error) {
-            console.error('載入文法列表失敗:', error);
+            console.error('❌ 載入文法列表失敗:', error);
+            console.error('❌ 錯誤詳情:', error.message, error.stack);
             this.grammarList = [];
             this.renderGrammarList();
         }
