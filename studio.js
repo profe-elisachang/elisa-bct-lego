@@ -2837,14 +2837,14 @@ class StudioManager {
             // 使用 marked 渲染 Markdown
             if (typeof marked !== 'undefined') {
                 previewContent.innerHTML = `
-                    <div style="padding: var(--space-4);">
+                    <div style="padding: var(--space-4); width: 100%; max-width: 100%;">
                         <h2 style="margin-bottom: var(--space-4); color: var(--gray-900);">${this.escapeHtml(title)}</h2>
                         <div class="markdown-body">${marked.parse(content)}</div>
                     </div>
                 `;
             } else {
                 previewContent.innerHTML = `
-                    <div style="padding: var(--space-4);">
+                    <div style="padding: var(--space-4); width: 100%; max-width: 100%;">
                         <h2 style="margin-bottom: var(--space-4); color: var(--gray-900);">${this.escapeHtml(title)}</h2>
                         <pre style="white-space: pre-wrap; font-family: inherit;">${this.escapeHtml(content)}</pre>
                     </div>
@@ -3036,21 +3036,33 @@ class StudioManager {
 
     updateGrammarPreview() {
         const previewContent = document.getElementById('grammar-preview-content');
-        if (!previewContent) return;
+        console.log('📚 updateGrammarPreview 被調用，previewContent 元素:', !!previewContent);
+        console.log('📚 selectedGrammarIndex:', this.selectedGrammarIndex, 'grammarList.length:', this.grammarList.length);
+        
+        if (!previewContent) {
+            console.error('❌ grammar-preview-content 元素未找到！');
+            return;
+        }
+        
         if (this.selectedGrammarIndex !== null && this.grammarList[this.selectedGrammarIndex]) {
             const grammar = this.grammarList[this.selectedGrammarIndex];
             const title = grammar.title || '（無標題）';
             const content = grammar.content || '';
+            console.log('📚 更新預覽，標題:', title, '內容長度:', content.length);
+            
             if (!content) {
                 previewContent.innerHTML = `<div style="padding: var(--space-8); text-align: center; color: var(--gray-500);"><p style="font-size: var(--text-lg); margin-bottom: var(--space-2);">📚 ${this.escapeHtml(title)}</p><p style="font-size: var(--text-sm);">尚無內容</p></div>`;
                 return;
             }
             if (typeof marked !== 'undefined') {
-                previewContent.innerHTML = `<div style="padding: var(--space-4);"><h2 style="margin-bottom: var(--space-4); color: var(--gray-900);">${this.escapeHtml(title)}</h2><div class="markdown-body">${marked.parse(content)}</div></div>`;
+                previewContent.innerHTML = `<div style="padding: var(--space-4); width: 100%; max-width: 100%;"><h2 style="margin-bottom: var(--space-4); color: var(--gray-900);">${this.escapeHtml(title)}</h2><div class="markdown-body">${marked.parse(content)}</div></div>`;
+                console.log('📚 預覽已更新（使用 marked）');
             } else {
-                previewContent.innerHTML = `<div style="padding: var(--space-4);"><h2 style="margin-bottom: var(--space-4); color: var(--gray-900);">${this.escapeHtml(title)}</h2><pre style="white-space: pre-wrap; font-family: inherit;">${this.escapeHtml(content)}</pre></div>`;
+                previewContent.innerHTML = `<div style="padding: var(--space-4); width: 100%; max-width: 100%;"><h2 style="margin-bottom: var(--space-4); color: var(--gray-900);">${this.escapeHtml(title)}</h2><pre style="white-space: pre-wrap; font-family: inherit;">${this.escapeHtml(content)}</pre></div>`;
+                console.log('📚 預覽已更新（使用純文本）');
             }
         } else {
+            console.log('📚 沒有選中的卡片，顯示提示信息');
             previewContent.innerHTML = `<div style="padding: var(--space-8); text-align: center; color: var(--gray-500);"><p style="font-size: var(--text-lg); margin-bottom: var(--space-2);">👆 點擊左側卡片查看預覽</p></div>`;
         }
     }
@@ -3148,6 +3160,8 @@ class StudioManager {
             }
             
             this.renderGrammarList();
+            // 載入完成後更新預覽
+            this.updateGrammarPreview();
         } catch (error) {
             console.error('❌ 載入文法列表失敗:', error);
             console.error('❌ 錯誤詳情:', error.message, error.stack);
@@ -3197,6 +3211,8 @@ class StudioManager {
 
         this.collapseAllGrammar();
         this.initGrammarSortable();
+        // 渲染完成後更新預覽
+        this.updateGrammarPreview();
     }
 
     createGrammarCard(grammar, index) {
@@ -3257,34 +3273,7 @@ class StudioManager {
         this.updateGrammarPreview();
     }
 
-    debounceGrammarUpdate() {
-        clearTimeout(this.grammarSaveTimeout);
-        this.grammarSaveTimeout = setTimeout(() => {
-            this.saveGrammar();
-        }, 2000);
-    }
 
-    updateGrammarPreview() {
-        const grammarContent = document.getElementById('grammar-content');
-        const previewContent = document.getElementById('grammar-preview-content');
-        
-        if (!grammarContent || !previewContent) return;
-
-        const content = grammarContent.value.trim();
-        
-        if (!content) {
-            previewContent.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--muted);">請在左側輸入內容以查看預覽</div>';
-            return;
-        }
-
-        if (typeof renderMarkdown === 'function') {
-            previewContent.innerHTML = renderMarkdown(content);
-        } else if (typeof marked !== 'undefined') {
-            previewContent.innerHTML = marked.parse(content);
-        } else {
-            previewContent.innerHTML = '<div style="padding: 20px; color: #666;">Markdown 渲染器未載入</div>';
-        }
-    }
 
     updateGrammarStatus(message) {
         const statusEl = document.getElementById('grammar-status');
