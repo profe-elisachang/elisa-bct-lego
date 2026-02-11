@@ -29,7 +29,9 @@ class BCTReviewSystem {
         this.userProgress = {};
         this.currentTab = 'components';
         this.currentLevel = 'btc1';  // BCT Level tracking
-        this.reviewMode = 'pinyin-hint';
+        // Vocabulary review settings
+        this.reviewDirection = 'zh-en'; // 中文 → 英文
+        this.pinyinDisplay = 'show'; // Show Pinyin by default
         this.reviewQueue = [];
         this.currentIndex = 0;
         this.currentUser = null; // Firebase auth user (anonymous)
@@ -599,13 +601,11 @@ class BCTReviewSystem {
 
     updateReviewSections() {
         const selectedLessons = this.getSelectedLessons();
-        const reviewModeSection = document.getElementById('reviewModeSection');
         const reviewMethodTabs = document.getElementById('reviewMethodTabs');
         const smartReviewSection = document.getElementById('smartReviewSection');
         const difficultySection = document.getElementById('difficultySection');
 
         if (selectedLessons.length > 0) {
-            reviewModeSection.classList.remove('hidden');
             reviewMethodTabs.classList.remove('hidden');
             // Default to Smart Review tab
             smartReviewSection.classList.remove('hidden');
@@ -613,7 +613,6 @@ class BCTReviewSystem {
             this.updateStats();
             this.updateStepIndicator(4); // Show step 4
         } else {
-            reviewModeSection.classList.add('hidden');
             reviewMethodTabs.classList.add('hidden');
             smartReviewSection.classList.add('hidden');
             difficultySection.classList.add('hidden');
@@ -744,18 +743,47 @@ class BCTReviewSystem {
             });
         });
 
-        // Review mode selection
-        document.querySelectorAll('input[name="reviewMode"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                this.reviewMode = e.target.value;
+        // Vocabulary settings (Review Direction and Pinyin Display)
+        const reviewDirectionSelect = document.getElementById('reviewDirection');
+        const pinyinDisplaySelect = document.getElementById('pinyinDisplay');
+        
+        if (reviewDirectionSelect) {
+            reviewDirectionSelect.addEventListener('change', (e) => {
+                this.reviewDirection = e.target.value;
             });
-        });
+        }
+        
+        if (pinyinDisplaySelect) {
+            pinyinDisplaySelect.addEventListener('change', (e) => {
+                this.pinyinDisplay = e.target.value;
+            });
+        }
     }
 
     setCurrentTab(tab) {
         this.currentTab = tab;
         this.clearSelections();
         this.renderLessonSelector();
+        
+        // Show/hide Vocabulary settings based on selected tab
+        const vocabSettings = document.getElementById('vocabSettings');
+        if (vocabSettings) {
+            if (tab === 'vocab') {
+                vocabSettings.classList.remove('hidden');
+                // Initialize settings from select elements
+                const reviewDirectionSelect = document.getElementById('reviewDirection');
+                const pinyinDisplaySelect = document.getElementById('pinyinDisplay');
+                if (reviewDirectionSelect) {
+                    this.reviewDirection = reviewDirectionSelect.value;
+                }
+                if (pinyinDisplaySelect) {
+                    this.pinyinDisplay = pinyinDisplaySelect.value;
+                }
+            } else {
+                vocabSettings.classList.add('hidden');
+            }
+        }
+        
         this.updateReviewSections();
     }
 
@@ -886,7 +914,7 @@ class BCTReviewSystem {
         // Hide other sections
         document.getElementById('typeTabSystem').style.display = 'none';
         document.querySelector('.lesson-selector').style.display = 'none';
-        document.getElementById('reviewModeSection').classList.add('hidden');
+        document.getElementById('vocabSettings').classList.add('hidden');
         document.getElementById('reviewMethodTabs').classList.add('hidden');
         document.getElementById('smartReviewSection').classList.add('hidden');
         document.getElementById('difficultySection').classList.add('hidden');
@@ -907,6 +935,18 @@ class BCTReviewSystem {
 
         // Reset card flip
         document.getElementById('flashcard').classList.remove('flipped');
+
+        // 確保設定是最新的（從 select 元素讀取）
+        if (this.currentTab === 'vocab') {
+            const reviewDirectionSelect = document.getElementById('reviewDirection');
+            const pinyinDisplaySelect = document.getElementById('pinyinDisplay');
+            if (reviewDirectionSelect) {
+                this.reviewDirection = reviewDirectionSelect.value;
+            }
+            if (pinyinDisplaySelect) {
+                this.pinyinDisplay = pinyinDisplaySelect.value;
+            }
+        }
 
         // Render based on mode
         this.renderCardFront(vocab);
@@ -931,43 +971,46 @@ class BCTReviewSystem {
             isImage = true;
         }
 
+        // 隱藏 toggle 按鈕（不再需要）
+        pinyinToggle.classList.add('hidden');
+
         if (this.currentTab === 'vocab') {
-            // 詞組模式：預設顯示拼音為主，漢字隱藏
-            if (isImage) {
-                frontCharacter.innerHTML = charDisplay;
-            } else {
-                frontCharacter.textContent = vocab.pinyin || vocab.character;
+            // Vocabulary 模式：根據 Review Direction 顯示
+            if (this.reviewDirection === 'zh-en') {
+                // 中文 → 英文：正面顯示中文（字+可選拼音）
+                if (isImage) {
+                    frontCharacter.innerHTML = charDisplay;
+                    frontCharacter.classList.remove('pinyin-large');
+                } else {
+                    frontCharacter.textContent = vocab.character || '';
+                    frontCharacter.classList.remove('pinyin-large');
+                }
+                
+                // 根據 pinyinDisplay 設定顯示拼音
+                if (this.pinyinDisplay === 'show') {
+                    frontPinyin.textContent = vocab.pinyin || '';
+                    frontPinyin.classList.remove('hidden');
+                } else {
+                    frontPinyin.textContent = '';
+                    frontPinyin.classList.add('hidden');
+                }
+            } else if (this.reviewDirection === 'en-zh') {
+                // 英文 → 中文：正面顯示英文
+                const englishText = vocab.meaning || vocab.english || vocab.spanish || '';
+                frontCharacter.textContent = englishText;
+                frontCharacter.classList.add('pinyin-large');
+                frontPinyin.textContent = '';
+                frontPinyin.classList.add('hidden');
             }
-            frontCharacter.classList.add('pinyin-large');
-            pinyinToggle.classList.add('hidden');
-            frontPinyin.classList.add('hidden');
-        } else if (this.reviewMode === 'character') {
-            // Character mode: show character only
+        } else {
+            // Components 或 汉字：正面只顯示字，不顯示拼音
             if (isImage) {
                 frontCharacter.innerHTML = charDisplay;
             } else {
                 frontCharacter.textContent = vocab.character || '';
             }
             frontCharacter.classList.remove('pinyin-large');
-            pinyinToggle.classList.add('hidden');
-            frontPinyin.classList.add('hidden');
-        } else if (this.reviewMode === 'pinyin-hint') {
-            // Pinyin-hint mode: character + optional pinyin
-            if (isImage) {
-                frontCharacter.innerHTML = charDisplay;
-            } else {
-                frontCharacter.textContent = vocab.character || '';
-            }
-            frontCharacter.classList.remove('pinyin-large');
-            pinyinToggle.classList.remove('hidden');
-            pinyinToggle.textContent = '👁️ Show Pinyin';
-            frontPinyin.textContent = vocab.pinyin;
-            frontPinyin.classList.add('hidden');
-        } else if (this.reviewMode === 'pinyin') {
-            // Pinyin mode: show pinyin only
-            frontCharacter.textContent = vocab.pinyin;
-            frontCharacter.classList.add('pinyin-large');
-            pinyinToggle.classList.add('hidden');
+            frontPinyin.textContent = '';
             frontPinyin.classList.add('hidden');
         }
     }
@@ -975,19 +1018,50 @@ class BCTReviewSystem {
     renderCardBack(vocab) {
         // 字（優先顯示文字，否則顯示字形補丁圖片）
         const backCharacter = document.getElementById('backCharacter');
-        let charDisplay = '';
-        if (vocab.character && vocab.character.trim()) {
-            charDisplay = vocab.character;
-            backCharacter.textContent = charDisplay;
-        } else if (vocab.display_image && vocab.display_image.trim()) {
-            backCharacter.innerHTML = `<img src="${vocab.display_image}" class="img-comp" alt="comp" style="height: 1.8em; width: auto; vertical-align: middle;">`;
-        } else {
-            backCharacter.textContent = '';
-        }
+        const backPinyin = document.getElementById('backPinyin');
+        const backMeaning = document.getElementById('backMeaning');
         
-        document.getElementById('backPinyin').textContent = vocab.pinyin || '';
-        document.getElementById('backMeaning').textContent = vocab.meaning ||
-            `${vocab.english || ''} | ${vocab.spanish || ''}`;
+        if (this.currentTab === 'vocab' && this.reviewDirection === 'en-zh') {
+            // Vocabulary 英文→中文模式：背面顯示中文（字+拼音）
+            let charDisplay = '';
+            if (vocab.character && vocab.character.trim()) {
+                charDisplay = vocab.character;
+                backCharacter.textContent = charDisplay;
+            } else if (vocab.display_image && vocab.display_image.trim()) {
+                backCharacter.innerHTML = `<img src="${vocab.display_image}" class="img-comp" alt="comp" style="height: 1.8em; width: auto; vertical-align: middle;">`;
+            } else {
+                backCharacter.textContent = '';
+            }
+            backPinyin.textContent = vocab.pinyin || '';
+            backMeaning.textContent = vocab.meaning || `${vocab.english || ''} | ${vocab.spanish || ''}`;
+        } else if (this.currentTab === 'vocab' && this.reviewDirection === 'zh-en') {
+            // Vocabulary 中文→英文模式：背面顯示英文 + 字 + 拼音
+            let charDisplay = '';
+            if (vocab.character && vocab.character.trim()) {
+                charDisplay = vocab.character;
+                backCharacter.textContent = charDisplay;
+            } else if (vocab.display_image && vocab.display_image.trim()) {
+                backCharacter.innerHTML = `<img src="${vocab.display_image}" class="img-comp" alt="comp" style="height: 1.8em; width: auto; vertical-align: middle;">`;
+            } else {
+                backCharacter.textContent = '';
+            }
+            backPinyin.textContent = vocab.pinyin || '';
+            backMeaning.textContent = vocab.meaning || vocab.english || vocab.spanish || '';
+        } else {
+            // Components 或 汉字：背面顯示字+拼音+意思
+            let charDisplay = '';
+            if (vocab.character && vocab.character.trim()) {
+                charDisplay = vocab.character;
+                backCharacter.textContent = charDisplay;
+            } else if (vocab.display_image && vocab.display_image.trim()) {
+                backCharacter.innerHTML = `<img src="${vocab.display_image}" class="img-comp" alt="comp" style="height: 1.8em; width: auto; vertical-align: middle;">`;
+            } else {
+                backCharacter.textContent = '';
+            }
+            backPinyin.textContent = vocab.pinyin || '';
+            backMeaning.textContent = vocab.meaning ||
+                `${vocab.english || ''} | ${vocab.spanish || ''}`;
+        }
 
         // Source tag
         const sourceTag = document.getElementById('sourceTag');
@@ -1088,6 +1162,14 @@ class BCTReviewSystem {
         document.getElementById('typeTabSystem').style.display = 'block';
         document.querySelector('.lesson-selector').style.display = 'block';
         document.querySelector('.data-section').style.display = 'block';
+
+        // Show Vocabulary settings if Vocabulary tab is selected
+        if (this.currentTab === 'vocab') {
+            const vocabSettings = document.getElementById('vocabSettings');
+            if (vocabSettings) {
+                vocabSettings.classList.remove('hidden');
+            }
+        }
 
         // Reset to Smart Review tab
         document.querySelectorAll('#reviewMethodTabs .tab-btn').forEach(b => b.classList.remove('active'));

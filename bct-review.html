@@ -129,6 +129,24 @@
                 </ul>
             </div>
 
+            <!-- Vocabulary Review Settings (only shown when Vocabulary tab is selected) -->
+            <div id="vocabSettings" class="vocab-settings hidden">
+                <div class="setting-group">
+                    <label for="reviewDirection">Review Direction:</label>
+                    <select id="reviewDirection">
+                        <option value="zh-en">中文 → 英文 (Chinese → English)</option>
+                        <option value="en-zh">英文 → 中文 (English → Chinese)</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label for="pinyinDisplay">Pinyin Display:</label>
+                    <select id="pinyinDisplay">
+                        <option value="show">Show Pinyin</option>
+                        <option value="hide">Hide Pinyin</option>
+                    </select>
+                </div>
+            </div>
+
             <!-- Layer 2: Lesson Selection -->
             <div class="lesson-selector">
                 <div class="selector-header">
@@ -151,35 +169,7 @@
                 </div>
             </div>
 
-            <!-- Layer 3: Review Mode Selector (shown after lesson selection) -->
-            <div id="reviewModeSection" class="review-mode-section hidden">
-                <h3>🎯 Choose Review Mode</h3>
-                <div class="mode-options">
-                    <label class="mode-option">
-                        <input type="radio" name="reviewMode" value="character">
-                        <div class="mode-card">
-                            <h4>汉字模式</h4>
-                            <p>Front: Character only</p>
-                        </div>
-                    </label>
-                    <label class="mode-option">
-                        <input type="radio" name="reviewMode" value="pinyin-hint" checked>
-                        <div class="mode-card recommended">
-                            <h4>拼音提示模式(推荐)</h4>
-                            <p>Front: Character + optional pinyin</p>
-                        </div>
-                    </label>
-                    <label class="mode-option">
-                        <input type="radio" name="reviewMode" value="pinyin">
-                        <div class="mode-card">
-                            <h4>拼音模式</h4>
-                            <p>Front: Pinyin only</p>
-                        </div>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Layer 4: Review Method Tab System (Smart Review vs By Difficulty) -->
+            <!-- Layer 3: Review Method Tab System (Smart Review vs By Difficulty) -->
             <div id="reviewMethodTabs" class="segmented-tabs hidden" style="margin-top: 1.5rem;">
                 <button class="tab-btn active" data-tab="smart-review">🎯 Smart Review</button>
                 <button class="tab-btn" data-tab="by-difficulty">⚙️ By Difficulty</button>
