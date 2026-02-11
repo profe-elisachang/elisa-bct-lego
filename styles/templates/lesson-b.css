@@ -938,10 +938,15 @@
     margin: 5px 0;
 }
 
-/* 表格樣式 */
+/* 表格樣式 - 通用樣式，適用於所有 markdown 渲染區域 */
 .timeline-notes.markdown-body table,
 .markdown-body table,
-.b-notes-content table {
+.b-notes-content table,
+.grammar-content table,
+.practice-content table,
+.content-group table,
+.grammar-card-content table,
+.practice-card-content table {
     width: 100%;
     border-collapse: collapse;
     margin: 15px 0;
@@ -951,7 +956,12 @@
 
 /* 表格容器：如果表格太寬，允許水平滾動 */
 .timeline-notes.markdown-body,
-.markdown-body {
+.markdown-body,
+.grammar-content,
+.practice-content,
+.content-group,
+.grammar-card-content,
+.practice-card-content {
     overflow-x: auto;
     overflow-y: visible;
 }
@@ -961,7 +971,17 @@
 .markdown-body table th,
 .markdown-body table td,
 .b-notes-content table th,
-.b-notes-content table td {
+.b-notes-content table td,
+.grammar-content table th,
+.grammar-content table td,
+.practice-content table th,
+.practice-content table td,
+.content-group table th,
+.content-group table td,
+.grammar-card-content table th,
+.grammar-card-content table td,
+.practice-card-content table th,
+.practice-card-content table td {
     border: 1px solid var(--gray-200, #e2e8f0);
     padding: 8px 12px;
     text-align: left;
@@ -969,7 +989,12 @@
 
 .timeline-notes.markdown-body table th,
 .markdown-body table th,
-.b-notes-content table th {
+.b-notes-content table th,
+.grammar-content table th,
+.practice-content table th,
+.content-group table th,
+.grammar-card-content table th,
+.practice-card-content table th {
     background: var(--gray-100, #f9fafb);
     font-weight: 600;
     color: var(--gray-900, #1e293b);
@@ -977,7 +1002,12 @@
 
 .timeline-notes.markdown-body table tr:nth-child(even),
 .markdown-body table tr:nth-child(even),
-.b-notes-content table tr:nth-child(even) {
+.b-notes-content table tr:nth-child(even),
+.grammar-content table tr:nth-child(even),
+.practice-content table tr:nth-child(even),
+.content-group table tr:nth-child(even),
+.grammar-card-content table tr:nth-child(even),
+.practice-card-content table tr:nth-child(even) {
     background: var(--gray-50, #f8f9fa);
 }
 
