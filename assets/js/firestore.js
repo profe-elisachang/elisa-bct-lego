@@ -726,10 +726,11 @@ class FirestoreService {
                         console.log('✅ 匹配！添加到结果');
                         const noteItem = {
                             id: doc.id,
-                            type: 'note',
                             cohort: cohort,
                             order: data.order !== undefined ? data.order : 999999,
-                            ...data
+                            ...data,
+                            // 強制標記為 note，避免 Firestore 文件內的 type 欄位覆蓋導致無法在 lesson-template-b.html 顯示。
+                            type: 'note'
                         };
                         console.log('✅ Note 对象：', noteItem);
                         notesForLesson.push(noteItem);

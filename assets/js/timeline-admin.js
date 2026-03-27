@@ -1970,7 +1970,9 @@ let currentLiveNoteId = null;
 let currentLiveNoteLevel = 'btc1';
 let currentLiveNoteLesson = '';
 let liveNoteSaveTimeout = null;
-let liveNoteCohort = 'taigen-a'; // 預設班級
+// 預設班級：跟隨課堂頁面目前選擇的 cohort（A/B）
+// 透過 localStorage 的 `bct-cohort` 讓「Live Note 新增」能同步出現在 Elisa's Classroom Notes。
+let liveNoteCohort = (typeof localStorage !== 'undefined' && localStorage.getItem('bct-cohort')) || 'taigen-a';
 
 // Grammar 和 Practice 系統變數
 let currentGrammarId = null;
@@ -2024,6 +2026,8 @@ function setupLiveNoteSystem() {
             await loadLiveNote(noteId);
         } else {
             clearLiveNoteForm();
+            // 若下拉選單被清空，確保新筆記保存 cohort 跟課堂頁面一致
+            liveNoteCohort = (typeof localStorage !== 'undefined' && localStorage.getItem('bct-cohort')) || 'taigen-a';
         }
     });
 
@@ -2033,6 +2037,8 @@ function setupLiveNoteSystem() {
         currentLiveNoteId = null;
         noteSelect.value = '';
         deleteBtn.style.display = 'none';
+        // 新增新筆記時，讓保存 cohort 與課堂頁面一致
+        liveNoteCohort = (typeof localStorage !== 'undefined' && localStorage.getItem('bct-cohort')) || 'taigen-a';
         updateLiveNoteStatus('已清空表單，可以開始輸入新筆記');
     });
 

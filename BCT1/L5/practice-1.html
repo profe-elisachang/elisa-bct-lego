@@ -1,0 +1,674 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>汉语对话练习 | 拼音辅助 · 点击互动</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none; /* 避免拖动文字，提升点击体验 */
+        }
+
+        body {
+            font-family: system-ui, 'Segoe UI', 'Noto Sans', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e6f0fa 100%);
+            margin: 0;
+            padding: 20px;
+            color: #1e2a3e;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        /* 头部 */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin: 0 0 8px 0;
+            color: #0a3e6d;
+        }
+
+        .lang-badge {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            font-weight: 500;
+            background: #e9f0f9;
+            display: inline-flex;
+            padding: 6px 20px;
+            border-radius: 40px;
+            margin-top: 8px;
+        }
+
+        .lang-badge span:first-child { color: #c2410c; }
+        .lang-badge span:last-child { color: #2b6e3c; }
+
+        /* 题型卡片 */
+        .exercise-card {
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+            padding: 24px 22px 28px;
+            margin-bottom: 32px;
+            transition: all 0.2s;
+            border: 1px solid #dfeef5;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #cbdde9;
+        }
+
+        .section-title h2 {
+            margin: 0;
+            font-size: 1.6rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #1f6392, #3b82b6);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .sub {
+            font-size: 0.85rem;
+            background: #eef3fc;
+            padding: 4px 12px;
+            border-radius: 30px;
+            color: #1f4e6e;
+        }
+
+        /* 对话气泡样式 */
+        .dialogue-container {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .dialogue-item {
+            background: #f8fafc;
+            border-radius: 28px;
+            padding: 18px 20px;
+            border-left: 6px solid #3b82b6;
+        }
+
+        .question-speech {
+            font-size: 1.25rem;
+            font-weight: 500;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #eef2ff;
+            border-radius: 24px;
+            display: inline-block;
+            max-width: 90%;
+        }
+
+        .pinyin-line {
+            font-size: 1.1rem;
+            letter-spacing: 0.3px;
+            margin-bottom: 6px;
+        }
+
+        .hanzi-line {
+            font-size: 1rem;
+            color: #4b5563;
+            margin-bottom: 8px;
+        }
+
+        .translation {
+            font-size: 0.85rem;
+            color: #6c7a8e;
+            display: flex;
+            gap: 16px;
+            margin-top: 6px;
+        }
+
+        .options-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .option-btn {
+            background: white;
+            border: 2px solid #cbd5e1;
+            border-radius: 60px;
+            padding: 12px 20px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            color: #1f4a6e;
+            flex: 1;
+            min-width: 180px;
+            text-align: center;
+        }
+
+        .option-btn:hover {
+            background: #e6f0fa;
+            border-color: #5f9bc0;
+            transform: scale(0.98);
+        }
+
+        .option-btn.correct-highlight {
+            background: #2c7cb6;
+            border-color: #2c7cb6;
+            color: white;
+        }
+
+        .option-btn.wrong-highlight {
+            background: #fecaca;
+            border-color: #dc2626;
+            color: #991b1b;
+        }
+
+        .feedback-area {
+            margin-top: 12px;
+            font-weight: 500;
+            padding: 8px 14px;
+            border-radius: 28px;
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+
+        .feedback-correct {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .feedback-wrong {
+            background: #ffe4e2;
+            color: #9b2c1d;
+        }
+
+        /* 配对游戏 - 拖拽风格但完全点击配对 */
+        .match-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+
+        .match-column {
+            flex: 1;
+            min-width: 240px;
+            background: #f8fafc;
+            border-radius: 28px;
+            padding: 18px;
+            border: 1px solid #e2edf2;
+        }
+
+        .match-column h3 {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 18px;
+            font-size: 1.2rem;
+            color: #2c5a7a;
+        }
+
+        .match-card {
+            background: white;
+            border-radius: 48px;
+            padding: 14px 18px;
+            margin: 12px 0;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: 2px solid #cbdde9;
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .match-card.selected {
+            background: #bbdef5;
+            border: 2px solid #1f6392;
+            transform: scale(0.99);
+        }
+
+        .match-card.matched {
+            background: #c8e6df;
+            border-color: #2e7d64;
+            text-decoration: line-through;
+            opacity: 0.7;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        .reset-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: 0.2s;
+        }
+
+        .reset-btn:hover {
+            background: #4b5563;
+        }
+
+        .next-btn {
+            background: #2c7cb6;
+            color: white;
+            border: none;
+            padding: 10px 28px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 16px;
+            font-size: 1rem;
+        }
+
+        .complete-badge {
+            background: #d1fae5;
+            padding: 12px;
+            border-radius: 28px;
+            text-align: center;
+            margin-top: 16px;
+            font-weight: bold;
+        }
+
+        button {
+            font-family: inherit;
+        }
+
+        @media (max-width: 700px) {
+            .match-grid { flex-direction: column; }
+            .option-btn { min-width: 100%; }
+            .question-speech { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>💬 对话练习 · Dialogue Drills</h1>
+        <div class="lang-badge">
+            <span>🇬🇧 English</span> <span>🇪🇸 Español</span>
+        </div>
+        <p style="margin-top: 12px; color: #2c5a7a;">✨ 点击选择正确答案 | 所有句子带拼音 ✨<br>✨ Click to choose the correct answer | All sentences with pinyin ✨</p>
+    </div>
+
+    <!-- 第一部分：对话选择 (Complete the Dialogue) -->
+    <div class="exercise-card">
+        <div class="section-title">
+            <h2>🗣️ 完成对话 | Complete the Dialogue</h2>
+            <div class="sub">Choose the correct response / Elige la respuesta correcta</div>
+        </div>
+        <div id="dialogue-list"></div>
+    </div>
+
+    <!-- 第二部分：问答配对 (Match Question & Answer) -->
+    <div class="exercise-card">
+        <div class="section-title">
+            <h2>🔗 问答配对 | Match Q&A</h2>
+            <div class="sub">Click on a question, then click on the matching answer / Haz clic en pregunta, luego en respuesta</div>
+        </div>
+        <div id="qa-match-area"></div>
+        <button id="reset-qa-match" class="reset-btn">⟳ 重置配对 Reset Matching</button>
+    </div>
+
+    <!-- 第三部分：情景排序 (按顺序排列对话) - 点击式排序 -->
+    <div class="exercise-card">
+        <div class="section-title">
+            <h2>🔄 对话排序 | Order the Dialogue</h2>
+            <div class="sub">Click sentences in correct order / Haz clic en orden correcto</div>
+        </div>
+        <div id="ordering-area"></div>
+        <button id="reset-ordering" class="reset-btn">⟳ 重置排序 Reset Order</button>
+    </div>
+</div>
+
+<script>
+    // ======================= 第一部分：对话选择 (选择题型) =======================
+    const dialogues = [
+        {
+            contextPinyin: "Nǐ hǎo! Nǐ shì nǎ guó rén?",
+            contextHanzi: "你好！你是哪国人？",
+            contextEn: "Hello! What nationality are you?",
+            contextEs: "¡Hola! ¿De qué país eres?",
+            options: [
+                { text: "Wǒ shì Zhōngguórén. 我是中国人。", pinyin: "Wǒ shì Zhōngguórén.", correct: true },
+                { text: "Tā shì Měiguórén. 她是美国人。", pinyin: "Tā shì Měiguórén.", correct: false },
+                { text: "Zhè shì Zhōngguó. 这是中国。", pinyin: "Zhè shì Zhōngguó.", correct: false }
+            ]
+        },
+        {
+            contextPinyin: "Nà wèi shì shéi?",
+            contextHanzi: "那位是谁？",
+            contextEn: "Who is that?",
+            contextEs: "¿Quién es esa persona?",
+            options: [
+                { text: "Nà shì Wáng mìshū. 那是王秘书。", pinyin: "Nà shì Wáng mìshū.", correct: true },
+                { text: "Tā shì Měiguórén. 她是美国人。", pinyin: "Tā shì Měiguórén.", correct: false },
+                { text: "Wǒ shì Zhōngguórén. 我是中国人。", pinyin: "Wǒ shì Zhōngguórén.", correct: false }
+            ]
+        },
+        {
+            contextPinyin: "Mǎlì xiǎojiě shì nǎ guó rén?",
+            contextHanzi: "玛丽小姐是哪国人？",
+            contextEn: "Miss Mary, what nationality is she?",
+            contextEs: "Srta. Mary, ¿de qué nacionalidad es ella?",
+            options: [
+                { text: "Tā shì Měiguórén. 她是美国人。", pinyin: "Tā shì Měiguórén.", correct: true },
+                { text: "Tā shì Zhōngguórén. 她是中国人。", pinyin: "Tā shì Zhōngguórén.", correct: false },
+                { text: "Tā shì Rìběnrén. 她是日本人。", pinyin: "Tā shì Rìběnrén.", correct: false }
+            ]
+        },
+        {
+            contextPinyin: "Lǐ jīnglǐ, tā shì shéi?",
+            contextHanzi: "李经理，他是谁？",
+            contextEn: "Manager Li, who is he?",
+            contextEs: "Gerente Li, ¿quién es él?",
+            options: [
+                { text: "Tā shì wǒmen gōngsī de mìshū. 他是我们公司的秘书。", pinyin: "Tā shì wǒmen gōngsī de mìshū.", correct: true },
+                { text: "Tā shì Měiguórén. 他是美国人。", pinyin: "Tā shì Měiguórén.", correct: false },
+                { text: "Tā jiào Mǎlì. 她叫玛丽。", pinyin: "Tā jiào Mǎlì.", correct: false }
+            ]
+        }
+    ];
+
+    let dialogueFeedback = [];
+
+    function renderDialogues() {
+        const container = document.getElementById('dialogue-list');
+        container.innerHTML = '';
+        dialogues.forEach((item, idx) => {
+            const dialogueDiv = document.createElement('div');
+            dialogueDiv.className = 'dialogue-item';
+            dialogueDiv.innerHTML = `
+                <div class="question-speech">
+                    <div class="pinyin-line">🗣️ ${item.contextPinyin}</div>
+                    <div class="hanzi-line">${item.contextHanzi}</div>
+                    <div class="translation">
+                        <span>🇬🇧 ${item.contextEn}</span>
+                        <span>🇪🇸 ${item.contextEs}</span>
+                    </div>
+                </div>
+                <div class="options-grid" id="options-${idx}"></div>
+                <div id="fb-dialogue-${idx}" class="feedback-area"></div>
+            `;
+            container.appendChild(dialogueDiv);
+            
+            const optsGrid = document.getElementById(`options-${idx}`);
+            item.options.forEach((opt, optIdx) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerHTML = `<span style="font-size:0.95rem">${opt.text}</span><br><span style="font-size:0.75rem; opacity:0.8">${opt.pinyin}</span>`;
+                btn.onclick = () => {
+                    // 清除同组其他样式
+                    const allBtns = optsGrid.querySelectorAll('.option-btn');
+                    allBtns.forEach(b => {
+                        b.classList.remove('correct-highlight', 'wrong-highlight');
+                    });
+                    const fbDiv = document.getElementById(`fb-dialogue-${idx}`);
+                    if (opt.correct) {
+                        btn.classList.add('correct-highlight');
+                        fbDiv.textContent = '✓ Correct! ¡Correcto!';
+                        fbDiv.className = 'feedback-area feedback-correct';
+                        // 自动禁用该题所有按钮避免重复选择
+                        allBtns.forEach(b => b.style.pointerEvents = 'none');
+                    } else {
+                        btn.classList.add('wrong-highlight');
+                        fbDiv.textContent = '❌ Try again! Intenta de nuevo.';
+                        fbDiv.className = 'feedback-area feedback-wrong';
+                        setTimeout(() => {
+                            fbDiv.textContent = '';
+                            fbDiv.className = 'feedback-area';
+                        }, 1200);
+                    }
+                };
+                optsGrid.appendChild(btn);
+            });
+        });
+    }
+
+    // ======================= 第二部分：问答配对 (点击配对) =======================
+    let qaPairs = [
+        { question: "Nǐ shì nǎ guó rén?", questionHanzi: "你是哪国人？", answer: "Wǒ shì Zhōngguórén. 我是中国人。", matched: false, qId: 0, aId: 0 },
+        { question: "Nà wèi shì shéi?", questionHanzi: "那位是谁？", answer: "Nà shì Lǐ jīnglǐ. 那是李经理。", matched: false, qId: 1, aId: 1 },
+        { question: "Tā shì nǎ guó rén?", questionHanzi: "她是哪国人？(玛丽)", answer: "Tā shì Měiguórén. 她是美国人。", matched: false, qId: 2, aId: 2 },
+        { question: "Shéi lái wǒmen gōngsī?", questionHanzi: "谁来我们公司？", answer: "Mǎlì xiǎojiě lái gōngsī. 玛丽小姐来公司。", matched: false, qId: 3, aId: 3 }
+    ];
+    
+    let selectedQA = null; // 存储选中的元素类型和id {type, id}
+    
+    function renderQAMatch() {
+        const container = document.getElementById('qa-match-area');
+        container.innerHTML = '';
+        const grid = document.createElement('div');
+        grid.className = 'match-grid';
+        
+        // 左列: 问题
+        const leftCol = document.createElement('div');
+        leftCol.className = 'match-column';
+        leftCol.innerHTML = '<h3>❓ 问题 / Question</h3>';
+        // 右列: 答案
+        const rightCol = document.createElement('div');
+        rightCol.className = 'match-column';
+        rightCol.innerHTML = '<h3>✅ 回答 / Answer</h3>';
+        
+        qaPairs.forEach((pair, idx) => {
+            if (!pair.matched) {
+                const qCard = document.createElement('div');
+                qCard.className = 'match-card';
+                qCard.innerHTML = `<strong>${pair.question}</strong><br><span style="font-size:0.8rem">${pair.questionHanzi}</span>`;
+                qCard.dataset.qId = pair.qId;
+                qCard.onclick = (e) => {
+                    e.stopPropagation();
+                    if (selectedQA && selectedQA.type === 'answer') {
+                        // 尝试配对
+                        const targetAnswer = qaPairs.find(p => p.aId === selectedQA.id);
+                        if (targetAnswer && !targetAnswer.matched && targetAnswer.qId === pair.qId) {
+                            pair.matched = true;
+                            targetAnswer.matched = true;
+                            selectedQA = null;
+                            renderQAMatch();
+                        } else {
+                            showTempMessage('❌ Wrong match! / Emparejamiento incorrecto', '#c2410c');
+                            selectedQA = null;
+                            renderQAMatch();
+                        }
+                    } else {
+                        // 选中问题
+                        selectedQA = { type: 'question', id: pair.qId };
+                        highlightSelected();
+                    }
+                };
+                leftCol.appendChild(qCard);
+            } else {
+                const matchedDiv = document.createElement('div');
+                matchedDiv.className = 'match-card matched';
+                matchedDiv.innerHTML = `✓ ${pair.question}<br><span style="font-size:0.7rem">${pair.questionHanzi}</span>`;
+                leftCol.appendChild(matchedDiv);
+            }
+            
+            // 答案部分
+            if (!pair.matched) {
+                const aCard = document.createElement('div');
+                aCard.className = 'match-card';
+                aCard.innerHTML = `<strong>${pair.answer}</strong>`;
+                aCard.dataset.aId = pair.aId;
+                aCard.onclick = () => {
+                    if (selectedQA && selectedQA.type === 'question') {
+                        const targetQuestion = qaPairs.find(p => p.qId === selectedQA.id);
+                        if (targetQuestion && !targetQuestion.matched && targetQuestion.aId === pair.aId) {
+                            targetQuestion.matched = true;
+                            pair.matched = true;
+                            selectedQA = null;
+                            renderQAMatch();
+                        } else {
+                            showTempMessage('❌ Wrong pair! Intenta de nuevo', '#c2410c');
+                            selectedQA = null;
+                            renderQAMatch();
+                        }
+                    } else {
+                        selectedQA = { type: 'answer', id: pair.aId };
+                        highlightSelected();
+                    }
+                };
+                rightCol.appendChild(aCard);
+            } else {
+                const matchedRight = document.createElement('div');
+                matchedRight.className = 'match-card matched';
+                matchedRight.innerHTML = `✓ ${pair.answer}`;
+                rightCol.appendChild(matchedRight);
+            }
+        });
+        
+        grid.appendChild(leftCol);
+        grid.appendChild(rightCol);
+        container.appendChild(grid);
+        
+        // 全配对完成消息
+        const allMatched = qaPairs.every(p => p.matched);
+        if (allMatched) {
+            const completeMsg = document.createElement('div');
+            completeMsg.className = 'complete-badge';
+            completeMsg.innerHTML = '🎉 All matched! Great job! ¡Todo emparejado! 🎉';
+            container.appendChild(completeMsg);
+        }
+        
+        function highlightSelected() {
+            document.querySelectorAll('.match-card').forEach(c => c.classList.remove('selected'));
+            if (selectedQA?.type === 'question') {
+                document.querySelectorAll(`.match-card[data-q-id="${selectedQA.id}"]`).forEach(c => c.classList.add('selected'));
+            } else if (selectedQA?.type === 'answer') {
+                document.querySelectorAll(`.match-card[data-a-id="${selectedQA.id}"]`).forEach(c => c.classList.add('selected'));
+            }
+        }
+    }
+    
+    function showTempMessage(msg, color) {
+        const container = document.getElementById('qa-match-area');
+        let msgDiv = document.getElementById('temp-qa-msg');
+        if (!msgDiv) {
+            msgDiv = document.createElement('div');
+            msgDiv.id = 'temp-qa-msg';
+            msgDiv.style.marginTop = '12px';
+            msgDiv.style.fontWeight = 'bold';
+            msgDiv.style.color = color;
+            container.appendChild(msgDiv);
+        }
+        msgDiv.textContent = msg;
+        setTimeout(() => { if(msgDiv) msgDiv.textContent = ''; }, 1500);
+    }
+    
+    function resetQAMatch() {
+        qaPairs.forEach(p => p.matched = false);
+        selectedQA = null;
+        renderQAMatch();
+    }
+    
+    // ======================= 第三部分：排序练习 =======================
+    let orderingSentences = [
+        { text: "Nǐ shì nǎ guó rén?", hanzi: "你是哪国人？", order: 1, currentPos: null, originalIdx: 0 },
+        { text: "Wǒ shì Zhōngguórén.", hanzi: "我是中国人。", order: 2, currentPos: null, originalIdx: 1 },
+        { text: "Zhè shì wǒ de hǎo péngyou Mǎlì.", hanzi: "这是我的好朋友玛丽。", order: 3, currentPos: null, originalIdx: 2 },
+        { text: "Tā shì Měiguórén.", hanzi: "她是美国人。", order: 4, currentPos: null, originalIdx: 3 }
+    ];
+    let selectedOrderItem = null;
+    
+    function renderOrdering() {
+        const container = document.getElementById('ordering-area');
+        container.innerHTML = '';
+        const instruction = document.createElement('div');
+        instruction.style.marginBottom = '16px';
+        instruction.style.fontWeight = '500';
+        instruction.innerHTML = '📌 Click sentences in the correct order (1 → 2 → 3 → 4) / Haz clic en orden correcto';
+        container.appendChild(instruction);
+        
+        const shuffled = [...orderingSentences].sort(() => Math.random() - 0.5);
+        orderingSentences = shuffled.map((s, idx) => ({ ...s, currentPos: null }));
+        
+        const cardsContainer = document.createElement('div');
+        cardsContainer.style.display = 'flex';
+        cardsContainer.style.flexDirection = 'column';
+        cardsContainer.style.gap = '12px';
+        
+        orderingSentences.forEach((sent, idx) => {
+            const card = document.createElement('div');
+            card.className = 'match-card';
+            card.style.textAlign = 'left';
+            card.style.cursor = 'pointer';
+            card.innerHTML = `<strong>${sent.text}</strong><br><span style="font-size:0.8rem">${sent.hanzi}</span>`;
+            if (sent.currentPos) {
+                card.style.background = '#c8e6df';
+                card.style.borderColor = '#2e7d64';
+                card.innerHTML = `✅ ${sent.currentPos}. ${sent.text}<br><span style="font-size:0.8rem">${sent.hanzi}</span>`;
+                card.style.pointerEvents = 'none';
+            }
+            card.onclick = () => {
+                if (sent.currentPos) return;
+                const nextPos = orderingSentences.filter(s => s.currentPos !== null).length + 1;
+                if (nextPos === sent.order) {
+                    sent.currentPos = sent.order;
+                    renderOrdering();
+                    // 检查完成
+                    const allDone = orderingSentences.every(s => s.currentPos !== null);
+                    if (allDone) {
+                        const completeDiv = document.createElement('div');
+                        completeDiv.className = 'complete-badge';
+                        completeDiv.innerHTML = '🎉 Perfect order! Excellent! Orden perfecto 🎉';
+                        container.appendChild(completeDiv);
+                    }
+                } else {
+                    showOrderMsg(`❌ Wrong order! Expected step ${sent.order}. / Orden incorrecto, se esperaba paso ${sent.order}`, '#c2410c', container);
+                }
+            };
+            cardsContainer.appendChild(card);
+        });
+        container.appendChild(cardsContainer);
+    }
+    
+    function showOrderMsg(msg, color, container) {
+        let msgDiv = document.getElementById('order-msg');
+        if (!msgDiv) {
+            msgDiv = document.createElement('div');
+            msgDiv.id = 'order-msg';
+            msgDiv.style.marginTop = '12px';
+            msgDiv.style.fontWeight = 'bold';
+            container.appendChild(msgDiv);
+        }
+        msgDiv.textContent = msg;
+        msgDiv.style.color = color;
+        setTimeout(() => { if(msgDiv) msgDiv.textContent = ''; }, 1500);
+    }
+    
+    function resetOrdering() {
+        orderingSentences.forEach(s => s.currentPos = null);
+        renderOrdering();
+    }
+    
+    // 初始化
+    function init() {
+        renderDialogues();
+        renderQAMatch();
+        renderOrdering();
+        document.getElementById('reset-qa-match').addEventListener('click', resetQAMatch);
+        document.getElementById('reset-ordering').addEventListener('click', resetOrdering);
+    }
+    
+    init();
+</script>
+</body>
+</html>
