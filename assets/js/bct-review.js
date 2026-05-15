@@ -29,6 +29,7 @@ class BCTReviewSystem {
         this.componentVocab = [];
         this.characterVocab = [];
         this.lessonVocab = [];
+        this.vocabA = [];
         this.userProgress = {};
         this.currentTab = null;
         this.currentLevel = 'btc1';  // BCT Level tracking
@@ -47,7 +48,8 @@ class BCTReviewSystem {
         this.sectionLoadState = {
             components: { status: 'idle', promise: null },
             characters: { status: 'idle', promise: null },
-            vocab: { status: 'idle', promise: null }
+            vocab: { status: 'idle', promise: null },
+            vocabA: { status: 'idle', promise: null }
         };
         this._sectionsLoadedLevel = null;
         this._lessonPartition = null;
@@ -82,7 +84,8 @@ class BCTReviewSystem {
         this.sectionLoadState = {
             components: { status: 'idle', promise: null },
             characters: { status: 'idle', promise: null },
-            vocab: { status: 'idle', promise: null }
+            vocab: { status: 'idle', promise: null },
+            vocabA: { status: 'idle', promise: null }
         };
         this._sectionsLoadedLevel = null;
         this._lessonPartition = null;
@@ -98,6 +101,7 @@ class BCTReviewSystem {
         this.componentVocab = [];
         this.characterVocab = [];
         this.lessonVocab = [];
+        this.vocabA = [];
     }
 
     sectionCacheKey(tab) {
@@ -112,7 +116,8 @@ class BCTReviewSystem {
             if (!Array.isArray(items)) return false;
             if (tab === 'components') this.componentVocab = items;
             else if (tab === 'characters') this.characterVocab = items;
-            else this.lessonVocab = items;
+            else if (tab === 'vocab') this.lessonVocab = items;
+            else if (tab === 'vocabA') this.vocabA = items;
             return true;
         } catch (_) {
             return false;
@@ -124,7 +129,9 @@ class BCTReviewSystem {
             ? this.componentVocab
             : tab === 'characters'
                 ? this.characterVocab
-                : this.lessonVocab;
+                : tab === 'vocab'
+                    ? this.lessonVocab
+                    : this.vocabA;
         try {
             localStorage.setItem(this.sectionCacheKey(tab), JSON.stringify(payload));
         } catch (e) {
@@ -133,7 +140,7 @@ class BCTReviewSystem {
     }
 
     clearVocabCachesForLevel(level) {
-        ['components', 'characters', 'vocab'].forEach(tab => {
+        ['components', 'characters', 'vocab', 'vocabA'].forEach(tab => {
             localStorage.removeItem(`bct_vocab_cache:${level}:${tab}`);
         });
         if (level === this.currentLevel) {
@@ -146,7 +153,7 @@ class BCTReviewSystem {
         if (!grid) return;
         grid.innerHTML = `
             <div class="section-placeholder" role="status">
-                <p>Select <strong>Components</strong>, <strong>汉字</strong>, or <strong>Vocabulary</strong> above to load lessons.</p>
+                <p>Select <strong>Components</strong>, <strong>汉字</strong>, <strong>Vocabulary</strong>, or <strong>Vocab A</strong> above to load lessons.</p>
             </div>`;
         const countEl = document.getElementById('selectedCount');
         if (countEl) countEl.textContent = '(0/0)';
@@ -457,6 +464,17 @@ class BCTReviewSystem {
         }
     }
 
+    normalizeLessonId(rawLesson) {
+        const lesson = String(rawLesson || '').trim().toLowerCase();
+        const lessonMatch = lesson.match(/lesson\s*0*([1-9][0-9]*)/i)
+            || lesson.match(/^l\s*0*([1-9][0-9]*)/i)
+            || lesson.match(/^0*([1-9][0-9]*)$/);
+        if (lessonMatch) {
+            return `lesson${parseInt(lessonMatch[1], 10)}`;
+        }
+        return lesson || 'unknown';
+    }
+
     async ensureTimelineVocabItems() {
         const level = this.currentLevel;
         const cohort = this.getStudentCohort();
@@ -470,22 +488,38 @@ class BCTReviewSystem {
         this._timelineVocabLevel = level;
         this._timelineVocabPromise = (async () => {
             const items = [];
-            try {
-                const vocabSnap = await db.collection(`timeline/${level}/vocab/${cohort}/items`).get();
-                console.log(`Found ${vocabSnap.size} timeline vocab for ${level}/${cohort}`);
-                vocabSnap.forEach(doc => {
-                    const data = doc.data();
-                    items.push({
-                        ...data,
-                        source: 'timeline',
-                        cohort,
-                        lesson: data.lesson || 'unknown',
-                        firestoreId: doc.id
-                    });
-                });
-            } catch (error) {
-                console.log(`No timeline vocab for ${level}/${cohort}:`, error.message);
+            const vocabPaths = [
+                `timeline/${level}/vocab/${cohort}/items`,
+                `timeline/${level}/vocab/${cohort}`
+            ];
+
+            for (const path of vocabPaths) {
+                try {
+                    const vocabSnap = await db.collection(path).get();
+                    console.log(`Timeline vocab path tried: ${path}, docs: ${vocabSnap.size}`);
+                    if (vocabSnap.size > 0) {
+                        vocabSnap.forEach(doc => {
+                            const data = doc.data();
+                            const lesson = this.normalizeLessonId(data.lesson);
+                            items.push({
+                                ...data,
+                                source: 'timeline',
+                                cohort,
+                                lesson,
+                                firestoreId: doc.id
+                            });
+                        });
+                        break;
+                    }
+                } catch (error) {
+                    console.log(`Timeline vocab path failed: ${path}`, error.message);
+                }
             }
+
+            if (items.length === 0) {
+                console.log(`No timeline vocab items found for ${level}/${cohort} using any known path`);
+            }
+
             this._timelineVocabItems = items;
             return items;
         })();
@@ -598,17 +632,22 @@ class BCTReviewSystem {
     async loadSectionVocab() {
         const partition = await this.ensureLessonVocabularyLoaded();
         const items = [...partition.vocab];
+        this.lessonVocab = items;
+        console.log(`Loaded ${items.length} lesson vocabulary items for ${this.currentLevel}`);
+    }
 
+    async loadSectionVocabA() {
+        const items = [];
         const timelineVocab = await this.ensureTimelineVocabItems();
         timelineVocab.forEach(data => {
-            if (data.type === 'component') return;
-            if (data.type === 'vocab' || !data.type) {
+            const type = String(data.type || '').trim().toLowerCase();
+            if (type === 'component') return;
+            if (type === 'vocab' || !type) {
                 items.push(data);
             }
         });
-
-        this.lessonVocab = items;
-        console.log(`Loaded ${items.length} vocab items for ${this.currentLevel}`);
+        this.vocabA = items;
+        console.log(`Loaded ${items.length} timeline vocab items for ${this.currentLevel}`);
     }
 
     async ensureSectionLoaded(tab) {
@@ -645,6 +684,8 @@ class BCTReviewSystem {
                     await this.loadSectionCharacters();
                 } else if (tab === 'vocab') {
                     await this.loadSectionVocab();
+                } else if (tab === 'vocabA') {
+                    await this.loadSectionVocabA();
                 }
 
                 this._sectionsLoadedLevel = this.currentLevel;
@@ -734,10 +775,11 @@ class BCTReviewSystem {
         if (this.currentTab === 'components') currentVocab = this.componentVocab;
         else if (this.currentTab === 'characters') currentVocab = this.characterVocab;
         else if (this.currentTab === 'vocab') currentVocab = this.lessonVocab;
+        else if (this.currentTab === 'vocabA') currentVocab = this.vocabA;
 
         for (let i = 1; i <= 20; i++) {
             const lessonId = `lesson${i}`;
-            const chars = currentVocab.filter(c => c.lesson === lessonId);
+            const chars = currentVocab.filter(c => this.normalizeLessonId(c.lesson) === lessonId);
 
             // Calculate progress (Easy count / Total)
             let easyCount = 0;
@@ -831,15 +873,15 @@ class BCTReviewSystem {
         if (this.currentTab === 'components') currentVocab = this.componentVocab;
         else if (this.currentTab === 'characters') currentVocab = this.characterVocab;
         else if (this.currentTab === 'vocab') currentVocab = this.lessonVocab;
+        else if (this.currentTab === 'vocabA') currentVocab = this.vocabA;
 
-        return currentVocab.filter(vocab => selectedLessons.includes(vocab.lesson));
+        return currentVocab.filter(vocab => selectedLessons.includes(this.normalizeLessonId(vocab.lesson)));
     }
 
-    // 取得進度用的 key，避免 vocab 與字互相覆蓋
+    // 取得進度用的 key，依照當前 tab 區分，避免不同 tab 互相覆蓋
     getProgressKey(vocab) {
-        const isVocab = this.currentTab === 'vocab' || vocab.type === 'vocab' || (!vocab.type && vocab.source === 'lesson');
-        const base = vocab.character || vocab.firestoreId || vocab.pinyin || vocab.meaning || 'item';
-        return isVocab ? `vocab:${vocab.lesson || ''}:${base}` : base;
+        const baseId = vocab.firestoreId || `${vocab.character || vocab.pinyin || vocab.meaning || 'item'}:${vocab.lesson || ''}:${vocab.source || ''}`;
+        return `${this.currentTab || 'unknown'}:${baseId}`;
     }
 
     updateSelectedCount() {
@@ -1015,13 +1057,18 @@ class BCTReviewSystem {
     }
 
     async setCurrentTab(tab) {
+        const previousTab = this.currentTab;
+        if (previousTab && previousTab !== tab) {
+            this.saveCurrentSelections();
+        }
+
         this.currentTab = tab;
         this.clearSelections();
         this.updateStepIndicator(2);
 
         const vocabSettings = document.getElementById('vocabSettings');
         if (vocabSettings) {
-            if (tab === 'vocab') {
+            if (tab === 'vocab' || tab === 'vocabA') {
                 vocabSettings.classList.remove('hidden');
                 const reviewDirectionSelect = document.getElementById('reviewDirection');
                 const pinyinDisplaySelect = document.getElementById('pinyinDisplay');
@@ -1037,6 +1084,7 @@ class BCTReviewSystem {
         }
 
         await this.ensureSectionLoaded(tab);
+        this.restoreSelections();
         this.updateReviewSections();
     }
 
@@ -1079,12 +1127,12 @@ class BCTReviewSystem {
     // Save current lesson selections
     saveCurrentSelections() {
         const selected = this.getSelectedLessons();
-        localStorage.setItem(`${this.currentLevel}-selected`, JSON.stringify(selected));
+        localStorage.setItem(`${this.currentLevel}-${this.currentTab}-selected`, JSON.stringify(selected));
     }
 
     // Restore lesson selections
     restoreSelections() {
-        const saved = localStorage.getItem(`${this.currentLevel}-selected`);
+        const saved = localStorage.getItem(`${this.currentLevel}-${this.currentTab}-selected`);
         if (saved) {
             const lessonIds = JSON.parse(saved);
             // Set after DOM renders
@@ -1194,7 +1242,7 @@ class BCTReviewSystem {
         document.getElementById('flashcard').classList.remove('flipped');
 
         // 確保設定是最新的（從 select 元素讀取）
-        if (this.currentTab === 'vocab') {
+        if (this.currentTab === 'vocab' || this.currentTab === 'vocabA') {
             const reviewDirectionSelect = document.getElementById('reviewDirection');
             const pinyinDisplaySelect = document.getElementById('pinyinDisplay');
             if (reviewDirectionSelect) {
@@ -1231,7 +1279,7 @@ class BCTReviewSystem {
         // 隱藏 toggle 按鈕（不再需要）
         pinyinToggle.classList.add('hidden');
 
-        if (this.currentTab === 'vocab') {
+        if (this.currentTab === 'vocab' || this.currentTab === 'vocabA') {
             // Vocabulary 模式：根據 Review Direction 顯示
             if (this.reviewDirection === 'zh-en') {
                 // 中文 → 英文：正面顯示中文（字+可選拼音）
@@ -1278,7 +1326,7 @@ class BCTReviewSystem {
         const backPinyin = document.getElementById('backPinyin');
         const backMeaning = document.getElementById('backMeaning');
         
-        if (this.currentTab === 'vocab' && this.reviewDirection === 'en-zh') {
+        if ((this.currentTab === 'vocab' || this.currentTab === 'vocabA') && this.reviewDirection === 'en-zh') {
             // Vocabulary 英文→中文模式：背面顯示中文（字+拼音）
             let charDisplay = '';
             if (vocab.character && vocab.character.trim()) {
@@ -1291,7 +1339,7 @@ class BCTReviewSystem {
             }
             backPinyin.textContent = vocab.pinyin || '';
             backMeaning.textContent = vocab.meaning || `${vocab.english || ''} | ${vocab.spanish || ''}`;
-        } else if (this.currentTab === 'vocab' && this.reviewDirection === 'zh-en') {
+        } else if ((this.currentTab === 'vocab' || this.currentTab === 'vocabA') && this.reviewDirection === 'zh-en') {
             // Vocabulary 中文→英文模式：背面顯示英文 + 字 + 拼音
             let charDisplay = '';
             if (vocab.character && vocab.character.trim()) {
@@ -1422,8 +1470,8 @@ class BCTReviewSystem {
         document.querySelector('.lesson-selector').style.display = 'block';
         document.querySelector('.data-section').style.display = 'block';
 
-        // Show Vocabulary settings if Vocabulary tab is selected
-        if (this.currentTab === 'vocab') {
+        // Show Vocabulary settings if Vocabulary or Vocab A tab is selected
+        if (this.currentTab === 'vocab' || this.currentTab === 'vocabA') {
             const vocabSettings = document.getElementById('vocabSettings');
             if (vocabSettings) {
                 vocabSettings.classList.remove('hidden');
