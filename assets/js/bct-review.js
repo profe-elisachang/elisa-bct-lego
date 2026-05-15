@@ -20,6 +20,9 @@ if (!firebase.apps || firebase.apps.length === 0) {
 const db = firebase.firestore();
 const auth = firebase.auth();
 
+/** Single-cohort review mode: no Firestore cohort validation on the critical path. */
+const REVIEW_FIXED_COHORT = 'taigen-a';
+
 // BCT Review System Class
 class BCTReviewSystem {
     constructor() {
@@ -27,7 +30,7 @@ class BCTReviewSystem {
         this.characterVocab = [];
         this.lessonVocab = [];
         this.userProgress = {};
-        this.currentTab = 'components';
+        this.currentTab = null;
         this.currentLevel = 'btc1';  // BCT Level tracking
         // Vocabulary review settings
         this.reviewDirection = 'zh-en'; // 中文 → 英文
@@ -39,54 +42,171 @@ class BCTReviewSystem {
         this.isCardFlipped = false;
         this.studentId = null;   // master student doc id
         this.studentName = '';
+
+        // Lazy-loading: per-section state (components | characters | vocab)
+        this.sectionLoadState = {
+            components: { status: 'idle', promise: null },
+            characters: { status: 'idle', promise: null },
+            vocab: { status: 'idle', promise: null }
+        };
+        this._sectionsLoadedLevel = null;
+        this._lessonPartition = null;
+        this._lessonLoadPromise = null;
+        this._lessonLoadLevel = null;
+        this._timelineVocabItems = null;
+        this._timelineVocabLevel = null;
+        this._timelineVocabPromise = null;
+        this._timelineComponentsItems = null;
+        this._timelineComponentsLevel = null;
+        this._timelineTargetCharsItems = null;
+        this._timelineTargetCharsLevel = null;
+        this._bootstrapPromise = null;
+    }
+
+    getStudentCohort() {
+        return REVIEW_FIXED_COHORT;
+    }
+
+    syncLevelButtons() {
+        document.querySelectorAll('.level-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.level === this.currentLevel);
+        });
+    }
+
+    isSectionReady(tab) {
+        return this.sectionLoadState[tab]?.status === 'ready'
+            && this._sectionsLoadedLevel === this.currentLevel;
+    }
+
+    invalidateLevelCaches() {
+        this.sectionLoadState = {
+            components: { status: 'idle', promise: null },
+            characters: { status: 'idle', promise: null },
+            vocab: { status: 'idle', promise: null }
+        };
+        this._sectionsLoadedLevel = null;
+        this._lessonPartition = null;
+        this._lessonLoadPromise = null;
+        this._lessonLoadLevel = null;
+        this._timelineVocabItems = null;
+        this._timelineVocabLevel = null;
+        this._timelineVocabPromise = null;
+        this._timelineComponentsItems = null;
+        this._timelineComponentsLevel = null;
+        this._timelineTargetCharsItems = null;
+        this._timelineTargetCharsLevel = null;
+        this.componentVocab = [];
+        this.characterVocab = [];
+        this.lessonVocab = [];
+    }
+
+    sectionCacheKey(tab) {
+        return `bct_vocab_cache:${this.currentLevel}:${tab}`;
+    }
+
+    tryReadSectionCache(tab) {
+        try {
+            const raw = localStorage.getItem(this.sectionCacheKey(tab));
+            if (!raw) return false;
+            const items = JSON.parse(raw);
+            if (!Array.isArray(items)) return false;
+            if (tab === 'components') this.componentVocab = items;
+            else if (tab === 'characters') this.characterVocab = items;
+            else this.lessonVocab = items;
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    saveSectionCache(tab) {
+        const payload = tab === 'components'
+            ? this.componentVocab
+            : tab === 'characters'
+                ? this.characterVocab
+                : this.lessonVocab;
+        try {
+            localStorage.setItem(this.sectionCacheKey(tab), JSON.stringify(payload));
+        } catch (e) {
+            console.warn('Section cache save failed:', e);
+        }
+    }
+
+    clearVocabCachesForLevel(level) {
+        ['components', 'characters', 'vocab'].forEach(tab => {
+            localStorage.removeItem(`bct_vocab_cache:${level}:${tab}`);
+        });
+        if (level === this.currentLevel) {
+            localStorage.removeItem('bct_vocab_cache');
+        }
+    }
+
+    renderSectionPlaceholder() {
+        const grid = document.getElementById('lessonGrid');
+        if (!grid) return;
+        grid.innerHTML = `
+            <div class="section-placeholder" role="status">
+                <p>Select <strong>Components</strong>, <strong>汉字</strong>, or <strong>Vocabulary</strong> above to load lessons.</p>
+            </div>`;
+        const countEl = document.getElementById('selectedCount');
+        if (countEl) countEl.textContent = '(0/0)';
+    }
+
+    showSectionLoading() {
+        const grid = document.getElementById('lessonGrid');
+        if (!grid) return;
+        grid.innerHTML = `
+            <div class="section-loading" role="status" aria-live="polite">
+                <div class="loader"></div>
+                <p>Loading ${this.currentTab || 'content'}...</p>
+            </div>`;
     }
 
     async init() {
         try {
-            // Wait for cohort guard if present (ensures active cohort is enforced)
-            if (window.__cohortGuardReady && typeof window.__cohortGuardReady.then === 'function') {
-                try { await window.__cohortGuardReady; } catch (_) {}
-            }
-
-            // 从 URL 读取参数
             const urlParams = new URLSearchParams(window.location.search);
             const urlLevel = urlParams.get('level');
-            const urlCohort = urlParams.get('cohort');
-            
-            // 优先使用 URL 参数，其次 localStorage，最后默认值
+
             if (urlLevel) {
                 this.currentLevel = urlLevel;
-                // 保存到 localStorage 供下次使用
                 localStorage.setItem('bct-current-level', urlLevel);
             } else {
-                // 从 localStorage 读取上次的选择
                 this.currentLevel = localStorage.getItem('bct-current-level') || 'btc1';
             }
-            
-            // Cohort is enforced by cohort-guard (active-only). Keep localStorage consistent.
-            const enforcedCohort = window.BCT_ACTIVE_COHORT || urlCohort || localStorage.getItem('bct-cohort') || 'taigen-a';
-            localStorage.setItem('bct-cohort', enforcedCohort);
-            const currentCohort = enforcedCohort;
-            console.log(`🎯 BCT Review 初始化：Level=${this.currentLevel}, Cohort=${currentCohort}`);
 
-            // Anonymous auth (fixed uid per browser profile)
-            // Wait for auth to be ready before signing in
+            localStorage.setItem('bct-cohort', REVIEW_FIXED_COHORT);
+            console.log(`🎯 BCT Review 初始化：Level=${this.currentLevel}, Cohort=${REVIEW_FIXED_COHORT} (fixed)`);
+
+            this.currentTab = null;
+            this.setupEventListeners();
+            this.syncLevelButtons();
+            document.querySelectorAll('#typeTabSystem .tab-btn').forEach(b => b.classList.remove('active'));
+            this.renderSectionPlaceholder();
+            this.updateStepIndicator(1);
+
+            document.getElementById('loadingContainer').classList.add('hidden');
+            document.getElementById('mainContent').classList.remove('hidden');
+
+            this._bootstrapPromise = this.bootstrapBackground(REVIEW_FIXED_COHORT);
+        } catch (error) {
+            console.error('Initialization failed:', error);
+            alert('Failed to initialize: ' + error.message);
+        }
+    }
+
+    async bootstrapBackground(cohortId) {
+        try {
             if (!auth) {
                 throw new Error('Firebase Auth is not initialized. Make sure Firebase SDK is loaded.');
             }
 
             try {
-                // Check if already signed in
                 if (auth.currentUser && auth.currentUser.isAnonymous) {
                     this.currentUser = auth.currentUser;
                 } else {
-                    // Sign in anonymously (this may require Anonymous sign-in enabled in Firebase Console)
                     await auth.signInAnonymously();
-                    // Wait for auth state to update
                     await new Promise((resolve, reject) => {
-                        const timeout = setTimeout(() => {
-                            reject(new Error('Auth state change timeout'));
-                        }, 10000);
+                        const timeout = setTimeout(() => reject(new Error('Auth state change timeout')), 10000);
                         const unsub = auth.onAuthStateChanged((user) => {
                             if (!user) return;
                             clearTimeout(timeout);
@@ -101,7 +221,6 @@ class BCTReviewSystem {
                     this.currentUser = auth.currentUser;
                 }
             } catch (authError) {
-                // Provide more helpful error message
                 if (authError.code === 'auth/admin-restricted-operation') {
                     throw new Error('Anonymous sign-in is disabled. Please enable it in Firebase Console: Authentication → Sign-in method → Anonymous → Enable.');
                 }
@@ -112,25 +231,24 @@ class BCTReviewSystem {
                 throw new Error('Anonymous auth failed: no user uid received');
             }
             this.deviceCode = this.currentUser.uid.substring(0, 6).toUpperCase();
-            document.getElementById('deviceCode').textContent = this.deviceCode;
+            const deviceEl = document.getElementById('deviceCode');
+            if (deviceEl) deviceEl.textContent = this.deviceCode;
 
-            await this.resolveOrLinkStudent(currentCohort);
-            document.getElementById('studentName').textContent = this.studentName || 'Not linked';
+            await this.resolveOrLinkStudent(cohortId);
+            const nameEl = document.getElementById('studentName');
+            if (nameEl) nameEl.textContent = this.studentName || 'Not linked';
 
-            await this.loadAllVocabulary();
             await this.loadUserProgress();
-
-            this.renderLessonSelector();
-            this.setupEventListeners();
-
-            // Initialize step indicator (step 1 is active by default)
-            this.updateStepIndicator(1);
-
-            document.getElementById('loadingContainer').classList.add('hidden');
-            document.getElementById('mainContent').classList.remove('hidden');
         } catch (error) {
-            console.error('Initialization failed:', error);
-            alert('Failed to initialize: ' + error.message);
+            console.error('Background bootstrap failed:', error);
+            const nameEl = document.getElementById('studentName');
+            if (nameEl) nameEl.textContent = 'Setup incomplete';
+        }
+    }
+
+    async ensureBootstrapReady() {
+        if (this._bootstrapPromise) {
+            await this._bootstrapPromise;
         }
     }
 
@@ -269,163 +387,286 @@ class BCTReviewSystem {
         return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
-    async loadAllVocabulary() {
-        console.time('Loading vocabulary');
+    partitionLessonDoc(docData, lessonId) {
+        const data = {
+            ...docData,
+            source: 'lesson',
+            lesson: lessonId,
+            firestoreId: docData.firestoreId
+        };
+        if (data.type === 'component') {
+            return { bucket: 'components', data };
+        }
+        if (data.type === 'vocab' || !data.type) {
+            return { bucket: 'vocab', data };
+        }
+        return { bucket: 'characters', data };
+    }
 
-        // 不使用 cache，避免新增後資料鎖定；如需可在此處改回
-        localStorage.removeItem('bct_vocab_cache');
+    async ensureLessonVocabularyLoaded() {
+        const level = this.currentLevel;
+        if (this._lessonLoadLevel === level && this._lessonPartition) {
+            return this._lessonPartition;
+        }
+        if (this._lessonLoadPromise && this._lessonLoadLevel === level) {
+            return this._lessonLoadPromise;
+        }
 
-        // Load from Firestore
-        this.componentVocab = [];
-        this.characterVocab = [];
-        this.lessonVocab = [];
-
-        // 1. Load from Lessons (1-20) under courses/[currentLevel]
-        for (let i = 1; i <= 20; i++) {
-            try {
+        this._lessonLoadLevel = level;
+        this._lessonLoadPromise = (async () => {
+            const partition = { components: [], characters: [], vocab: [] };
+            const lessonLoads = Array.from({ length: 20 }, (_, idx) => {
+                const i = idx + 1;
                 const lessonId = `lesson${i}`;
-                const vocabSnap = await db.collection('courses')
-                    .doc(this.currentLevel)
+                return db.collection('courses')
+                    .doc(level)
                     .collection('lessons')
                     .doc(lessonId)
                     .collection('vocabulary')
-                    .get();
+                    .get()
+                    .then((vocabSnap) => ({ lessonId, vocabSnap }))
+                    .catch(() => {
+                        console.log(`Lesson ${i} not found, skipping...`);
+                        return null;
+                    });
+            });
 
+            const lessonResults = await Promise.all(lessonLoads);
+            for (const result of lessonResults) {
+                if (!result) continue;
+                const { lessonId, vocabSnap } = result;
                 vocabSnap.forEach(doc => {
-                    const data = {
+                    const { bucket, data } = this.partitionLessonDoc({
                         ...doc.data(),
-                        source: 'lesson',
-                        lesson: lessonId,
                         firestoreId: doc.id
-                    };
-
-                    if (data.type === 'component') {
-                        this.componentVocab.push(data);
-                    } else if (data.type === 'vocab' || !data.type) {
-                        this.lessonVocab.push(data);
-                    } else {
-                        this.characterVocab.push(data);
-                    }
+                    }, lessonId);
+                    partition[bucket].push(data);
                 });
-            } catch (error) {
-                console.log(`Lesson ${i} not found, skipping...`);
+            }
+
+            this._lessonPartition = partition;
+            return partition;
+        })();
+
+        try {
+            return await this._lessonLoadPromise;
+        } finally {
+            if (this._lessonLoadLevel === level) {
+                this._lessonLoadPromise = null;
             }
         }
+    }
 
-        // 2. Load from Timeline (新数据结构)
-        try {
-            // 获取学生班级
-            const studentCohort = window.BCT_ACTIVE_COHORT || localStorage.getItem('bct-cohort') || 'taigen-a';
-            console.log(`Loading timeline data for ${this.currentLevel}, cohort: ${studentCohort}`);
-            
-            // Load components (所有班共用)
-            try {
-                const compSnap = await db.collection(`timeline/${this.currentLevel}/components`).get();
-                console.log(`Found ${compSnap.size} timeline components for ${this.currentLevel}`);
-                
-                compSnap.forEach(doc => {
-                    const data = doc.data();
-                    // 只載入已發布的部件（明確檢查 is_published === true）
-                    if (data.is_published === true) {
-                        this.componentVocab.push({
-                            ...data,
-                            source: 'timeline',
-                            lesson: data.lesson || 'unknown',
-                            firestoreId: doc.id
-                        });
-                    } else {
-                        console.log(`⏭️ 跳過未發布部件: ${doc.id}, is_published=${data.is_published}, lesson=${data.lesson}`);
-                    }
-                });
-            } catch (error) {
-                console.log(`No timeline components for ${this.currentLevel}:`, error.message);
-            }
+    async ensureTimelineVocabItems() {
+        const level = this.currentLevel;
+        const cohort = this.getStudentCohort();
+        if (this._timelineVocabLevel === level && this._timelineVocabItems) {
+            return this._timelineVocabItems;
+        }
+        if (this._timelineVocabPromise && this._timelineVocabLevel === level) {
+            return this._timelineVocabPromise;
+        }
 
-            // Load vocabulary (只加载学生自己班级的)
+        this._timelineVocabLevel = level;
+        this._timelineVocabPromise = (async () => {
+            const items = [];
             try {
-                const vocabSnap = await db.collection(`timeline/${this.currentLevel}/vocab/${studentCohort}/items`).get();
-                console.log(`Found ${vocabSnap.size} timeline vocab for ${this.currentLevel}/${studentCohort}`);
-                
+                const vocabSnap = await db.collection(`timeline/${level}/vocab/${cohort}/items`).get();
+                console.log(`Found ${vocabSnap.size} timeline vocab for ${level}/${cohort}`);
                 vocabSnap.forEach(doc => {
                     const data = doc.data();
-                    const vocabItem = {
+                    items.push({
                         ...data,
                         source: 'timeline',
-                        cohort: studentCohort,
+                        cohort,
                         lesson: data.lesson || 'unknown',
                         firestoreId: doc.id
-                    };
-                    // 根据 type 分类（vocab 集合中的 component 類型也需要檢查發布狀態）
-                    if (data.type === 'component') {
-                        // 只載入已發布的部件
-                        if (data.is_published === true) {
-                            this.componentVocab.push(vocabItem);
-                        } else {
-                            console.log(`⏭️ 跳過未發布部件（來自vocab）: ${doc.id}, is_published=${data.is_published}`);
-                        }
-                    } else if (data.type === 'vocab' || !data.type) {
-                        this.lessonVocab.push(vocabItem);
-                    } else {
-                        this.characterVocab.push(vocabItem);
-                    }
+                    });
                 });
             } catch (error) {
-                console.log(`No timeline vocab for ${this.currentLevel}/${studentCohort}:`, error.message);
+                console.log(`No timeline vocab for ${level}/${cohort}:`, error.message);
             }
+            this._timelineVocabItems = items;
+            return items;
+        })();
 
-            // 3. Load Character Cards (字卡) - 載入所有課次的已發布字卡
-            try {
-                // 載入目標字（Target Characters）- Collection 結構
-                const targetCharsCollection = db.collection(`timeline/${this.currentLevel}/target-characters`);
-                const targetCharsSnapshot = await targetCharsCollection.get();
-                console.log(`Found ${targetCharsSnapshot.size} target character documents for ${this.currentLevel}`);
-                
-                targetCharsSnapshot.forEach(doc => {
-                    const cardData = doc.data();
-                    
-                    // 只載入已發布的目標字
-                    if (cardData.is_published !== false) {
-                        this.characterVocab.push({
-                            ...cardData,
-                            source: 'timeline',
-                            lesson: cardData.lesson || 'unknown',
-                            isCharacterCard: true,
-                            firestoreId: doc.id
-                        });
-                    }
-                });
-            } catch (error) {
-                console.log(`No character cards for ${this.currentLevel}:`, error.message);
+        try {
+            return await this._timelineVocabPromise;
+        } finally {
+            if (this._timelineVocabLevel === level) {
+                this._timelineVocabPromise = null;
             }
-        } catch (error) {
-            console.error('Error loading timeline:', error);
+        }
+    }
+
+    async ensureTimelineComponents() {
+        const level = this.currentLevel;
+        if (this._timelineComponentsLevel === level && this._timelineComponentsItems) {
+            return this._timelineComponentsItems;
         }
 
-        console.log(`Loaded ${this.componentVocab.length} components, ${this.characterVocab.length} characters, ${this.lessonVocab.length} lesson vocab`);
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/fe98b67c-7883-463c-8159-8386c334ac76',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({
-                sessionId:'debug-session',
-                runId:'baseline',
-                hypothesisId:'H3',
-                location:'assets/js/bct-review.js:loadAllVocabulary',
-                message:'Vocabulary loaded',
-                data:{components:this.componentVocab.length, characters:this.characterVocab.length},
-                timestamp:Date.now()
-            })
-        }).catch(()=>{});
-        // #endregion
+        const items = [];
+        try {
+            const compSnap = await db.collection(`timeline/${level}/components`).get();
+            console.log(`Found ${compSnap.size} timeline components for ${level}`);
+            compSnap.forEach(doc => {
+                const data = doc.data();
+                if (data.is_published === true) {
+                    items.push({
+                        ...data,
+                        source: 'timeline',
+                        lesson: data.lesson || 'unknown',
+                        firestoreId: doc.id
+                    });
+                }
+            });
+        } catch (error) {
+            console.log(`No timeline components for ${level}:`, error.message);
+        }
 
-        // Save to cache
-        localStorage.setItem('bct_vocab_cache', JSON.stringify({
-            components: this.componentVocab,
-            characters: this.characterVocab,
-            lessonsVocab: this.lessonVocab
-        }));
+        this._timelineComponentsItems = items;
+        this._timelineComponentsLevel = level;
+        return items;
+    }
 
-        console.timeEnd('Loading vocabulary');
+    async ensureTimelineTargetCharacters() {
+        const level = this.currentLevel;
+        if (this._timelineTargetCharsLevel === level && this._timelineTargetCharsItems) {
+            return this._timelineTargetCharsItems;
+        }
+
+        const items = [];
+        try {
+            const targetCharsSnapshot = await db.collection(`timeline/${level}/target-characters`).get();
+            console.log(`Found ${targetCharsSnapshot.size} target character documents for ${level}`);
+            targetCharsSnapshot.forEach(doc => {
+                const cardData = doc.data();
+                if (cardData.is_published !== false) {
+                    items.push({
+                        ...cardData,
+                        source: 'timeline',
+                        lesson: cardData.lesson || 'unknown',
+                        isCharacterCard: true,
+                        firestoreId: doc.id
+                    });
+                }
+            });
+        } catch (error) {
+            console.log(`No character cards for ${level}:`, error.message);
+        }
+
+        this._timelineTargetCharsItems = items;
+        this._timelineTargetCharsLevel = level;
+        return items;
+    }
+
+    async loadSectionComponents() {
+        const partition = await this.ensureLessonVocabularyLoaded();
+        const items = [...partition.components];
+        const timelineComponents = await this.ensureTimelineComponents();
+        items.push(...timelineComponents);
+
+        const timelineVocab = await this.ensureTimelineVocabItems();
+        timelineVocab.forEach(data => {
+            if (data.type === 'component' && data.is_published === true) {
+                items.push(data);
+            }
+        });
+
+        this.componentVocab = items;
+        console.log(`Loaded ${items.length} components for ${this.currentLevel}`);
+    }
+
+    async loadSectionCharacters() {
+        const partition = await this.ensureLessonVocabularyLoaded();
+        const items = [...partition.characters];
+
+        const timelineVocab = await this.ensureTimelineVocabItems();
+        timelineVocab.forEach(data => {
+            if (data.type === 'component') return;
+            if (data.type === 'vocab' || !data.type) return;
+            items.push(data);
+        });
+
+        const targetChars = await this.ensureTimelineTargetCharacters();
+        items.push(...targetChars);
+
+        this.characterVocab = items;
+        console.log(`Loaded ${items.length} characters for ${this.currentLevel}`);
+    }
+
+    async loadSectionVocab() {
+        const partition = await this.ensureLessonVocabularyLoaded();
+        const items = [...partition.vocab];
+
+        const timelineVocab = await this.ensureTimelineVocabItems();
+        timelineVocab.forEach(data => {
+            if (data.type === 'component') return;
+            if (data.type === 'vocab' || !data.type) {
+                items.push(data);
+            }
+        });
+
+        this.lessonVocab = items;
+        console.log(`Loaded ${items.length} vocab items for ${this.currentLevel}`);
+    }
+
+    async ensureSectionLoaded(tab) {
+        if (!tab || !this.sectionLoadState[tab]) {
+            throw new Error(`Unknown review section: ${tab}`);
+        }
+
+        if (this.isSectionReady(tab)) {
+            return;
+        }
+
+        const state = this.sectionLoadState[tab];
+        if (state.promise) {
+            return state.promise;
+        }
+
+        const hadCache = this.tryReadSectionCache(tab);
+        if (hadCache) {
+            this._sectionsLoadedLevel = this.currentLevel;
+            state.status = 'ready';
+            this.renderLessonSelector();
+        } else {
+            state.status = 'loading';
+            this.showSectionLoading();
+        }
+
+        const usedCache = hadCache;
+        state.promise = (async () => {
+            console.time(`Loading section: ${tab}`);
+            try {
+                if (tab === 'components') {
+                    await this.loadSectionComponents();
+                } else if (tab === 'characters') {
+                    await this.loadSectionCharacters();
+                } else if (tab === 'vocab') {
+                    await this.loadSectionVocab();
+                }
+
+                this._sectionsLoadedLevel = this.currentLevel;
+                state.status = 'ready';
+                this.saveSectionCache(tab);
+            } catch (error) {
+                if (!usedCache) {
+                    state.status = 'error';
+                    throw error;
+                }
+                console.warn(`Section refresh failed (${tab}), using cached data:`, error);
+            } finally {
+                state.promise = null;
+                console.timeEnd(`Loading section: ${tab}`);
+            }
+        })();
+
+        await state.promise;
+
+        if (this.currentTab === tab) {
+            this.renderLessonSelector();
+        }
     }
 
     async loadUserProgress() {
@@ -477,6 +718,14 @@ class BCTReviewSystem {
     }
 
     renderLessonSelector() {
+        if (!this.currentTab) {
+            this.renderSectionPlaceholder();
+            return;
+        }
+        if (!this.isSectionReady(this.currentTab)) {
+            return;
+        }
+
         const grid = document.getElementById('lessonGrid');
         const lessons = [];
 
@@ -711,13 +960,18 @@ class BCTReviewSystem {
             });
         });
 
-        // Tab switching
+        // Tab switching (lazy-load section on click)
         document.querySelectorAll('#typeTabSystem .tab-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
+                const tab = e.currentTarget.dataset.tab;
                 document.querySelectorAll('#typeTabSystem .tab-btn').forEach(b => b.classList.remove('active'));
                 e.currentTarget.classList.add('active');
-                this.setCurrentTab(e.currentTarget.dataset.tab);
-                this.updateStepIndicator(2); // Update to step 2 when type is selected
+                try {
+                    await this.setCurrentTab(tab);
+                } catch (err) {
+                    console.error('Failed to load section:', err);
+                    alert('Failed to load content: ' + (err.message || 'Unknown error'));
+                }
             });
         });
 
@@ -760,17 +1014,15 @@ class BCTReviewSystem {
         }
     }
 
-    setCurrentTab(tab) {
+    async setCurrentTab(tab) {
         this.currentTab = tab;
         this.clearSelections();
-        this.renderLessonSelector();
-        
-        // Show/hide Vocabulary settings based on selected tab
+        this.updateStepIndicator(2);
+
         const vocabSettings = document.getElementById('vocabSettings');
         if (vocabSettings) {
             if (tab === 'vocab') {
                 vocabSettings.classList.remove('hidden');
-                // Initialize settings from select elements
                 const reviewDirectionSelect = document.getElementById('reviewDirection');
                 const pinyinDisplaySelect = document.getElementById('pinyinDisplay');
                 if (reviewDirectionSelect) {
@@ -783,51 +1035,44 @@ class BCTReviewSystem {
                 vocabSettings.classList.add('hidden');
             }
         }
-        
+
+        await this.ensureSectionLoaded(tab);
         this.updateReviewSections();
     }
 
     // Switch BCT Level
     async switchLevel(level) {
-        // Show loading
-        const mainContent = document.getElementById('mainContent');
-        const loadingContainer = document.getElementById('loadingContainer');
-        mainContent.classList.add('hidden');
-        loadingContainer.classList.remove('hidden');
-        
         try {
-            // 1. Save current selections to localStorage
             this.saveCurrentSelections();
-            
-            // 2. Update level
+
+            const previousLevel = this.currentLevel;
             this.currentLevel = level;
-            
-            // 保存到 localStorage
             localStorage.setItem('bct-current-level', level);
-            
-            // 更新 URL（保持 cohort 参数）
-            const cohort = localStorage.getItem('bct-cohort') || 'taigen-a';
-            const newUrl = `${window.location.pathname}?level=${level}&cohort=${cohort}`;
-            window.history.pushState({ level, cohort }, '', newUrl);
-            
+
+            const newUrl = `${window.location.pathname}?level=${level}&cohort=${REVIEW_FIXED_COHORT}`;
+            window.history.pushState({ level, cohort: REVIEW_FIXED_COHORT }, '', newUrl);
+
             console.log(`✅ 已切换到 ${level}，URL 已更新`);
-            
-            // 3. Clear current selections
+
+            this.syncLevelButtons();
+            this.invalidateLevelCaches();
+            if (previousLevel) {
+                this.clearVocabCachesForLevel(previousLevel);
+            }
+
             this.clearSelections();
-            
-            // 4. Reload data for this level
-            await this.loadAllVocabulary();
-            
-            // 5. Restore selections for this level
-            this.restoreSelections();
-            
-            // 6. Re-render
-            this.renderLessonSelector();
-            this.updateReviewSections();
-        } finally {
-            // Hide loading
-            loadingContainer.classList.add('hidden');
-            mainContent.classList.remove('hidden');
+
+            const activeTab = this.currentTab;
+            if (activeTab) {
+                await this.ensureSectionLoaded(activeTab);
+                this.restoreSelections();
+                this.updateReviewSections();
+            } else {
+                this.renderSectionPlaceholder();
+            }
+        } catch (error) {
+            console.error('Level switch failed:', error);
+            alert('Failed to switch level: ' + (error.message || 'Unknown error'));
         }
     }
 
@@ -865,7 +1110,13 @@ class BCTReviewSystem {
         this.updateReviewSections();
     }
 
-    startReview() {
+    async startReview() {
+        if (!this.currentTab || !this.isSectionReady(this.currentTab)) {
+            alert('Please wait for lesson content to finish loading.');
+            return;
+        }
+        await this.ensureBootstrapReady();
+
         const vocab = this.getSelectedVocab();
         const dueVocab = this.getDueVocab(vocab);
         const amount = document.getElementById('reviewAmount').value;
@@ -889,7 +1140,13 @@ class BCTReviewSystem {
         this.showCard();
     }
 
-    startBoxReview(box) {
+    async startBoxReview(box) {
+        if (!this.currentTab || !this.isSectionReady(this.currentTab)) {
+            alert('Please wait for lesson content to finish loading.');
+            return;
+        }
+        await this.ensureBootstrapReady();
+
         const vocab = this.getSelectedVocab();
         this.reviewQueue = vocab.filter(v => {
             const progress = this.userProgress[this.getProgressKey(v)];
@@ -1123,6 +1380,8 @@ class BCTReviewSystem {
     }
 
     async rateCard(rating) {
+        await this.ensureBootstrapReady();
+
         const vocab = this.reviewQueue[this.currentIndex];
 
         // Update progress
@@ -1273,10 +1532,26 @@ function speakCharacter(event) {
     speechSynthesis.speak(utterance);
 }
 
-function refreshData() {
-    if (confirm('This will reload fresh data from the server. Continue?')) {
-        localStorage.removeItem('bct_vocab_cache');
-        location.reload();
+async function refreshData() {
+    if (!confirm('This will reload fresh data from the server. Continue?')) {
+        return;
+    }
+    const tab = reviewSystem.currentTab;
+    const level = reviewSystem.currentLevel;
+    reviewSystem.clearVocabCachesForLevel(level);
+    localStorage.removeItem('bct_vocab_cache');
+    reviewSystem.invalidateLevelCaches();
+    reviewSystem.currentTab = tab;
+    if (tab) {
+        reviewSystem.showSectionLoading();
+        try {
+            await reviewSystem.ensureSectionLoaded(tab);
+            reviewSystem.updateReviewSections();
+        } catch (e) {
+            alert('Refresh failed: ' + (e.message || 'Unknown error'));
+        }
+    } else {
+        reviewSystem.renderSectionPlaceholder();
     }
 }
 

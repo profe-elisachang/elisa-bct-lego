@@ -43,6 +43,7 @@
   };
 
   const getCurrentCohort = () => {
+    if (getPageType() === 'review') return 'taigen-a';
     const param = getParam('cohort');
     const stored = localStorage.getItem(STORAGE_KEYS.COHORT);
     return param || stored || 'taigen-a';
@@ -280,9 +281,11 @@
   // 初始化
   // ================================================
   const init = async () => {
-    // If cohort guard exists, wait for enforcement so nav links don't briefly show frozen cohort.
-    if (window.__cohortGuardReady && typeof window.__cohortGuardReady.then === 'function') {
-      try { await window.__cohortGuardReady; } catch (_) {}
+    // Review page uses fixed single-cohort mode; skip Firestore cohort validation on startup.
+    if (getPageType() !== 'review') {
+      if (window.__cohortGuardReady && typeof window.__cohortGuardReady.then === 'function') {
+        try { await window.__cohortGuardReady; } catch (_) {}
+      }
     }
     renderNav();
     initSidebar();
